@@ -4,12 +4,18 @@ import { UserResponseDto } from '../../../users/dto/response/user-response.dto';
 @Exclude()
 export class AuthResponseDto {
   @Expose()
-  access_token: string;
+  require_2fa?: boolean;
 
   @Expose()
-  refresh_token: string;
+  temp_token?: string;
+
+  @Expose()
+  access_token?: string;
+
+  @Expose()
+  refresh_token?: string;
 
   @Expose()
   @Type(() => UserResponseDto)
-  user: UserResponseDto;
+  user?: UserResponseDto;
 }
