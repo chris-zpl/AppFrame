@@ -112,6 +112,7 @@ export class InitialAppFrameSchema1740000000000 implements MigrationInterface {
         "original_title" VARCHAR(255) NULL,
         "duration_seconds" INTEGER NULL,
         "status" "video_job_status_enum" NOT NULL DEFAULT 'pending',
+        "progress" INTEGER NOT NULL DEFAULT 0,
         "trim_start" NUMERIC(10,2) NULL,
         "trim_end" NUMERIC(10,2) NULL,
         "subtitle_config" JSONB NULL,

@@ -53,6 +53,9 @@ export class VideoJob {
   })
   status: VideoJobStatus;
 
+  @Column({ type: 'integer', default: 0 })
+  progress: number;
+
   @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
   trim_start: number | null;
 

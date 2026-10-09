@@ -28,6 +28,9 @@ export class VideoJobResponseDto {
   status: VideoJobStatus;
 
   @Expose()
+  progress: number;
+
+  @Expose()
   trim_start: number | null;
 
   @Expose()
