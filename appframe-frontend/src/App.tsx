@@ -7,6 +7,8 @@ import {
   AuthCallbackPage,
   TwoFactorChallengePage,
   ScraperPage,
+  StudioPage,
+  HistoricoPage,
 } from './pages';
 import { AppShell } from './components/layout/AppShell';
 import { Card } from './components/ui/Card';
@@ -24,37 +26,10 @@ const MainRouter: React.FC = () => {
       {currentRoute === 'auth-callback' && <AuthCallbackPage />}
       {currentRoute === '2fa' && <TwoFactorChallengePage />}
       {currentRoute === 'scraper' && <ScraperPage />}
+      {currentRoute === 'studio' && <StudioPage />}
+      {currentRoute === 'historico' && <HistoricoPage />}
 
-      {/* Páginas do AppShell secundárias */}
-      {currentRoute === 'studio' && (
-        <AppShell currentPath="studio" onNavigate={(path) => navigate(path)}>
-          <Card className="p-8 text-center flex flex-col items-center justify-center max-w-xl mx-auto my-12">
-            <div className="w-16 h-16 rounded-2xl bg-surface-container-highest flex items-center justify-center text-primary mb-4 shadow-[0_0_20px_rgba(212,163,70,0.2)]">
-              <span className="material-symbols-outlined text-[36px]">
-                content_cut
-              </span>
-            </div>
-            <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface mb-2">
-              Studio de Edição e Cortes
-            </h2>
-            <p className="font-body-md text-body-md text-on-surface-variant max-w-md mb-6">
-              Edição precisa com FFmpeg (-ss e -to), corte sem drift, legendas com cálculo fix_bounds e narração TTS via Google Gemini.
-            </p>
-            <Button
-              variant="primary"
-              onClick={() => navigate('scraper')}
-              leftIcon={
-                <span className="material-symbols-outlined text-[18px]">
-                  radar
-                </span>
-              }
-            >
-              Voltar para Varredura de Canais
-            </Button>
-          </Card>
-        </AppShell>
-      )}
-
+      {/* Página de Marcas d'Água */}
       {currentRoute === 'marcas-dagua' && (
         <AppShell currentPath="marcas-dagua" onNavigate={(path) => navigate(path)}>
           <Card className="p-8 text-center flex flex-col items-center justify-center max-w-xl mx-auto my-12">
@@ -67,47 +42,18 @@ const MainRouter: React.FC = () => {
               Gestão de Marcas d'Água
             </h2>
             <p className="font-body-md text-body-md text-on-surface-variant max-w-md mb-6">
-              Upload de PNGs transparentes e posicionamento dinâmico na matriz de coordenadas 3x3 para queima de logo no vídeo.
+              Upload de PNGs transparentes com preservação de canal alfa e posicionamento dinâmico na matriz de coordenadas 3x3 para queima de logo no vídeo via FFmpeg.
             </p>
             <Button
               variant="primary"
-              onClick={() => navigate('scraper')}
+              onClick={() => navigate('studio')}
               leftIcon={
                 <span className="material-symbols-outlined text-[18px]">
-                  arrow_back
+                  content_cut
                 </span>
               }
             >
-              Voltar para Varredura
-            </Button>
-          </Card>
-        </AppShell>
-      )}
-
-      {currentRoute === 'historico' && (
-        <AppShell currentPath="historico" onNavigate={(path) => navigate(path)}>
-          <Card className="p-8 text-center flex flex-col items-center justify-center max-w-xl mx-auto my-12">
-            <div className="w-16 h-16 rounded-2xl bg-surface-container-highest flex items-center justify-center text-primary mb-4 shadow-[0_0_20px_rgba(212,163,70,0.2)]">
-              <span className="material-symbols-outlined text-[36px]">
-                history
-              </span>
-            </div>
-            <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface mb-2">
-              Histórico de Jobs e Filas BullMQ
-            </h2>
-            <p className="font-body-md text-body-md text-on-surface-variant max-w-md mb-6">
-              Acompanhamento de progresso em tempo real das filas media:download e media:render com status e logs sanitizados.
-            </p>
-            <Button
-              variant="primary"
-              onClick={() => navigate('scraper')}
-              leftIcon={
-                <span className="material-symbols-outlined text-[18px]">
-                  arrow_back
-                </span>
-              }
-            >
-              Voltar para Varredura
+              Testar Posicionamento no Studio
             </Button>
           </Card>
         </AppShell>
@@ -123,10 +69,11 @@ const MainRouter: React.FC = () => {
             {(
               [
                 { route: 'scraper', label: 'Varredura' },
-                { route: 'register', label: 'Cadastro' },
+                { route: 'studio', label: 'Studio' },
+                { route: 'historico', label: 'Histórico' },
                 { route: 'login', label: 'Login' },
+                { route: 'register', label: 'Cadastro' },
                 { route: '2fa', label: '2FA' },
-                { route: 'auth-callback', label: 'OAuth Callback' },
               ] as { route: AppRoute; label: string }[]
             ).map((item) => (
               <button
