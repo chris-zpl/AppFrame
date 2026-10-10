@@ -1,0 +1,171 @@
+import React, { useState } from 'react';
+import { cn } from '../../lib/utils';
+import { AppFrameLogo } from '../common/AppFrameLogo';
+import { ThemeToggle } from '../common/ThemeToggle';
+
+export type AppNavigationPath = 'varredura' | 'studio' | 'marcas-dagua' | 'historico';
+
+export interface AppShellProps {
+  currentPath?: AppNavigationPath;
+  onNavigate?: (path: AppNavigationPath) => void;
+  userAvatarUrl?: string;
+  userName?: string;
+  onUserAvatarClick?: () => void;
+  children: React.ReactNode;
+}
+
+interface NavItem {
+  key: AppNavigationPath;
+  label: string;
+  icon: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { key: 'varredura', label: 'Varredura', icon: 'radar' },
+  { key: 'studio', label: 'Studio', icon: 'content_cut' },
+  { key: 'marcas-dagua', label: "Marcas d'Água", icon: 'branding_watermark' },
+  { key: 'historico', label: 'Histórico', icon: 'history' },
+];
+
+export const AppShell: React.FC<AppShellProps> = ({
+  currentPath = 'varredura',
+  onNavigate,
+  userAvatarUrl,
+  userName = 'Christian',
+  onUserAvatarClick,
+  children,
+}) => {
+  const [activePath, setActivePath] = useState<AppNavigationPath>(currentPath);
+
+  const handleNavClick = (path: AppNavigationPath) => {
+    setActivePath(path);
+    if (onNavigate) {
+      onNavigate(path);
+    }
+  };
+
+  return (
+    <div className="min-h-screen w-full bg-surface text-on-surface flex flex-col antialiased selection:bg-primary/20 selection:text-primary">
+      {/* ================= HEADER FIXO 64px ================= */}
+      <header className="fixed top-0 w-full z-40 bg-surface/80 backdrop-blur-xl border-b border-surface-container-high/60 shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+        <div className="h-16 max-w-7xl mx-auto px-4 md:px-margin flex items-center justify-between gap-space-md">
+          {/* Logo Oficial */}
+          <AppFrameLogo
+            size="sm"
+            onClick={() => handleNavClick('varredura')}
+          />
+
+          {/* Navegação Desktop (oculta em mobile < 768px) */}
+          <nav className="hidden md:flex items-center gap-space-sm">
+            {NAV_ITEMS.map((item) => {
+              const isActive = activePath === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => handleNavClick(item.key)}
+                  className={cn(
+                    'px-space-md py-space-xs font-title-sm text-title-sm rounded-lg transition-colors cursor-pointer',
+                    isActive
+                      ? 'text-on-primary-container bg-primary-container font-semibold shadow-sm'
+                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high',
+                  )}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Ações da Direita: ThemeToggle + Avatar */}
+          <div className="flex items-center gap-3 md:gap-space-md">
+            <ThemeToggle variant="header" />
+
+            <div
+              onClick={onUserAvatarClick}
+              title={userName}
+              className={cn(
+                'relative flex items-center justify-center p-[2px] rounded-full shadow-[0_0_12px_rgba(212,163,70,0.25)] bg-surface-container cursor-pointer transition-transform hover:scale-105',
+              )}
+            >
+              {userAvatarUrl ? (
+                <img
+                  src={userAvatarUrl}
+                  alt={userName}
+                  className="w-8 h-8 rounded-full object-cover ring-2 ring-primary-container"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center ring-2 ring-primary-container text-on-primary font-bold text-[13px]">
+                  <span className="material-symbols-outlined text-on-primary text-[18px]">
+                    person
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ================= CONTAINER PRINCIPAL (MAIN) ================= */}
+      <main className="w-full pt-16 bg-surface flex-1 flex flex-col">
+        <div className="max-w-7xl mx-auto px-4 py-4 md:px-margin md:py-space-lg w-full flex-1 flex flex-col pb-24 md:pb-28">
+          {children}
+        </div>
+      </main>
+
+      {/* ================= BARRA DE NAVEGAÇÃO MÓVEL (BOTTOM BAR < 768px) ================= */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-surface/90 backdrop-blur-xl border-t border-surface-container-high/80 px-2 py-1.5 flex items-center justify-around shadow-lg pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        {NAV_ITEMS.map((item) => {
+          const isActive = activePath === item.key;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => handleNavClick(item.key)}
+              className={cn(
+                'flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer',
+                isActive
+                  ? 'text-primary font-semibold'
+                  : 'text-on-surface-variant hover:text-on-surface',
+              )}
+            >
+              <span
+                className={cn(
+                  'material-symbols-outlined text-[22px]',
+                  isActive && 'text-primary font-bold',
+                )}
+              >
+                {item.icon}
+              </span>
+              <span className="text-[11px] leading-tight mt-0.5">
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* ================= FOOTER MESTRE ================= */}
+      <footer className="w-full bg-surface-container-lowest mt-auto border-t border-surface-container/60 hidden md:block">
+        <div className="max-w-7xl mx-auto px-margin py-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md">
+          <div className="flex items-center gap-space-xs font-body-sm text-body-sm text-on-surface-variant">
+            <span>AppFrame © 2026</span>
+            <span className="text-outline">•</span>
+            <span>Executive Video Intelligence</span>
+          </div>
+          <div className="flex items-center gap-space-lg font-body-sm text-body-sm text-on-surface-variant">
+            <span className="hover:text-primary transition-colors cursor-pointer">
+              Privacidade
+            </span>
+            <span className="hover:text-primary transition-colors cursor-pointer">
+              Termos de Serviço
+            </span>
+            <span className="hover:text-primary transition-colors cursor-pointer">
+              Status do Sistema
+            </span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};

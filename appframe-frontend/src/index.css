@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html:not(.dark) {
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  body {
+    overscroll-behavior: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+  main > :first-child {
+    margin-top: 0 !important;
+  }
+
+  main > :last-child {
+    margin-bottom: 0 !important;
+  }
+}
+
+/* Oculta scrollbar mantendo rolagem nativa */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+}
+
+/* Material Symbols Outlined Icon Styling */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Suporte Light Mode suave adaptado aos tokens */
+html:not(.dark) .bg-surface {
+  background-color: #f7f8fc !important;
+}
+
+html:not(.dark) .text-on-surface {
+  color: #1a1d26 !important;
+}
+
+html:not(.dark) .text-on-surface-variant {
+  color: #555966 !important;
+}
+
+html:not(.dark) .bg-surface-container {
+  background-color: #ffffff !important;
+}
+
+html:not(.dark) .bg-surface-container-low {
+  background-color: #f0f2f8 !important;
+}
+
+html:not(.dark) .bg-surface-container-lowest {
+  background-color: #ffffff !important;
+}
+
+html:not(.dark) .bg-surface-container-high {
+  background-color: #e4e7f0 !important;
+}
+
+html:not(.dark) .bg-surface-container-highest {
+  background-color: #d8dbe5 !important;
+}
