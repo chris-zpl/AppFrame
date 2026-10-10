@@ -17,6 +17,7 @@ import { MediaModule } from './modules/media/media.module';
 import { WatermarksModule } from './modules/watermarks/watermarks.module';
 import { ScraperModule } from './modules/scraper/scraper.module';
 import { SubtitlesModule } from './modules/subtitles/subtitles.module';
+import { GeminiModule } from './modules/gemini/gemini.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { SubtitlesModule } from './modules/subtitles/subtitles.module';
     WatermarksModule,
     ScraperModule,
     SubtitlesModule,
+    GeminiModule,
   ],
   providers: [
     {
