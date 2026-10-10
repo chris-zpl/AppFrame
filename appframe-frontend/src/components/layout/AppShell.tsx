@@ -3,7 +3,7 @@ import { cn } from '../../lib/utils';
 import { AppFrameLogo } from '../common/AppFrameLogo';
 import { ThemeToggle } from '../common/ThemeToggle';
 
-export type AppNavigationPath = 'varredura' | 'studio' | 'marcas-dagua' | 'historico';
+export type AppNavigationPath = 'varredura' | 'studio' | 'marcas-dagua' | 'historico' | 'configuracoes';
 
 export interface AppShellProps {
   currentPath?: AppNavigationPath;

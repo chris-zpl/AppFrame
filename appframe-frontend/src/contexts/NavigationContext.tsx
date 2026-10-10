@@ -9,7 +9,11 @@ export type AppRoute =
   | '2fa'
   | 'studio'
   | 'marcas-dagua'
-  | 'historico';
+  | 'watermarks'
+  | 'historico'
+  | 'history'
+  | 'settings'
+  | 'configuracoes';
 
 interface NavigationContextType {
   currentRoute: AppRoute;
@@ -28,6 +32,7 @@ function parsePathname(pathname: string): AppRoute {
   if (clean === 'studio') return 'studio';
   if (clean === 'marcas-dagua' || clean === 'watermarks') return 'marcas-dagua';
   if (clean === 'historico' || clean === 'history') return 'historico';
+  if (clean === 'settings' || clean === 'configuracoes') return 'settings';
   return 'scraper';
 }
 
@@ -60,7 +65,12 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const navigate = useCallback((route: AppRoute, newParams?: Record<string, string>) => {
-    const normalizedRoute: AppRoute = route === 'varredura' ? 'scraper' : route;
+    let normalizedRoute: AppRoute = route;
+    if (route === 'varredura') normalizedRoute = 'scraper';
+    else if (route === 'watermarks') normalizedRoute = 'marcas-dagua';
+    else if (route === 'history') normalizedRoute = 'historico';
+    else if (route === 'configuracoes') normalizedRoute = 'settings';
+
     setCurrentRoute(normalizedRoute);
     setParams(newParams || {});
 
@@ -73,6 +83,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       else if (normalizedRoute === 'studio') path = '/studio';
       else if (normalizedRoute === 'marcas-dagua') path = '/marcas-dagua';
       else if (normalizedRoute === 'historico') path = '/historico';
+      else if (normalizedRoute === 'settings') path = '/settings';
       else path = '/scraper';
 
       if (newParams && Object.keys(newParams).length > 0) {

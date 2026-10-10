@@ -8,11 +8,10 @@ import {
   TwoFactorChallengePage,
   ScraperPage,
   StudioPage,
-  HistoricoPage,
+  WatermarksPage,
+  HistoryPage,
+  SettingsPage,
 } from './pages';
-import { AppShell } from './components/layout/AppShell';
-import { Card } from './components/ui/Card';
-import { Button } from './components/ui/Button';
 
 const MainRouter: React.FC = () => {
   const { currentRoute, navigate } = useNavigation();
@@ -27,37 +26,9 @@ const MainRouter: React.FC = () => {
       {currentRoute === '2fa' && <TwoFactorChallengePage />}
       {currentRoute === 'scraper' && <ScraperPage />}
       {currentRoute === 'studio' && <StudioPage />}
-      {currentRoute === 'historico' && <HistoricoPage />}
-
-      {/* Página de Marcas d'Água */}
-      {currentRoute === 'marcas-dagua' && (
-        <AppShell currentPath="marcas-dagua" onNavigate={(path) => navigate(path)}>
-          <Card className="p-8 text-center flex flex-col items-center justify-center max-w-xl mx-auto my-12">
-            <div className="w-16 h-16 rounded-2xl bg-surface-container-highest flex items-center justify-center text-primary mb-4 shadow-[0_0_20px_rgba(212,163,70,0.2)]">
-              <span className="material-symbols-outlined text-[36px]">
-                branding_watermark
-              </span>
-            </div>
-            <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface mb-2">
-              Gestão de Marcas d'Água
-            </h2>
-            <p className="font-body-md text-body-md text-on-surface-variant max-w-md mb-6">
-              Upload de PNGs transparentes com preservação de canal alfa e posicionamento dinâmico na matriz de coordenadas 3x3 para queima de logo no vídeo via FFmpeg.
-            </p>
-            <Button
-              variant="primary"
-              onClick={() => navigate('studio')}
-              leftIcon={
-                <span className="material-symbols-outlined text-[18px]">
-                  content_cut
-                </span>
-              }
-            >
-              Testar Posicionamento no Studio
-            </Button>
-          </Card>
-        </AppShell>
-      )}
+      {(currentRoute === 'marcas-dagua' || currentRoute === 'watermarks') && <WatermarksPage />}
+      {(currentRoute === 'historico' || currentRoute === 'history') && <HistoryPage />}
+      {(currentRoute === 'settings' || currentRoute === 'configuracoes') && <SettingsPage />}
 
       {/* Barra Rápida de Demonstração / Alternador entre Páginas */}
       <div className="fixed bottom-3 right-3 z-50 flex items-center gap-1.5 p-1.5 rounded-2xl bg-surface-container-lowest/90 backdrop-blur-md border border-surface-container-highest/80 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
@@ -70,25 +41,35 @@ const MainRouter: React.FC = () => {
               [
                 { route: 'scraper', label: 'Varredura' },
                 { route: 'studio', label: 'Studio' },
+                { route: 'marcas-dagua', label: "Marcas d'Água" },
                 { route: 'historico', label: 'Histórico' },
+                { route: 'settings', label: 'Configurações' },
                 { route: 'login', label: 'Login' },
                 { route: 'register', label: 'Cadastro' },
                 { route: '2fa', label: '2FA' },
               ] as { route: AppRoute; label: string }[]
-            ).map((item) => (
-              <button
-                key={item.route}
-                type="button"
-                onClick={() => navigate(item.route)}
-                className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
-                  currentRoute === item.route
-                    ? 'bg-primary text-on-primary shadow-sm'
-                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
+            ).map((item) => {
+              const isActive =
+                currentRoute === item.route ||
+                (item.route === 'marcas-dagua' && currentRoute === 'watermarks') ||
+                (item.route === 'historico' && currentRoute === 'history') ||
+                (item.route === 'settings' && currentRoute === 'configuracoes');
+
+              return (
+                <button
+                  key={item.route}
+                  type="button"
+                  onClick={() => navigate(item.route)}
+                  className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-primary text-on-primary shadow-sm'
+                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
             <button
               type="button"
               onClick={() => setShowDevPill(false)}
