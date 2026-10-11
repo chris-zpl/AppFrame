@@ -5,6 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>AppFrame — Automação, Cortes e Legendas Inteligentes</title>
+    <script>
+      (function() {
+        try {
+          var stored = localStorage.getItem('appframe-theme');
+          var theme = stored === 'light' ? 'light' : 'dark';
+          var root = document.documentElement;
+          root.classList.remove('light', 'dark');
+          root.classList.add(theme);
+          if (!stored) {
+            localStorage.setItem('appframe-theme', 'dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

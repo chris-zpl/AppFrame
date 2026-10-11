@@ -4,6 +4,7 @@ import {
   ClassSerializerInterceptor,
   Logger,
 } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './core/filters/all-exceptions.filter';
 
@@ -11,9 +12,25 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
-  // Configuração global de CORS
+  // Parser de Cookies para autenticação segura via HttpOnly
+  const cookieMiddleware =
+    typeof cookieParser === 'function'
+      ? cookieParser
+      : (cookieParser as any).default || require('cookie-parser');
+  app.use(cookieMiddleware());
+
+  // Configuração global de CORS com origem explícita para suporte a credentials: true
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const allowedOrigins = Array.from(
+    new Set([
+      frontendUrl,
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+    ]),
+  );
+
   app.enableCors({
-    origin: '*',
+    origin: allowedOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });

@@ -1,10 +1,16 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '../contexts/NavigationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { cn } from '../lib/utils';
+import { API_BASE_URL } from '../config/api';
+import { watermarksService } from '../services/watermarks.service';
+import { mediaService, type CreateVideoJobPayload } from '../services/media.service';
+import { toast } from 'sonner';
 
 export type AspectRatio = '9:16' | '16:9';
 export type SubtitleMode = 'static' | 'dynamic';
@@ -19,30 +25,6 @@ export type WatermarkPosition =
   | 'bottom-left'
   | 'bottom-center'
   | 'bottom-right';
-
-interface WatermarkOption {
-  id: string;
-  name: string;
-  previewUrl: string;
-}
-
-const WATERMARK_OPTIONS: WatermarkOption[] = [
-  {
-    id: 'appframe-gold',
-    name: "AppFrame Oficial (Âmbar)",
-    previewUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="32" viewBox="0 0 120 32"><rect width="32" height="32" rx="8" fill="%23f2be5e"/><path d="M10 8h12v16H10z" fill="%2310131a"/><text x="40" y="22" font-family="sans-serif" font-weight="bold" font-size="14" fill="%23f2be5e">AppFrame</text></svg>',
-  },
-  {
-    id: 'appframe-white',
-    name: 'AppFrame Minimal (Branco)',
-    previewUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="32" viewBox="0 0 120 32"><rect width="32" height="32" rx="8" fill="%23ffffff"/><path d="M10 8h12v16H10z" fill="%23000000"/><text x="40" y="22" font-family="sans-serif" font-weight="bold" font-size="14" fill="%23ffffff">AppFrame</text></svg>',
-  },
-  {
-    id: 'podcast-pro',
-    name: 'Podcast Certified (Badge)',
-    previewUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="32" viewBox="0 0 120 32"><rect width="120" height="32" rx="6" fill="%23d4a346"/><text x="12" y="21" font-family="sans-serif" font-weight="bold" font-size="12" fill="%2310131a">PODCAST PRO</text></svg>',
-  },
-];
 
 // Transcrição simulada para o modo Legenda Dinâmica Gemini
 const DYNAMIC_WORDS_SAMPLE = [
@@ -67,6 +49,13 @@ const DYNAMIC_WORDS_SAMPLE = [
 
 export const StudioPage: React.FC = () => {
   const { navigate, params } = useNavigation();
+  const { user } = useAuth();
+
+  // Consulta real de marcas d'água cadastradas
+  const { data: userWatermarks = [], isLoading: isLoadingWatermarks } = useQuery({
+    queryKey: ['watermarks'],
+    queryFn: watermarksService.list,
+  });
 
   // Configurações Globais do Player e Formato
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
@@ -96,15 +85,28 @@ export const StudioPage: React.FC = () => {
   const [useBackgroundBox, setUseBackgroundBox] = useState<boolean>(true);
 
   // Configurações da Aba Marca d'Água
-  const [selectedWatermarkId, setSelectedWatermarkId] = useState<string>('appframe-gold');
+  const [selectedWatermarkId, setSelectedWatermarkId] = useState<string>('none');
   const [watermarkPosition, setWatermarkPosition] = useState<WatermarkPosition>('top-right');
   const [watermarkOpacity, setWatermarkOpacity] = useState<number>(85);
   const [watermarkScale, setWatermarkScale] = useState<number>(100);
+
+  // Seleciona automaticamente a primeira marca d'água do usuário caso exista
+  useEffect(() => {
+    if (userWatermarks.length > 0 && selectedWatermarkId === 'none') {
+      setSelectedWatermarkId(userWatermarks[0].id);
+    }
+  }, [userWatermarks, selectedWatermarkId]);
+
+  const selectedLogo = useMemo(() => {
+    if (!selectedWatermarkId || selectedWatermarkId === 'none') return null;
+    return userWatermarks.find((w) => w.id === selectedWatermarkId) || null;
+  }, [userWatermarks, selectedWatermarkId]);
 
   // Referências
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const draggingHandleRef = useRef<'in' | 'out' | 'playhead' | null>(null);
+  const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
   // Formatação de cronômetro com precisão tabular (MM:SS ou MM:SS.mmm)
   const formatTime = (seconds: number, includeMs: boolean = false): string => {
@@ -144,30 +146,40 @@ export const StudioPage: React.FC = () => {
 
     // ==========================================
     // 1. RENDERIZAÇÃO DA LEGENDA COM FIX_BOUNDS
+    // Margem mínima de segurança safePadding >= 48px
     // ==========================================
-    let displayLines: string[] = [];
-    let highlightWord = '';
+    const safePadding = Math.max(48, width * 0.08);
+    const maxTextWidth = width - safePadding * 2;
 
-    if (subtitleMode === 'static') {
-      const words = staticText.trim().split(/\s+/);
-      const maxTextWidth = width * 0.85; // Margem de segurança de 85% da largura (fix_bounds)
+    ctx.font = `bold ${fontSize}px "${fontFamily}", sans-serif`;
 
-      ctx.font = `bold ${fontSize}px "${fontFamily}", sans-serif`;
-
+    const wrapText = (text: string, maxWidth: number): string[] => {
+      const words = text.trim().split(/\s+/);
+      const lines: string[] = [];
       let currentLine = '';
+
       for (const w of words) {
+        if (!w) continue;
         const testLine = currentLine ? `${currentLine} ${w}` : w;
         const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxTextWidth && currentLine) {
-          displayLines.push(currentLine);
+        if (metrics.width > maxWidth && currentLine) {
+          lines.push(currentLine);
           currentLine = w;
         } else {
           currentLine = testLine;
         }
       }
       if (currentLine) {
-        displayLines.push(currentLine);
+        lines.push(currentLine);
       }
+      return lines;
+    };
+
+    let displayLines: string[] = [];
+    let highlightWord = '';
+
+    if (subtitleMode === 'static') {
+      displayLines = wrapText(staticText, maxTextWidth);
     } else {
       // Modo Legenda Dinâmica (Gemini STT): seleciona palavras próximas ao currentTime
       const activeWordObj = DYNAMIC_WORDS_SAMPLE.find(
@@ -175,11 +187,15 @@ export const StudioPage: React.FC = () => {
       );
       highlightWord = activeWordObj ? activeWordObj.word : '';
 
-      // Agrupa frase em janela de 3 a 5 palavras
-      displayLines = [
-        'O segredo para reter audiência',
-        'nos primeiros 3 segundos',
-      ];
+      // Agrupa janela de fala no tempo atual
+      const activeWordsWindow = DYNAMIC_WORDS_SAMPLE.filter(
+        (w) => currentTime >= w.start - 1.2 && currentTime <= w.end + 1.2
+      );
+      const phrase = activeWordsWindow.length > 0
+        ? activeWordsWindow.map((w) => w.word).join(' ')
+        : 'O segredo para reter audiência nos primeiros 3 segundos';
+
+      displayLines = wrapText(phrase, maxTextWidth);
     }
 
     // Desenha as linhas de legenda no canvas
@@ -188,7 +204,7 @@ export const StudioPage: React.FC = () => {
       ctx.textBaseline = 'middle';
       ctx.font = `bold ${fontSize}px "${fontFamily}", sans-serif`;
 
-      // Posicionamento vertical: inferior (75% da altura em 9:16, 80% em 16:9)
+      // Posicionamento vertical: inferior (72% da altura em 9:16, 78% em 16:9)
       const startY = height * (aspectRatio === '9:16' ? 0.72 : 0.78);
       const lineHeight = fontSize * 1.35;
 
@@ -197,7 +213,7 @@ export const StudioPage: React.FC = () => {
         const lineMetrics = ctx.measureText(line);
         const paddingX = 14;
         const paddingY = 8;
-        const boxWidth = lineMetrics.width + paddingX * 2;
+        const boxWidth = Math.min(lineMetrics.width + paddingX * 2, width - 24);
         const boxHeight = fontSize + paddingY;
 
         // Fundo com caixa arredondada se habilitado
@@ -224,8 +240,7 @@ export const StudioPage: React.FC = () => {
         ctx.fillText(line, width / 2, lineY);
 
         // Destaque âmbar para palavra dinâmica ativa
-        if (highlightWord && line.includes(highlightWord)) {
-          // Efeito de brilho âmbar da palavra ativa
+        if (highlightWord && line.toLowerCase().includes(highlightWord.toLowerCase())) {
           ctx.fillStyle = '#F2BE5E';
           ctx.fillText(line, width / 2, lineY);
         }
@@ -234,49 +249,52 @@ export const StudioPage: React.FC = () => {
     }
 
     // ==========================================
-    // 2. RENDERIZAÇÃO DA MARCA D'ÁGUA NO CANVAS
+    // 2. RENDERIZAÇÃO REAL DA MARCA D'ÁGUA NO CANVAS COM ALFA
     // ==========================================
-    const selectedLogo = WATERMARK_OPTIONS.find((w) => w.id === selectedWatermarkId);
-    if (selectedLogo) {
-      const padding = 20;
-      const baseLogoWidth = 100 * (watermarkScale / 100);
-      const baseLogoHeight = 28 * (watermarkScale / 100);
-
-      let x = padding;
-      let y = padding;
-
-      // Cálculo de coordenadas da Matriz 3x3
-      if (watermarkPosition.includes('left')) {
-        x = padding;
-      } else if (watermarkPosition.includes('right')) {
-        x = width - baseLogoWidth - padding;
-      } else {
-        x = width / 2 - baseLogoWidth / 2;
+    if (selectedLogo && selectedLogo.url) {
+      let img = imageCacheRef.current.get(selectedLogo.url);
+      if (!img) {
+        img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = selectedLogo.url;
+        img.onload = () => {
+          drawCanvasOverlay();
+        };
+        imageCacheRef.current.set(selectedLogo.url, img);
       }
 
-      if (watermarkPosition.includes('top')) {
-        y = padding;
-      } else if (watermarkPosition.includes('bottom')) {
-        y = height - baseLogoHeight - padding;
-      } else {
-        y = height / 2 - baseLogoHeight / 2;
+      if (img.complete && img.naturalWidth > 0) {
+        const scale = watermarkScale / 100;
+        const aspect = img.naturalWidth / img.naturalHeight;
+        const baseLogoWidth = Math.min(width * 0.35, 110 * scale);
+        const baseLogoHeight = baseLogoWidth / aspect;
+        const padding = 20;
+
+        let x = padding;
+        let y = padding;
+
+        // Cálculo de coordenadas da Matriz 3x3
+        if (watermarkPosition.includes('left')) {
+          x = padding;
+        } else if (watermarkPosition.includes('right')) {
+          x = width - baseLogoWidth - padding;
+        } else {
+          x = width / 2 - baseLogoWidth / 2;
+        }
+
+        if (watermarkPosition.includes('top')) {
+          y = padding;
+        } else if (watermarkPosition.includes('bottom')) {
+          y = height - baseLogoHeight - padding;
+        } else {
+          y = height / 2 - baseLogoHeight / 2;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, watermarkOpacity / 100));
+        ctx.drawImage(img, x, y, baseLogoWidth, baseLogoHeight);
+        ctx.restore();
       }
-
-      ctx.save();
-      ctx.globalAlpha = watermarkOpacity / 100;
-
-      // Desenho do badge da marca d'água
-      ctx.fillStyle = 'rgba(212, 163, 70, 0.9)';
-      ctx.beginPath();
-      ctx.roundRect(x, y, baseLogoWidth, baseLogoHeight, 6);
-      ctx.fill();
-
-      ctx.font = `bold ${11 * (watermarkScale / 100)}px "Plus Jakarta Sans", sans-serif`;
-      ctx.fillStyle = '#10131A';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('AppFrame', x + baseLogoWidth / 2, y + baseLogoHeight / 2);
-      ctx.restore();
     }
   }, [
     aspectRatio,
@@ -288,7 +306,7 @@ export const StudioPage: React.FC = () => {
     bgColor,
     strokeColor,
     useBackgroundBox,
-    selectedWatermarkId,
+    selectedLogo,
     watermarkPosition,
     watermarkOpacity,
     watermarkScale,
@@ -370,56 +388,63 @@ export const StudioPage: React.FC = () => {
     setCurrentTime(newTime);
   };
 
-  // Ação de Conclusão: "Gerar Vídeo"
+  // Ação de Conclusão: "Gerar Vídeo" via NestJS real
   const handleGenerateVideo = async () => {
     setIsGenerating(true);
 
     try {
-      const payload = {
-        sourceVideoId: params.selectedVideos || 'video-sample-412',
-        aspectRatio,
-        trimStart: trimIn,
-        trimEnd: trimOut,
-        subtitleConfig: {
+      const isUuid = (val?: string) =>
+        Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
+      // Determina URL válida do vídeo de origem
+      let rawSourceUrl = params.videoUrl || params.sourceUrl;
+      if (!rawSourceUrl && params.selectedVideos) {
+        rawSourceUrl = params.selectedVideos.startsWith('http')
+          ? params.selectedVideos
+          : `https://www.youtube.com/watch?v=${params.selectedVideos}`;
+      }
+      if (!rawSourceUrl) {
+        rawSourceUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+      }
+
+      const originalTitle =
+        params.videoTitle ||
+        (params.selectedVideos ? `Vídeo ${params.selectedVideos}` : 'Corte de Vídeo AppFrame');
+
+      const payload: CreateVideoJobPayload = {
+        source_url: rawSourceUrl,
+        platform: 'youtube',
+        original_title: originalTitle,
+        trim_start: Number(trimIn.toFixed(2)),
+        trim_end: Number(trimOut.toFixed(2)),
+        watermark_id: isUuid(selectedWatermarkId) ? selectedWatermarkId : undefined,
+        subtitle_config: {
           mode: subtitleMode,
           text: subtitleMode === 'static' ? staticText : geminiPrompt,
-          fontFamily,
-          fontSize,
-          textColor,
-          backgroundColor: bgColor,
-          strokeColor,
-        },
-        watermarkConfig: {
-          watermarkId: selectedWatermarkId,
-          position: watermarkPosition,
-          opacity: watermarkOpacity,
-          scale: watermarkScale,
+          font_family: fontFamily,
+          font_size: fontSize,
+          text_color: textColor,
+          background_color: bgColor,
+          stroke_color: strokeColor,
+          use_background_box: useBackgroundBox,
         },
       };
 
-      // Dispara job na fila media:render do NestJS
-      const token = localStorage.getItem('appframe_access_token');
-      await fetch('http://localhost:3000/media/render', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      }).catch(() => null);
+      const job = await mediaService.render(payload);
+      toast.success('Vídeo enviado para renderização na fila!');
 
-      // Simulação de criação com sucesso do job BullMQ
-      setTimeout(() => {
-        setIsGenerating(false);
-        navigate('historico', {
-          jobCreated: 'true',
-          jobId: `job-${Date.now().toString(36)}`,
-          title: 'EP. 412 - INTELIGÊNCIA ARTIFICIAL E O FUTURO DA CRIAÇÃO DE CONTEÚDO',
-        });
-      }, 700);
-    } catch {
+      navigate('historico', {
+        jobCreated: 'true',
+        jobId: job.id,
+        title: job.original_title || originalTitle,
+      });
+    } catch (err) {
+      console.error('Falha ao submeter render job:', err);
+      navigate('historico', {
+        jobCreated: 'pending',
+      });
+    } finally {
       setIsGenerating(false);
-      navigate('historico');
     }
   };
 
@@ -440,8 +465,8 @@ export const StudioPage: React.FC = () => {
     <AppShell
       currentPath="studio"
       onNavigate={(path) => navigate(path)}
-      userName="Christian"
-      onUserAvatarClick={() => navigate('login')}
+      userName={user?.name || 'Christian'}
+      onUserAvatarClick={() => navigate('configuracoes')}
     >
       <div className="flex flex-col w-full text-on-surface select-none pb-8">
         {/* ================= BARRA SUPERIOR DE CONTROLE DO STUDIO ================= */}
@@ -1053,11 +1078,75 @@ export const StudioPage: React.FC = () => {
                 <div className="flex flex-col gap-4 animate-in fade-in duration-200">
                   {/* Seletor de Logos Cadastrados na Conta */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-label-sm font-label-sm text-outline font-semibold uppercase tracking-wider">
-                      Logo Cadastrado
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-label-sm font-label-sm text-outline font-semibold uppercase tracking-wider">
+                        Logo Cadastrado
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => navigate('marcas')}
+                        className="text-[11px] text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">tune</span>
+                        Gerenciar
+                      </button>
+                    </div>
+
                     <div className="flex flex-col gap-2">
-                      {WATERMARK_OPTIONS.map((logo) => (
+                      {/* Opção: Sem Marca d'Água */}
+                      <div
+                        onClick={() => setSelectedWatermarkId('none')}
+                        className={cn(
+                          'flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer',
+                          selectedWatermarkId === 'none'
+                            ? 'bg-primary/15 border-primary shadow-[0_0_10px_rgba(212,163,70,0.15)]'
+                            : 'bg-surface-container border-surface-container-highest hover:bg-surface-container-high'
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-surface-container-lowest flex items-center justify-center p-1 border border-outline/10 text-on-surface-variant">
+                            <span className="material-symbols-outlined text-[18px]">block</span>
+                          </div>
+                          <span className="text-title-sm font-semibold text-on-surface">
+                            Sem Marca d'Água
+                          </span>
+                        </div>
+                        {selectedWatermarkId === 'none' && (
+                          <span className="material-symbols-outlined text-[18px] text-primary">
+                            check_circle
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Lista Real de Marcas do Usuário */}
+                      {isLoadingWatermarks && (
+                        <div className="p-3 text-center text-body-sm text-outline">
+                          Carregando marcas d'água...
+                        </div>
+                      )}
+
+                      {!isLoadingWatermarks && userWatermarks.length === 0 && (
+                        <div className="p-3 rounded-xl bg-surface-container-lowest border border-dashed border-outline/30 text-center flex flex-col items-center gap-2">
+                          <span className="material-symbols-outlined text-[24px] text-outline">
+                            branding_watermark
+                          </span>
+                          <p className="text-body-xs text-outline">
+                            Nenhuma marca d'água salva na sua conta.
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => navigate('marcas')}
+                            leftIcon={
+                              <span className="material-symbols-outlined text-[16px]">add</span>
+                            }
+                          >
+                            Nova Marca
+                          </Button>
+                        </div>
+                      )}
+
+                      {userWatermarks.map((logo) => (
                         <div
                           key={logo.id}
                           onClick={() => setSelectedWatermarkId(logo.id)}
@@ -1068,16 +1157,20 @@ export const StudioPage: React.FC = () => {
                               : 'bg-surface-container border-surface-container-highest hover:bg-surface-container-high'
                           )}
                         >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-surface-container-lowest flex items-center justify-center p-1 border border-outline/10">
-                              <img src={logo.previewUrl} alt={logo.name} className="max-h-full max-w-full" />
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-[repeating-conic-gradient(#202020_0%_25%,#303030_0%_50%)] bg-[length:8px_8px] flex items-center justify-center p-0.5 border border-outline/10 overflow-hidden shrink-0">
+                              <img
+                                src={logo.url || `${API_BASE_URL}/watermarks/${logo.id}/file`}
+                                alt={logo.original_name}
+                                className="max-h-full max-w-full object-contain"
+                              />
                             </div>
-                            <span className="text-title-sm text-title-sm font-semibold text-on-surface">
-                              {logo.name}
+                            <span className="text-title-sm font-semibold text-on-surface truncate">
+                              {logo.original_name}
                             </span>
                           </div>
                           {selectedWatermarkId === logo.id && (
-                            <span className="material-symbols-outlined text-[18px] text-primary">
+                            <span className="material-symbols-outlined text-[18px] text-primary shrink-0">
                               check_circle
                             </span>
                           )}

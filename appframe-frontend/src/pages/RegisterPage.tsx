@@ -1,13 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
+import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Checkbox } from '../components/ui/Checkbox';
+import { API_BASE_URL } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'sonner';
 
 export const RegisterPage: React.FC = () => {
   const { navigate } = useNavigation();
+  const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,7 +46,7 @@ export const RegisterPage: React.FC = () => {
 
   const handleGoogleSignup = () => {
     // Redireciona para o endpoint OAuth do NestJS ou simula callback
-    window.location.href = 'http://localhost:3000/auth/google';
+    window.location.href = `${API_BASE_URL}/auth/google`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,30 +66,15 @@ export const RegisterPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Simulação ou chamada real para POST /auth/register
-      const response = await fetch('http://localhost:3000/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      }).catch(() => null);
-
-      if (response && !response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Falha ao registrar conta');
-      }
-
-      // Redireciona para login ou direto para o dashboard
-      navigate('login', { registered: 'true', email });
+      await register(name, email, password);
+      toast.success('Conta criada com sucesso! Redirecionando...');
+      navigate('/', { replace: true });
     } catch (err: any) {
-      // Feedback amigável para ambiente de desenvolvimento
-      if (err.message && !err.message.includes('Failed to fetch')) {
-        setErrorMessage(err.message);
-      } else {
-        // Mock fallback para testes no frontend
-        setTimeout(() => {
-          navigate('login', { registered: 'true', email });
-        }, 500);
-      }
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Falha ao registrar conta. Tente novamente.';
+      setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       setIsLoading(false);
     }
@@ -92,19 +82,22 @@ export const RegisterPage: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-surface text-on-surface flex flex-col justify-between p-4 sm:p-6 relative overflow-x-hidden antialiased selection:bg-primary/20 selection:text-primary">
+      {/* Botão Fixo de Alternância de Tema */}
+      <ThemeToggle variant="auth" className="fixed top-6 right-6 z-50" />
+
       {/* Halos Luminosos Ambientais no Fundo (Referência 1) */}
       <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] md:w-[680px] h-[300px] md:h-[360px] bg-primary/10 rounded-full blur-[120px] pointer-events-none -z-10" />
       <div className="absolute -bottom-24 -right-16 w-64 md:w-80 h-64 md:h-80 bg-secondary-container/20 rounded-full blur-[90px] pointer-events-none -z-10" />
 
       {/* Top Header Simplificado com Logo */}
-      <header className="w-full max-w-6xl mx-auto flex items-center justify-between py-2 z-10">
+      <header className="w-full max-w-6xl mx-auto flex items-center justify-between py-2 z-10 pr-14 sm:pr-0">
         <AppFrameLogo size="sm" onClick={() => navigate('scraper')} />
         <button
           type="button"
           onClick={() => navigate('login')}
-          className="font-title-sm text-title-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+          className="font-title-sm text-title-sm text-neutral-600 dark:text-on-surface-variant hover:text-neutral-950 dark:hover:text-primary transition-colors cursor-pointer mr-0 sm:mr-16"
         >
-          Já tem conta? <span className="font-semibold text-primary underline">Entrar</span>
+          Já tem conta? <span className="font-semibold text-[#B8851B] dark:text-[#D4A346] underline">Entrar</span>
         </button>
       </header>
 
@@ -126,10 +119,10 @@ export const RegisterPage: React.FC = () => {
                 <span className="text-primary font-bold">Frame</span>
               </div>
 
-              <h1 className="font-title-md text-title-md text-on-surface font-semibold tracking-normal">
+              <h1 className="font-title-md text-title-md text-neutral-900 dark:text-[#F8F9FA] font-semibold tracking-normal">
                 Criar Conta no AppFrame
               </h1>
-              <p className="font-body-sm text-body-sm text-on-surface-variant mt-1 max-w-[320px]">
+              <p className="font-body-sm text-body-sm text-neutral-600 dark:text-[#949DAF] mt-1 max-w-[320px]">
                 Automação, cortes dinâmicos e legendas inteligentes
               </p>
             </div>
@@ -146,7 +139,7 @@ export const RegisterPage: React.FC = () => {
 
               <div className="relative flex items-center justify-center my-1">
                 <div className="w-full h-px bg-surface-container-highest" />
-                <span className="absolute bg-surface-container-low px-3 font-label-sm text-label-sm tracking-widest uppercase text-on-surface-variant font-medium">
+                <span className="absolute bg-white dark:bg-surface-container-low px-3 font-label-sm text-label-sm tracking-widest uppercase text-neutral-500 dark:text-[#949DAF] font-medium">
                   OU CADASTRE COM SEU E-MAIL
                 </span>
               </div>
@@ -243,7 +236,7 @@ export const RegisterPage: React.FC = () => {
                       />
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-on-surface-variant">
+                      <div className="flex items-center gap-1.5 text-neutral-600 dark:text-on-surface-variant">
                         <span className="material-symbols-outlined text-[14px] text-primary">
                           verified_user
                         </span>
@@ -253,7 +246,7 @@ export const RegisterPage: React.FC = () => {
                       </div>
                       <span
                         className={`font-label-sm text-label-sm font-semibold transition-colors ${
-                          passwordStrength.score >= 3 ? 'text-primary' : 'text-on-surface-variant'
+                          passwordStrength.score >= 3 ? 'text-[#B8851B] dark:text-primary' : 'text-neutral-600 dark:text-on-surface-variant'
                         }`}
                       >
                         {passwordStrength.label}
@@ -269,11 +262,11 @@ export const RegisterPage: React.FC = () => {
                     label={
                       <span>
                         Li e concordo com os{' '}
-                        <a href="#termos" className="text-primary hover:underline font-semibold">
+                        <a href="#termos" className="text-[#B8851B] dark:text-[#D4A346] hover:underline font-semibold">
                           Termos de Serviço
                         </a>{' '}
                         e a{' '}
-                        <a href="#privacidade" className="text-primary hover:underline font-semibold">
+                        <a href="#privacidade" className="text-[#B8851B] dark:text-[#D4A346] hover:underline font-semibold">
                           Política de Privacidade
                         </a>{' '}
                         do AppFrame.
@@ -302,12 +295,12 @@ export const RegisterPage: React.FC = () => {
 
             {/* Rodapé Alternativo (Login) */}
             <div className="mt-space-lg flex flex-col items-center gap-space-md text-center">
-              <p className="font-body-sm text-body-sm text-on-surface-variant">
+              <p className="font-body-sm text-body-sm text-neutral-600 dark:text-[#949DAF]">
                 Já é cadastrado no AppFrame?{' '}
                 <button
                   type="button"
                   onClick={() => navigate('login')}
-                  className="text-primary hover:underline font-semibold ml-1 cursor-pointer"
+                  className="text-[#B8851B] dark:text-[#D4A346] hover:underline font-semibold ml-1 cursor-pointer"
                 >
                   Entrar
                 </button>
@@ -318,7 +311,7 @@ export const RegisterPage: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="w-full text-center py-2 text-label-sm font-label-sm text-outline z-10">
+      <footer className="w-full text-center py-2 text-label-sm font-label-sm text-neutral-500 dark:text-[#949DAF] z-10">
         AppFrame © 2026 • Executive Video Intelligence
       </footer>
     </div>

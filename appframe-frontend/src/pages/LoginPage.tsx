@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
+import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Checkbox } from '../components/ui/Checkbox';
+import { API_BASE_URL } from '../services/api';
 
 export const LoginPage: React.FC = () => {
   const { navigate, params } = useNavigation();
+  const { login } = useAuth();
   const [email, setEmail] = useState(params.email || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -19,7 +23,7 @@ export const LoginPage: React.FC = () => {
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
 
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:3000/auth/google';
+    window.location.href = `${API_BASE_URL}/auth/google`;
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -28,52 +32,18 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3000/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      }).catch(() => null);
-
-      if (response) {
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(data.message || 'Credenciais inválidas. Verifique seu e-mail e senha.');
-        }
-
-        // Caso a conta possua 2FA ativo, o backend retorna requires2fa e tempToken
-        if (data.requires2fa) {
-          navigate('2fa', { tempToken: data.tempToken, email });
-          return;
-        }
-
-        // Armazena tokens e dados de sessão
-        if (data.accessToken) {
-          localStorage.setItem('appframe_access_token', data.accessToken);
-          if (data.refreshToken) {
-            localStorage.setItem('appframe_refresh_token', data.refreshToken);
-          }
-          if (data.user) {
-            localStorage.setItem('appframe_user', JSON.stringify(data.user));
-          }
-        }
-
-        navigate('scraper');
+      const res = await login(email, password);
+      if (res.requires2fa) {
+        navigate('2fa', { tempToken: res.tempToken || '', email });
         return;
       }
-
-      // Mock fallback de demonstração para visualização local imediata
-      setTimeout(() => {
-        // Se a senha for "2fa", simula desafio de segundo fator para teste
-        if (password.toLowerCase().includes('2fa')) {
-          navigate('2fa', { tempToken: 'mock-temp-token-xyz', email });
-        } else {
-          localStorage.setItem('appframe_access_token', 'mock-jwt-token-123');
-          navigate('scraper');
-        }
-      }, 600);
+      navigate('/', { replace: true });
     } catch (err: any) {
-      setErrorMessage(err.message || 'Erro ao realizar login.');
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Credenciais inválidas. Verifique seu e-mail e senha.';
+      setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       setIsLoading(false);
     }
@@ -81,19 +51,22 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-surface text-on-surface flex flex-col justify-between p-4 sm:p-6 relative overflow-x-hidden antialiased selection:bg-primary/20 selection:text-primary">
+      {/* Botão Fixo de Alternância de Tema */}
+      <ThemeToggle variant="auth" className="fixed top-6 right-6 z-50" />
+
       {/* Halos Luminosos Ambientais no Fundo */}
       <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] md:w-[680px] h-[300px] md:h-[360px] bg-primary/10 rounded-full blur-[120px] pointer-events-none -z-10" />
       <div className="absolute -bottom-24 -right-16 w-64 md:w-80 h-64 md:h-80 bg-secondary-container/20 rounded-full blur-[90px] pointer-events-none -z-10" />
 
       {/* Top Header Simplificado */}
-      <header className="w-full max-w-6xl mx-auto flex items-center justify-between py-2 z-10">
+      <header className="w-full max-w-6xl mx-auto flex items-center justify-between py-2 z-10 pr-14 sm:pr-0">
         <AppFrameLogo size="sm" onClick={() => navigate('scraper')} />
         <button
           type="button"
           onClick={() => navigate('register')}
-          className="font-title-sm text-title-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+          className="font-title-sm text-title-sm text-neutral-600 dark:text-on-surface-variant hover:text-neutral-950 dark:hover:text-primary transition-colors cursor-pointer mr-0 sm:mr-16"
         >
-          Não tem conta? <span className="font-semibold text-primary underline">Cadastre-se</span>
+          Não tem conta? <span className="font-semibold text-[#B8851B] dark:text-[#D4A346] underline">Cadastre-se</span>
         </button>
       </header>
 
@@ -125,10 +98,10 @@ export const LoginPage: React.FC = () => {
                 <span className="text-primary font-bold">Frame</span>
               </div>
 
-              <h1 className="font-title-md text-title-md text-on-surface font-semibold tracking-normal">
+              <h1 className="font-title-md text-title-md text-neutral-900 dark:text-[#F8F9FA] font-semibold tracking-normal">
                 Entrar no AppFrame
               </h1>
-              <p className="font-body-sm text-body-sm text-on-surface-variant mt-1 max-w-[320px]">
+              <p className="font-body-sm text-body-sm text-neutral-600 dark:text-[#949DAF] mt-1 max-w-[320px]">
                 Acesse o painel executivo de edição e inteligência de vídeo
               </p>
             </div>
@@ -145,7 +118,7 @@ export const LoginPage: React.FC = () => {
 
               <div className="relative flex items-center justify-center my-1">
                 <div className="w-full h-px bg-surface-container-highest" />
-                <span className="absolute bg-surface-container-low px-3 font-label-sm text-label-sm tracking-widest uppercase text-on-surface-variant font-medium">
+                <span className="absolute bg-white dark:bg-surface-container-low px-3 font-label-sm text-label-sm tracking-widest uppercase text-neutral-500 dark:text-[#949DAF] font-medium">
                   OU ENTRE COM SEU E-MAIL
                 </span>
               </div>
@@ -214,7 +187,7 @@ export const LoginPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowForgotModal(true)}
-                      className="text-label-sm font-label-sm text-primary hover:underline font-medium cursor-pointer"
+                      className="text-label-sm font-label-sm text-[#B8851B] dark:text-[#D4A346] hover:underline font-medium cursor-pointer"
                     >
                       Esqueceu a senha?
                     </button>
@@ -240,12 +213,12 @@ export const LoginPage: React.FC = () => {
 
             {/* Rodapé Alternativo (Cadastro) */}
             <div className="mt-space-lg flex flex-col items-center gap-space-md text-center">
-              <p className="font-body-sm text-body-sm text-on-surface-variant">
+              <p className="font-body-sm text-body-sm text-neutral-600 dark:text-[#949DAF]">
                 Ainda não tem conta no AppFrame?{' '}
                 <button
                   type="button"
                   onClick={() => navigate('register')}
-                  className="text-primary hover:underline font-semibold ml-1 cursor-pointer"
+                  className="text-[#B8851B] dark:text-[#D4A346] hover:underline font-semibold ml-1 cursor-pointer"
                 >
                   Cadastre-se
                 </button>
@@ -349,7 +322,7 @@ export const LoginPage: React.FC = () => {
       )}
 
       {/* Footer */}
-      <footer className="w-full text-center py-2 text-label-sm font-label-sm text-outline z-10">
+      <footer className="w-full text-center py-2 text-label-sm font-label-sm text-neutral-500 dark:text-[#949DAF] z-10">
         AppFrame © 2026 • Executive Video Intelligence
       </footer>
     </div>

@@ -3,7 +3,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { cn } from '../../lib/utils';
 
 interface ThemeToggleProps {
-  variant?: 'floating' | 'header' | 'inline';
+  variant?: 'floating' | 'header' | 'inline' | 'auth';
   className?: string;
   showLabel?: boolean;
 }
@@ -15,15 +15,17 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
 }) => {
   const { isDark, toggleTheme } = useTheme();
 
-  if (variant === 'floating') {
+  if (variant === 'auth' || variant === 'floating') {
     return (
       <button
         type="button"
         onClick={toggleTheme}
-        aria-label="Alternar Tema Claro/Escuro"
+        aria-label={isDark ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'}
+        title={isDark ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'}
         className={cn(
-          'w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center',
-          'text-on-surface-variant hover:text-primary hover:bg-surface-container-highest transition-all duration-200 shadow-sm',
+          'w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md',
+          'bg-white text-neutral-800 hover:text-neutral-950 hover:bg-neutral-100 border border-neutral-300/80',
+          'dark:bg-[#1E222D] dark:text-[#E0E2EC] dark:hover:text-[#F2BE5E] dark:hover:bg-[#282D3C] dark:border-white/10 dark:hover:ring-2 dark:hover:ring-[#D4A346]/30',
           className,
         )}
       >
@@ -40,8 +42,9 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
         type="button"
         onClick={toggleTheme}
         className={cn(
-          'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high',
-          'text-on-surface-variant hover:text-on-surface text-label-md font-label-md transition-all shadow-sm',
+          'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all shadow-sm cursor-pointer',
+          'bg-neutral-100 hover:bg-neutral-200 text-neutral-700 hover:text-neutral-900 border border-neutral-300/70',
+          'dark:bg-surface-container dark:hover:bg-surface-container-high dark:text-on-surface-variant dark:hover:text-on-surface text-label-md font-label-md',
           className,
         )}
       >
@@ -61,9 +64,11 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       type="button"
       onClick={toggleTheme}
       aria-label="Alternar tema"
+      title={isDark ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'}
       className={cn(
-        'flex items-center justify-center w-9 h-9 rounded-lg bg-surface-container hover:bg-surface-container-high',
-        'text-on-surface-variant hover:text-on-surface transition-colors',
+        'flex items-center justify-center w-9 h-9 rounded-lg transition-colors cursor-pointer',
+        'bg-neutral-100 text-neutral-700 hover:text-neutral-950 hover:bg-neutral-200 border border-neutral-200',
+        'dark:bg-surface-container dark:text-on-surface-variant dark:hover:text-on-surface dark:hover:bg-surface-container-high dark:border-transparent',
         className,
       )}
     >

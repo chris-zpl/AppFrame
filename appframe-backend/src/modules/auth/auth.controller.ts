@@ -13,6 +13,7 @@ import {
   UseInterceptors,
   ClassSerializerInterceptor,
   ParseUUIDPipe,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -60,6 +61,35 @@ export class AuthController {
     return { ip, userAgent };
   }
 
+  private setAuthCookies(res: Response, accessToken: string, refreshToken?: string) {
+    const isProduction =
+      this.configService.get<string>('NODE_ENV') === 'production' &&
+      this.configService.get<string>('COOKIE_SECURE') !== 'false';
+
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 15 * 60 * 1000,
+    });
+
+    if (refreshToken) {
+      res.cookie('refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/api/v1/auth/refresh',
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+      });
+    }
+  }
+
+  private clearAuthCookies(res: Response) {
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/api/v1/auth/refresh' });
+  }
+
   // --- Google OAuth 2.0 ---
 
   @Get('google')
@@ -86,6 +116,11 @@ export class AuthController {
       );
     }
 
+    // Configura cookies seguros antes do redirecionamento
+    if (authResult.access_token && authResult.refresh_token) {
+      this.setAuthCookies(res, authResult.access_token, authResult.refresh_token);
+    }
+
     // Redirecionamento seguro para a aplicação cliente com os tokens
     const redirectUrl = new URL(`${this.frontendUrl}/auth/callback`);
     redirectUrl.searchParams.set('token', authResult.access_token || '');
@@ -96,12 +131,27 @@ export class AuthController {
 
   // --- Autenticação Local e Rotação ---
 
+  @Get('register')
+  getRegisterRedirect(@Res() res: Response) {
+    return res.redirect(`${this.frontendUrl}/register`);
+  }
+
   @Post('register')
   async register(
     @Body() dto: RegisterDto,
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
-    return this.authService.register(dto, this.extractMeta(req));
+    const result = await this.authService.register(dto, this.extractMeta(req));
+    if (result.access_token && result.refresh_token) {
+      this.setAuthCookies(res, result.access_token, result.refresh_token);
+    }
+    return result;
+  }
+
+  @Get('login')
+  getLoginRedirect(@Res() res: Response) {
+    return res.redirect(`${this.frontendUrl}/login`);
   }
 
   @Post('login')
@@ -109,8 +159,13 @@ export class AuthController {
   async login(
     @Body() dto: LoginDto,
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
-    return this.authService.login(dto, this.extractMeta(req));
+    const result = await this.authService.login(dto, this.extractMeta(req));
+    if (result.access_token && result.refresh_token) {
+      this.setAuthCookies(res, result.access_token, result.refresh_token);
+    }
+    return result;
   }
 
   @Post('refresh')
@@ -118,8 +173,26 @@ export class AuthController {
   async refresh(
     @Body() dto: RefreshTokenDto,
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
-    return this.authService.refreshTokens(dto, this.extractMeta(req));
+    const token = req.cookies?.['refresh_token'] || dto?.refreshToken;
+    if (!token) {
+      throw new UnauthorizedException('Refresh token não encontrado nos cookies ou payload.');
+    }
+    const result = await this.authService.refreshTokens({ refreshToken: token }, this.extractMeta(req));
+    if (result.access_token && result.refresh_token) {
+      this.setAuthCookies(res, result.access_token, result.refresh_token);
+    }
+    return result;
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ success: boolean; message: string }> {
+    this.clearAuthCookies(res);
+    return { success: true, message: 'Sessão encerrada e cookies limpos com sucesso.' };
   }
 
   // --- Segundo Fator de Autenticação (2FA) ---
@@ -155,8 +228,23 @@ export class AuthController {
   async verify2fa(
     @Body() dto: Verify2faDto,
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
-    return this.authService.verify2faChallenge(dto, this.extractMeta(req));
+    const result = await this.authService.verify2faChallenge(dto, this.extractMeta(req));
+    if (result.access_token && result.refresh_token) {
+      this.setAuthCookies(res, result.access_token, result.refresh_token);
+    }
+    return result;
+  }
+
+  // --- Perfil Atual ---
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getMe(
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.authService.getProfile(userId);
   }
 
   // --- Gerenciamento de Sessões ---
@@ -179,6 +267,7 @@ export class AuthController {
   }
 
   @Post('sessions/revoke-others')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   async revokeOthers(
     @CurrentUser() user: AuthenticatedUser,

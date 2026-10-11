@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useMemo, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export type AppRoute =
   | 'scraper'
@@ -15,10 +16,18 @@ export type AppRoute =
   | 'settings'
   | 'configuracoes';
 
+export interface NavigateOptions {
+  replace?: boolean;
+}
+
 interface NavigationContextType {
   currentRoute: AppRoute;
   params: Record<string, string>;
-  navigate: (route: AppRoute, params?: Record<string, string>) => void;
+  navigate: (
+    route: AppRoute | string,
+    paramsOrOptions?: Record<string, any>,
+    options?: NavigateOptions,
+  ) => void;
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
@@ -33,67 +42,69 @@ function parsePathname(pathname: string): AppRoute {
   if (clean === 'marcas-dagua' || clean === 'watermarks') return 'marcas-dagua';
   if (clean === 'historico' || clean === 'history') return 'historico';
   if (clean === 'settings' || clean === 'configuracoes') return 'settings';
-  return 'scraper';
-}
-
-function parseQuery(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
-  const searchParams = new URLSearchParams(window.location.search);
-  const result: Record<string, string> = {};
-  searchParams.forEach((value, key) => {
-    result[key] = value;
-  });
-  return result;
+  if (clean === 'scraper' || clean === 'varredura' || clean === '') return 'varredura';
+  return 'varredura';
 }
 
 export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentRoute, setCurrentRoute] = useState<AppRoute>(() => {
-    if (typeof window === 'undefined') return 'scraper';
-    return parsePathname(window.location.pathname);
-  });
+  const routerNavigate = useNavigate();
+  const location = useLocation();
 
-  const [params, setParams] = useState<Record<string, string>>(() => parseQuery());
+  const currentRoute = useMemo(() => {
+    return parsePathname(location.pathname);
+  }, [location.pathname]);
 
-  useEffect(() => {
-    const handlePopState = () => {
-      setCurrentRoute(parsePathname(window.location.pathname));
-      setParams(parseQuery());
-    };
+  const params = useMemo(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const result: Record<string, string> = {};
+    searchParams.forEach((value, key) => {
+      result[key] = value;
+    });
+    return result;
+  }, [location.search]);
 
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  const navigate = useCallback(
+    (
+      route: AppRoute | string,
+      paramsOrOptions?: Record<string, any>,
+      options?: NavigateOptions,
+    ) => {
+      let path = '/varredura';
+      if (route === 'register') path = '/register';
+      else if (route === 'login') path = '/login';
+      else if (route === 'auth-callback' || route === 'auth/callback') path = '/auth/callback';
+      else if (route === '2fa' || route === 'two-factor') path = '/2fa';
+      else if (route === 'studio') path = '/studio';
+      else if (route === 'marcas-dagua' || route === 'watermarks') path = '/marcas-dagua';
+      else if (route === 'historico' || route === 'history') path = '/historico';
+      else if (route === 'settings' || route === 'configuracoes') path = '/settings';
+      else if (route === 'scraper' || route === 'varredura' || route === '/') path = '/varredura';
+      else if (route.startsWith('/')) path = route;
 
-  const navigate = useCallback((route: AppRoute, newParams?: Record<string, string>) => {
-    let normalizedRoute: AppRoute = route;
-    if (route === 'varredura') normalizedRoute = 'scraper';
-    else if (route === 'watermarks') normalizedRoute = 'marcas-dagua';
-    else if (route === 'history') normalizedRoute = 'historico';
-    else if (route === 'configuracoes') normalizedRoute = 'settings';
+      let finalOptions = options;
+      let queryParams: Record<string, string> | undefined;
 
-    setCurrentRoute(normalizedRoute);
-    setParams(newParams || {});
+      if (paramsOrOptions) {
+        if (
+          'replace' in paramsOrOptions &&
+          typeof paramsOrOptions.replace === 'boolean' &&
+          Object.keys(paramsOrOptions).length === 1
+        ) {
+          finalOptions = { replace: paramsOrOptions.replace };
+        } else {
+          queryParams = paramsOrOptions as Record<string, string>;
+        }
+      }
 
-    if (typeof window !== 'undefined') {
-      let path = '/';
-      if (normalizedRoute === 'register') path = '/register';
-      else if (normalizedRoute === 'login') path = '/login';
-      else if (normalizedRoute === 'auth-callback') path = '/auth/callback';
-      else if (normalizedRoute === '2fa') path = '/2fa';
-      else if (normalizedRoute === 'studio') path = '/studio';
-      else if (normalizedRoute === 'marcas-dagua') path = '/marcas-dagua';
-      else if (normalizedRoute === 'historico') path = '/historico';
-      else if (normalizedRoute === 'settings') path = '/settings';
-      else path = '/scraper';
-
-      if (newParams && Object.keys(newParams).length > 0) {
-        const query = new URLSearchParams(newParams).toString();
+      if (queryParams && Object.keys(queryParams).length > 0) {
+        const query = new URLSearchParams(queryParams).toString();
         path += `?${query}`;
       }
 
-      window.history.pushState({}, '', path);
-    }
-  }, []);
+      routerNavigate(path, finalOptions);
+    },
+    [routerNavigate],
+  );
 
   return (
     <NavigationContext.Provider value={{ currentRoute, params, navigate }}>

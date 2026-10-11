@@ -6,6 +6,7 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { cn } from '../lib/utils';
+import { toast } from 'sonner';
 
 export interface UserSessionItem {
   id: string;
@@ -685,6 +686,7 @@ export const SettingsPage: React.FC = () => {
                         onClick={() => {
                           navigator.clipboard.writeText('JBSWY3DPEHPK3PXP');
                           setCopiedKey(true);
+                          toast.info('Copiado para a área de transferência!');
                           setTimeout(() => setCopiedKey(false), 2000);
                         }}
                         className="text-on-surface-variant hover:text-primary transition-colors p-1 cursor-pointer"
@@ -803,7 +805,7 @@ export const SettingsPage: React.FC = () => {
                   variant="outline"
                   onClick={() => {
                     navigator.clipboard.writeText(INITIAL_RECOVERY_CODES.join('\n'));
-                    alert('Códigos copiados para a área de transferência!');
+                    toast.info('Copiado para a área de transferência!');
                   }}
                   leftIcon={
                     <span className="material-symbols-outlined text-[16px]">content_copy</span>

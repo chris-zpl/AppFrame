@@ -1,7 +1,7 @@
 import { SubtitleConfig } from '../../modules/media/interfaces/subtitle-config.interface';
 
-export const MEDIA_DOWNLOAD_QUEUE = 'media:download';
-export const MEDIA_RENDER_QUEUE = 'media:render';
+export const MEDIA_DOWNLOAD_QUEUE = 'media-download';
+export const MEDIA_RENDER_QUEUE = 'media-render';
 
 export interface DownloadJobPayload {
   jobId: string;

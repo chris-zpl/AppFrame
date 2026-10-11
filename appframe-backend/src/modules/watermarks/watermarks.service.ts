@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as path from 'path';
 import { Watermark } from './entities/watermark.entity';
 import { WatermarkResponseDto } from './dto/response/watermark-response.dto';
 import { StorageService } from '../../shared/storage/storage.service';
@@ -47,6 +48,31 @@ export class WatermarksService {
     });
     const saved = await this.watermarkRepository.save(item);
     return WatermarkResponseDto.fromEntity(saved)!;
+  }
+
+  async upload(userId: string, file: Express.Multer.File): Promise<WatermarkResponseDto> {
+    const cleanName = path.basename(file.originalname).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const fileName = `${Date.now()}-${cleanName}`;
+    const storagePath = await this.storageService.saveFile('watermarks', fileName, file.buffer);
+    return this.create({
+      userId,
+      originalName: file.originalname,
+      storagePath,
+      mimeType: file.mimetype,
+      fileSize: file.size,
+    });
+  }
+
+  async getFilePath(id: string, userId?: string): Promise<string> {
+    const watermark = await this.watermarkRepository.findOne({
+      where: userId ? { id, user_id: userId } : { id },
+    });
+    if (!watermark) {
+      throw new NotFoundException('Marca d’água não encontrada.');
+    }
+    return path.isAbsolute(watermark.storage_path)
+      ? watermark.storage_path
+      : path.resolve(process.cwd(), watermark.storage_path);
   }
 
   async delete(id: string, userId: string): Promise<boolean> {

@@ -18,9 +18,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(THEME_STORAGE_KEY);
       if (stored === 'light' || stored === 'dark') return stored;
-      if (window.matchMedia('(prefers-color-scheme: light)').matches) {
-        return 'light';
-      }
+      // Padrão obrigatório no primeiro acesso: Dark Mode
+      localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+      return 'dark';
     }
     return 'dark';
   });

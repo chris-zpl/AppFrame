@@ -1,12 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
+import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { useAuth } from '../contexts/AuthContext';
 
 export const TwoFactorChallengePage: React.FC = () => {
   const { navigate, params } = useNavigation();
+  const { verify2fa } = useAuth();
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [isBackupMode, setIsBackupMode] = useState(false);
   const [backupCode, setBackupCode] = useState('');
@@ -77,45 +80,17 @@ export const TwoFactorChallengePage: React.FC = () => {
     setErrorMessage(null);
 
     const code = isBackupMode ? backupCode.trim() : digits.join('');
-    const tempToken = params.tempToken || 'mock-temp-token';
+    const tempToken = params.tempToken || '';
 
     try {
-      const response = await fetch('http://localhost:3000/auth/login/2fa', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tempToken,
-          [isBackupMode ? 'recoveryCode' : 'totpCode']: code,
-        }),
-      }).catch(() => null);
-
-      if (response) {
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          throw new Error(data.message || 'Código de verificação incorreto ou expirado.');
-        }
-
-        if (data.accessToken) {
-          localStorage.setItem('appframe_access_token', data.accessToken);
-          if (data.refreshToken) {
-            localStorage.setItem('appframe_refresh_token', data.refreshToken);
-          }
-        }
-        navigate('scraper');
-        return;
-      }
-
-      // Mock fallback de validação
-      setTimeout(() => {
-        if (code === '000000') {
-          setErrorMessage('Código inválido para teste. Tente qualquer outro código.');
-        } else {
-          localStorage.setItem('appframe_access_token', 'mock-2fa-verified-token');
-          navigate('scraper');
-        }
-      }, 700);
+      await verify2fa(tempToken, code);
+      navigate('/', { replace: true });
     } catch (err: any) {
-      setErrorMessage(err.message || 'Erro ao validar o código 2FA.');
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Código de verificação incorreto ou expirado.';
+      setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       setIsLoading(false);
     }
@@ -123,17 +98,20 @@ export const TwoFactorChallengePage: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-surface text-on-surface flex flex-col justify-between p-4 sm:p-6 relative overflow-x-hidden select-none">
+      {/* Botão Fixo de Alternância de Tema */}
+      <ThemeToggle variant="auth" className="fixed top-6 right-6 z-50" />
+
       {/* Halos Luminosos */}
       <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[550px] h-[340px] bg-primary/10 rounded-full blur-[120px] pointer-events-none -z-10" />
       <div className="absolute -bottom-20 -right-16 w-72 h-72 bg-secondary-container/20 rounded-full blur-[90px] pointer-events-none -z-10" />
 
       {/* Header */}
-      <header className="w-full max-w-6xl mx-auto flex items-center justify-between py-2 z-10">
+      <header className="w-full max-w-6xl mx-auto flex items-center justify-between py-2 z-10 pr-14 sm:pr-0">
         <AppFrameLogo size="sm" onClick={() => navigate('scraper')} />
         <button
           type="button"
           onClick={() => navigate('login')}
-          className="font-title-sm text-title-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+          className="font-title-sm text-title-sm text-neutral-600 dark:text-on-surface-variant hover:text-neutral-950 dark:hover:text-primary transition-colors cursor-pointer mr-0 sm:mr-16"
         >
           Voltar para o Login
         </button>
@@ -154,10 +132,10 @@ export const TwoFactorChallengePage: React.FC = () => {
                 </span>
               </div>
 
-              <h1 className="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight">
+              <h1 className="font-headline-sm text-headline-sm text-neutral-900 dark:text-[#F8F9FA] font-bold tracking-tight">
                 Verificação em Duas Etapas
               </h1>
-              <p className="font-body-sm text-body-sm text-on-surface-variant mt-1.5 max-w-[340px]">
+              <p className="font-body-sm text-body-sm text-neutral-600 dark:text-[#949DAF] mt-1.5 max-w-[340px]">
                 {isBackupMode
                   ? 'Insira um dos seus códigos de recuperação gerados na ativação do 2FA.'
                   : 'Insira o código de 6 dígitos gerado no seu aplicativo autenticador (Google Authenticator, Authy, etc.).'}
@@ -191,16 +169,16 @@ export const TwoFactorChallengePage: React.FC = () => {
                         onChange={(e) => handleDigitChange(idx, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(idx, e)}
                         onPaste={idx === 0 ? handlePaste : undefined}
-                        className={`w-12 h-14 sm:w-13 sm:h-16 text-center text-[24px] sm:text-[28px] font-bold rounded-xl bg-surface-container-lowest border transition-all duration-200 outline-none tabular-nums ${
+                        className={`w-12 h-14 sm:w-13 sm:h-16 text-center text-[24px] sm:text-[28px] font-bold rounded-xl bg-white dark:bg-surface-container-lowest border transition-all duration-200 outline-none tabular-nums ${
                           digit
-                            ? 'border-primary text-primary shadow-[0_0_12px_rgba(242,190,94,0.25)]'
-                            : 'border-surface-container-highest text-on-surface focus:border-primary/80 focus:ring-2 focus:ring-primary/20'
+                            ? 'border-primary text-[#B8851B] dark:text-primary shadow-[0_0_12px_rgba(242,190,94,0.25)]'
+                            : 'border-neutral-300 dark:border-surface-container-highest text-neutral-900 dark:text-on-surface focus:border-primary/80 focus:ring-2 focus:ring-primary/20'
                         }`}
                       />
                     ))}
                   </div>
 
-                  <span className="text-label-sm font-label-sm text-outline mt-1">
+                  <span className="text-label-sm font-label-sm text-neutral-500 dark:text-[#949DAF] mt-1">
                     Cole o código de 6 dígitos ou digite individualmente
                   </span>
                 </div>
@@ -220,7 +198,7 @@ export const TwoFactorChallengePage: React.FC = () => {
                       </span>
                     }
                   />
-                  <span className="text-label-sm font-label-sm text-outline">
+                  <span className="text-label-sm font-label-sm text-neutral-500 dark:text-[#949DAF]">
                     Códigos reserva são de uso único
                   </span>
                 </div>
@@ -251,7 +229,7 @@ export const TwoFactorChallengePage: React.FC = () => {
                     setIsBackupMode(!isBackupMode);
                     setErrorMessage(null);
                   }}
-                  className="text-primary hover:underline text-body-sm font-body-sm font-semibold flex items-center gap-1.5 cursor-pointer"
+                  className="text-[#B8851B] dark:text-[#D4A346] hover:underline text-body-sm font-body-sm font-semibold flex items-center gap-1.5 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[18px]">
                     {isBackupMode ? 'phonelink_ring' : 'vpn_key'}
@@ -266,7 +244,7 @@ export const TwoFactorChallengePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('login')}
-                  className="text-on-surface-variant hover:text-on-surface text-label-md font-label-md transition-colors cursor-pointer"
+                  className="text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface text-label-md font-label-md transition-colors cursor-pointer"
                 >
                   Cancelar e voltar ao Login
                 </button>
@@ -277,7 +255,7 @@ export const TwoFactorChallengePage: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="w-full text-center py-2 text-label-sm font-label-sm text-outline z-10">
+      <footer className="w-full text-center py-2 text-label-sm font-label-sm text-neutral-500 dark:text-[#949DAF] z-10">
         AppFrame © 2026 • Executive Video Intelligence
       </footer>
     </div>

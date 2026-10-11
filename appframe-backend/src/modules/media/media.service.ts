@@ -6,6 +6,7 @@ import { Queue } from 'bullmq';
 import { VideoJob } from './entities/video-job.entity';
 import { VideoJobResponseDto } from './dto/response/video-job-response.dto';
 import { CreateVideoJobDto } from './dto/request/create-video-job.dto';
+import { DownloadBatchDto } from './dto/request/download-batch.dto';
 import { VideoJobStatus } from './enums/video-job-status.enum';
 import { VideoPlatform } from './enums/video-platform.enum';
 import {
@@ -52,6 +53,25 @@ export class MediaService {
     });
 
     return VideoJobResponseDto.fromEntity(saved)!;
+  }
+
+  /**
+   * Cria múltiplos registros no PostgreSQL e enfileira na MEDIA_DOWNLOAD_QUEUE (BullMQ)
+   */
+  async createDownloadBatch(
+    userId: string,
+    dto: DownloadBatchDto,
+  ): Promise<VideoJobResponseDto[]> {
+    const createdJobs: VideoJobResponseDto[] = [];
+    for (const item of dto.videos) {
+      const job = await this.createJob(userId, {
+        source_url: item.url,
+        original_title: item.title,
+        platform: VideoPlatform.YOUTUBE,
+      });
+      createdJobs.push(job);
+    }
+    return createdJobs;
   }
 
   async getJobById(id: string, userId: string): Promise<VideoJobResponseDto> {

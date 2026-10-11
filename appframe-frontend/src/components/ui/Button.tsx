@@ -37,8 +37,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           ref={ref}
           disabled={disabled || isLoading}
           className={cn(
-            'w-full h-11 px-4 rounded-lg bg-surface-container hover:bg-surface-container-high transition-all duration-200',
-            'flex items-center justify-between shadow-sm group hover:shadow-[0_0_18px_rgba(212,163,70,0.18)] active:scale-[0.99]',
+            'w-full h-11 px-4 rounded-lg bg-white hover:bg-neutral-50 transition-all duration-200 cursor-pointer',
+            'flex items-center justify-between shadow-sm active:scale-[0.99]',
+            'border border-black/15 border-neutral-300 dark:border-transparent dark:hover:ring-2 dark:hover:ring-[#D4A346]/40',
             disabled && 'opacity-60 cursor-not-allowed',
             className,
           )}
@@ -64,7 +65,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
               />
             </svg>
           </div>
-          <span className="font-title-sm text-title-sm text-on-surface font-medium mx-auto group-hover:text-primary transition-colors">
+          <span className="font-title-sm text-title-sm text-neutral-900 font-semibold mx-auto">
             {children || 'Continuar com o Google'}
           </span>
           <div className="w-5 shrink-0" />
@@ -74,13 +75,13 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary:
-        'bg-primary hover:bg-primary-fixed-dim text-on-primary font-bold shadow-[0_4px_20px_-2px_rgba(212,163,70,0.35)] hover:shadow-[0_0_24px_rgba(212,163,70,0.45)] active:scale-[0.99]',
+        'bg-[#D4A346] hover:bg-[#E0B04A] text-[#0F1115] font-bold shadow-[0_4px_20px_-2px_rgba(212,163,70,0.35)] hover:shadow-[0_0_24px_rgba(212,163,70,0.45)] active:scale-[0.99]',
       secondary:
-        'bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold shadow-sm border border-outline/10 hover:border-primary/30',
+        'bg-neutral-100 hover:bg-neutral-900 text-neutral-800 hover:text-white dark:bg-[#1E222D] dark:hover:bg-[#282D3C] dark:text-[#F8F9FA] dark:hover:text-white transition-colors font-semibold shadow-sm border border-neutral-200 dark:border-outline/10',
       outline:
-        'bg-transparent border border-outline/30 hover:border-primary text-on-surface hover:bg-surface-container-high',
+        'bg-transparent border border-neutral-300 dark:border-outline/30 text-neutral-800 dark:text-[#F8F9FA] hover:bg-neutral-900 hover:text-white dark:hover:bg-[#282D3C] dark:hover:text-white transition-colors',
       ghost:
-        'bg-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container',
+        'bg-transparent text-neutral-600 dark:text-[#949DAF] hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-surface-container dark:hover:text-white transition-colors',
       danger:
         'bg-error-container hover:bg-error-container/80 text-on-error-container font-semibold shadow-sm',
     };

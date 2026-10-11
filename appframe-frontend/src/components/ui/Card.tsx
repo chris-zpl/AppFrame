@@ -22,13 +22,13 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
 
     const variantStyles = {
       default:
-        'bg-surface-container rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.25)] border border-outline/10',
+        'bg-white dark:bg-surface-container rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.25)] border border-neutral-200 dark:border-outline/10',
       elevated:
-        'bg-surface-container-low rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-primary/15',
+        'bg-white dark:bg-surface-container-low rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-neutral-200 dark:border-primary/15',
       auth:
-        'bg-surface-container-low rounded-[24px] shadow-[0_16px_40px_-8px_rgba(0,0,0,0.65),0_0_24px_rgba(212,163,70,0.06)] border border-outline/10',
+        'bg-white dark:bg-surface-container-low rounded-[24px] shadow-[0_16px_40px_-8px_rgba(0,0,0,0.1),0_0_24px_rgba(212,163,70,0.06)] dark:shadow-[0_16px_40px_-8px_rgba(0,0,0,0.65),0_0_24px_rgba(212,163,70,0.06)] border border-neutral-200 dark:border-outline/10',
       interactive:
-        'bg-surface-container rounded-2xl transition-all duration-300 hover:-translate-y-1 shadow-[0_8px_24px_rgba(0,0,0,0.25)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.45)] border border-outline/10 cursor-pointer',
+        'bg-white dark:bg-surface-container rounded-2xl transition-all duration-300 hover:-translate-y-1 shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.25)] dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.45)] border border-neutral-200 dark:border-outline/10 cursor-pointer',
     };
 
     return (

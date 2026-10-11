@@ -4,6 +4,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { VideoJob } from './entities/video-job.entity';
 import { MediaService } from './media.service';
 import { MediaController } from './media.controller';
+import { JobsController } from './jobs.controller';
 import { DownloadService } from './services/download.service';
 import { FFmpegService } from './services/ffmpeg.service';
 import { DownloadProcessor } from './processors/download.processor';
@@ -23,7 +24,7 @@ import {
     ),
     WatermarksModule,
   ],
-  controllers: [MediaController],
+  controllers: [MediaController, JobsController],
   providers: [
     MediaService,
     DownloadService,

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { toast } from 'sonner';
 import { useNavigation } from '../contexts/NavigationContext';
 import { AppShell } from '../components/layout/AppShell';
 import { VideoCard, type VideoCardData } from '../components/common/VideoCard';
@@ -6,113 +7,28 @@ import { BatchDock } from '../components/layout/BatchDock';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { scraperService } from '../services/scraper.service';
+import { mediaService } from '../services/media.service';
 
-// Dados reais autênticos de demonstração baseados na Referência 2
-const INITIAL_DEMO_VIDEOS: VideoCardData[] = [
-  {
-    id: '1',
-    title: 'EP. 412 - INTELIGÊNCIA ARTIFICIAL E O FUTURO DA CRIAÇÃO DE CONTEÚDO',
-    thumbnailUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuDRhGGes8HDYerT5nUKAHgYB1mPBrAE_vE-Mn5Huw7i95jaD5UYN5KFAzFlffnPfL_hrZnVC3cuSPDAluXN8EPQulKmycpMpDdxfhxF4ZkDwvWpwFPJIsrRh4rnO1ljPOx4ZE1-yO4lvouKH6v_sKBKJLeGgLO8-t-X1k6Eu-8iBBjvMxCP5uizewBNoaiexDf8yLIAQY5QjmNIgGNpewGe8Nyc_AZOu9nBz64kRJI-',
-    durationFormatted: '02:14:35',
-    durationSeconds: 8075,
-    isShort: false,
-    publishedText: 'Há 2 dias',
-    viewsText: '384k views',
-  },
-  {
-    id: '2',
-    title: 'COMO ESCALAR CANAIS DE CORTES AUTOMATIZADOS COM IA',
-    thumbnailUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuD_XLizXV3TTedOSc-TYI_AiPxXZatZm8B8MIXRsAI5cborSOkbzH8NAj9Xmx9scYnLMPMP6duSbN6dsjVWQO84ZJW1BdMK6JFGxpRO-QS-MUuzhM6u8lfUrIdKd9XnvDmnpcqqweChsziJdClcT9oCdnnaXrBNkSNbetcyMIQDsVbOgSaIhUa8YhDO6y6KKM0LfVRUYkU2_kY_KIiQ1IVGTSnkh_MsiPoApmvh7ErT',
-    durationFormatted: '01:45:10',
-    durationSeconds: 6310,
-    isShort: false,
-    publishedText: 'Há 4 dias',
-    viewsText: '512k views',
-  },
-  {
-    id: '3',
-    title: 'O segredo para reter audiência nos primeiros 3 segundos #shorts',
-    thumbnailUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCT08sxMVzObUMaPRglGa8gT_Qjke3b-Qm3aeNQPL7gKZINNG2Nal5BMMTDT3de-hO2b9fKfYySqARLTWRYj_ttn1LzTHFkooqRiL7Is2Jzrv0mwWdI8hpUBitvgl6f8-mndjHJEX3cQW_u9tkSmsLeUcaQeB4yofpF5skwqTGWsNW3ALDhfJgRdJM6BVTUetx6FC6kl2S6cmUzEpu6vzs31Dk494rJbl-6abJRVW0-',
-    durationFormatted: '00:58',
-    durationSeconds: 58,
-    isShort: true,
-    publishedText: 'Há 5 dias',
-    viewsText: '1.2M views',
-  },
-  {
-    id: '4',
-    title: 'BASTIDORES DA PRODUÇÃO E SETUP COMPLETO DE ÁUDIO E VÍDEO',
-    thumbnailUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAVpbo_4DiPMahyqQKLVAkGHkmF54SZl7CE_toGdiL0hZ4FLspqJg9P3rbFG1dyJGBrDeclBHVRKXff7su6dL2hoKW8PWfVmJAsUC7l9bClZFbNTZ5evwQWa6j1czm7Lpt3ngiBR3dwZOozpjxU5RFTxx4_DNZc1s-xcUro8KdjbwkqpOZ5sDlApywTRIZhTCNVFZ5FucCv1sj8ZD_snjk5gVLAAPzjdJwV9kg8Ekmb',
-    durationFormatted: '01:58:20',
-    durationSeconds: 7100,
-    isShort: false,
-    publishedText: 'Há 1 semana',
-    viewsText: '220k views',
-  },
-  {
-    id: '5',
-    title: 'Essa ferramenta mudou o workflow de edição para sempre #shorts',
-    thumbnailUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCinqodvU0pVf3M69ryDj9U9VNlRjoU4uCtP47p5vHlkGAXcbRpdHWpDM9luygvUOse1jDXjqmAht7r1XCsABNt_FGWZ-OTfSo3OKQlUfByN2HbvWXFgvtdPWpNkWWaXv0U_5HtVgha2sazWim-dJH5n2zRww_poMs0Hy4xgclJvxHlP9_4sFFFh0hRkF-jBVR_1bVBqhLmp5bxbXZrHe0YnZHG2UIkWvIpTm-aI3mZ',
-    durationFormatted: '00:45',
-    durationSeconds: 45,
-    isShort: true,
-    publishedText: 'Há 1 semana',
-    viewsText: '890k views',
-  },
-  {
-    id: '6',
-    title: 'ENTREVISTA EXCLUSIVA: OS MAIORES CANAIS DO BRASIL',
-    thumbnailUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCw1iFWChf1qTI7T2oTCRlcRZ59DZ7or99KVyASHTDLp6gNkKSO0ajmbYwUxdUeBA1mL1uiBTGSrV1LjKwdA2vYmKZWHKZsBY6Hyu4g4opL5kiE0eduMDR6LX4SGpDTewqbt7PA6zni_EJ3Hk6SnCEYy8arnccJqconGueH5LNeysx6FRQvXSieHe_bvcFo8w8B4JszaT8idgM49PsPDSDwXwOmWqhtJYnpeHPrxsec',
-    durationFormatted: '02:40:15',
-    durationSeconds: 9615,
-    isShort: false,
-    publishedText: 'Há 2 semanas',
-    viewsText: '640k views',
-  },
-  {
-    id: '7',
-    title: 'COMO MONETIZAR CORTES EM MÚLTIPLAS PLATAFORMAS',
-    thumbnailUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCzvkxyDb3Qdy2ruaX712X8-q_CJowVspB4p9JeOfubqecMv8UUyn9w84JHqZ5aeJC4UUwGwhY1EeLDFYhMUswC7X8CmI-cC9fHQCaszuzPavkiuT9o0zk41N7rfftl0wEhh9koSwZg7PogCHkpNesYDZ1XjiqJdvxQPU-j4utR-fPv6x0O1PkL04uxU00fyPTRm6dnRzw0fZpWcYlS0J0somyWsIvFXlbPBrEqUGMk',
-    durationFormatted: '01:12:08',
-    durationSeconds: 4328,
-    isShort: false,
-    publishedText: 'Há 2 semanas',
-    viewsText: '410k views',
-  },
-  {
-    id: '8',
-    title: 'Dica de renderização ultrarrápida no AppFrame #shorts',
-    thumbnailUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuD56_D7wMylxA4h_N13GChse1VYkz2Vb773BK7yxp1mYchbjHfUTa6Ym5ptp9ekORE9o5UYlMA5HQyB3HS51iHldMPlvwWuzAHxyMYtXmKN9F9BbSVJydl5U9_4g3Kpu_LLumnpajAwqVATueuJD6EpiULDcnyqGqlxSOJBrQOyr5p1MUw3F0pxe_gSul_gIHAgV10XrwCZSevk33vfOPwBFdPdilcNn152IooxnRtD',
-    durationFormatted: '00:30',
-    durationSeconds: 30,
-    isShort: true,
-    publishedText: 'Há 3 semanas',
-    viewsText: '950k views',
-  },
-];
+interface ScrapedVideoCardData extends VideoCardData {
+  url: string;
+}
 
 export const ScraperPage: React.FC = () => {
   const { navigate } = useNavigation();
   const [channelUrl, setChannelUrl] = useState('');
   const [isScanning, setIsScanning] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [hasScanned, setHasScanned] = useState(false);
-  const [videos, setVideos] = useState<VideoCardData[]>([]);
+  const [videos, setVideos] = useState<ScrapedVideoCardData[]>([]);
   const [filter, setFilter] = useState<'all' | 'long' | 'shorts'>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [channelMeta, setChannelMeta] = useState<{
     name: string;
-    subscribers: string;
-    avatarUrl: string;
+    avatarUrl?: string;
     totalIndexed: number;
-    retentionRate: string;
+    shortsCount: number;
+    longCount: number;
   } | null>(null);
 
   // Filtragem dos cards
@@ -129,7 +45,7 @@ export const ScraperPage: React.FC = () => {
     let secs = 0;
     videos.forEach((v) => {
       if (selectedIds.has(v.id)) {
-        secs += v.durationSeconds;
+        secs += v.durationSeconds || 0;
       }
     });
     return {
@@ -141,7 +57,11 @@ export const ScraperPage: React.FC = () => {
   const formatDurationAccumulated = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
-    return `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m`;
+    const s = seconds % 60;
+    if (hrs > 0) {
+      return `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m`;
+    }
+    return `${String(mins).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
   };
 
   const handleToggleSelect = (id: string) => {
@@ -169,75 +89,135 @@ export const ScraperPage: React.FC = () => {
   };
 
   const executeScan = async (targetUrl: string) => {
-    if (!targetUrl.trim()) return;
+    const cleanUrl = targetUrl.trim();
+    if (!cleanUrl) {
+      toast.error('Informe a URL ou @handle do canal para escanear.');
+      return;
+    }
 
     setIsScanning(true);
-    setChannelUrl(targetUrl);
+    setChannelUrl(cleanUrl);
 
     try {
-      // Tentativa de integração com endpoint real do scraper NestJS
-      const token = localStorage.getItem('appframe_access_token');
-      const response = await fetch('http://localhost:3000/scraper/channel', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ channelUrl: targetUrl }),
-      }).catch(() => null);
+      const items = await scraperService.scanChannel(cleanUrl);
 
-      if (response && response.ok) {
-        const data = await response.json();
-        if (data.items && data.items.length > 0) {
-          setVideos(data.items);
-          setChannelMeta({
-            name: data.channelTitle || targetUrl.replace(/https?:\/\/(www\.)?youtube\.com\//, ''),
-            subscribers: data.subscriberCount ? `${data.subscriberCount} inscritos` : '2.1M inscritos',
-            avatarUrl: data.channelThumbnail || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCIttx2uGI3y9RaDmUK39hfKzLGVCf4eWUGkDjnUjeo_pRf7AGbkWTb1vLn51RPYDlInBz39A_qP1cQVSYMbn09LKFV3NwFt5eDbyiyG1JFCaBx4beXiWH-H8SbcDwOxeff0WkVPk1jcr7gK4l-guNt3l0cfiPxH-kf1XMdIcUEIqMwMnZPf_UrAbhaLn_CrTeTiFem-PPDvQcQWo_Ldf9q053_iS-vbPSqn6pdzxGM',
-            totalIndexed: data.items.length,
-            retentionRate: '68.4%',
-          });
-          setHasScanned(true);
-          setSelectedIds(new Set([data.items[0].id]));
-          return;
+      if (items && items.length > 0) {
+        const mappedVideos: ScrapedVideoCardData[] = items.map((it) => {
+          const isShort = Boolean(it.isShort ?? it.is_short);
+          const durationSeconds = it.durationSeconds ?? it.duration_seconds ?? it.duration ?? 0;
+          const durationFormatted =
+            it.durationFormatted || it.timestamp_formatted || '00:00';
+          const thumbnailUrl =
+            it.thumbnailUrl || it.thumbnail_url || `https://i.ytimg.com/vi/${it.id}/hqdefault.jpg`;
+          const url =
+            it.url ||
+            (isShort
+              ? `https://www.youtube.com/shorts/${it.id}`
+              : `https://www.youtube.com/watch?v=${it.id}`);
+
+          return {
+            id: it.id,
+            url,
+            title: it.title || 'Sem título',
+            thumbnailUrl,
+            durationFormatted,
+            durationSeconds,
+            isShort,
+            publishedText: it.publishedAt || 'Recente',
+            viewsText: it.viewCount,
+          };
+        });
+
+        const shortsCount = mappedVideos.filter((v) => v.isShort).length;
+        const longCount = mappedVideos.filter((v) => !v.isShort).length;
+
+        // Extrai o nome do canal do handle ou URL
+        let channelName = cleanUrl
+          .replace(/https?:\/\/(www\.)?youtube\.com\//, '')
+          .replace(/\/$/, '')
+          .replace(/\/(videos|shorts)$/, '');
+        if (!channelName.startsWith('@') && !channelName.startsWith('channel/')) {
+          channelName = `@${channelName}`;
         }
-      }
 
-      // Mock de alta fidelidade da Referência 2 quando executado localmente
-      setTimeout(() => {
-        setVideos(INITIAL_DEMO_VIDEOS);
+        setVideos(mappedVideos);
         setChannelMeta({
-          name: targetUrl.includes('podpah') ? 'Podpah Podcast Oficial' : 'Flow Podcast Oficial',
-          subscribers: '2.1M inscritos',
-          avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCIttx2uGI3y9RaDmUK39hfKzLGVCf4eWUGkDjnUjeo_pRf7AGbkWTb1vLn51RPYDlInBz39A_qP1cQVSYMbn09LKFV3NwFt5eDbyiyG1JFCaBx4beXiWH-H8SbcDwOxeff0WkVPk1jcr7gK4l-guNt3l0cfiPxH-kf1XMdIcUEIqMwMnZPf_UrAbhaLn_CrTeTiFem-PPDvQcQWo_Ldf9q053_iS-vbPSqn6pdzxGM',
-          totalIndexed: INITIAL_DEMO_VIDEOS.length,
-          retentionRate: '68.4%',
+          name: channelName,
+          avatarUrl: mappedVideos[0]?.thumbnailUrl,
+          totalIndexed: mappedVideos.length,
+          shortsCount,
+          longCount,
         });
         setHasScanned(true);
-        setSelectedIds(new Set(['1', '2', '3']));
-        setIsScanning(false);
-      }, 700);
-    } catch {
-      setVideos(INITIAL_DEMO_VIDEOS);
-      setHasScanned(true);
+        setSelectedIds(new Set());
+        toast.success(
+          `${mappedVideos.length} mídias encontradas (${shortsCount} Shorts, ${longCount} vídeos longos)!`,
+        );
+      } else {
+        setVideos([]);
+        setHasScanned(false);
+        toast.error('Nenhum vídeo público encontrado para este canal.');
+      }
+    } catch (err: any) {
+      setVideos([]);
+      setHasScanned(false);
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Não foi possível extrair mídias do canal informado. Verifique o link e tente novamente.';
+      toast.error(message);
+    } finally {
       setIsScanning(false);
     }
   };
 
-  const handleDownloadSelected = () => {
-    alert(`Enviando ${selectedCount} vídeo(s) para a fila de download (media:download)...`);
+  const handleDownloadSelected = async () => {
+    const selectedVideos = videos.filter((v) => selectedIds.has(v.id));
+    if (selectedVideos.length === 0) return;
+
+    setIsDownloading(true);
+    try {
+      await mediaService.downloadBatch(
+        selectedVideos.map((v) => ({
+          url: v.url,
+          title: v.title,
+        })),
+      );
+
+      toast.success(
+        `${selectedVideos.length} ${
+          selectedVideos.length === 1 ? 'vídeo adicionado' : 'vídeos adicionados'
+        } à fila de download!`,
+      );
+      navigate('historico');
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Falha ao enfileirar vídeos para download.';
+      toast.error(msg);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const handleOpenStudio = () => {
-    navigate('studio', { selectedVideos: Array.from(selectedIds).join(',') });
+    const selected = videos.find((v) => selectedIds.has(v.id)) || videos[0];
+    if (!selected) {
+      toast.error('Selecione pelo menos um vídeo para abrir no Studio.');
+      return;
+    }
+
+    navigate('studio', {
+      sourceUrl: selected.url,
+      title: selected.title,
+    });
   };
 
   return (
     <AppShell
       currentPath="varredura"
       onNavigate={(path) => navigate(path)}
-      userName="Christian"
-      onUserAvatarClick={() => navigate('login')}
     >
       <div className="flex flex-col w-full text-on-surface select-none">
         {/* ================= CONTROLES SUPERIORES & HERO ================= */}
@@ -249,37 +229,16 @@ export const ScraperPage: React.FC = () => {
                   Varredura de Canais
                 </h1>
                 <Badge variant="status-live">
-                  YouTube Data API v3 Conectado
+                  YouTube InnerTube Conectado
                 </Badge>
               </div>
               <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl">
-                Insira o canal para indexar mídias, analisar retenção e enviar para corte dinâmico no Studio.
+                Insira o canal ou @handle para indexar vídeos reais, filtrar Shorts e enviar diretamente para corte dinâmico no Studio ou download em lote.
               </p>
-            </div>
-
-            {/* Alternador de Estado para Validação */}
-            <div className="flex items-center gap-space-xs self-start md:self-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  if (hasScanned) {
-                    setHasScanned(false);
-                    setSelectedIds(new Set());
-                  } else {
-                    executeScan('https://youtube.com/@flowpodcast');
-                  }
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-label-md font-label-md transition-all shadow-sm cursor-pointer border border-surface-container-highest/60"
-              >
-                <span className="material-symbols-outlined text-[16px] text-primary">
-                  swap_horiz
-                </span>
-                <span>{hasScanned ? 'Ver Estado Vazio Inicial' : 'Ver Estado Populado'}</span>
-              </button>
             </div>
           </div>
 
-          {/* Barra de Pesquisa de URL (48px) */}
+          {/* Barra de Pesquisa de URL */}
           <div className="relative w-full rounded-xl bg-surface-container-low p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-all focus-within:shadow-[0_0_0_2px_rgba(212,163,70,0.3)] border border-surface-container-high">
             <div className="flex flex-col sm:flex-row items-center gap-2">
               <div className="flex items-center gap-3 flex-1 px-3 py-1 w-full">
@@ -291,14 +250,15 @@ export const ScraperPage: React.FC = () => {
                 <input
                   type="text"
                   value={channelUrl}
+                  disabled={isScanning}
                   onChange={(e) => setChannelUrl(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') executeScan(channelUrl);
                   }}
-                  placeholder="Cole a URL do canal do YouTube ou @handle..."
-                  className="w-full bg-transparent border-0 outline-none text-on-surface placeholder:text-outline font-body-md text-body-md h-10 tracking-tight"
+                  placeholder="Cole a URL do canal do YouTube ou @handle (ex: @Google, @flowpodcast)..."
+                  className="w-full bg-transparent border-0 outline-none text-on-surface placeholder:text-outline font-body-md text-body-md h-10 tracking-tight disabled:opacity-50"
                 />
-                {channelUrl && (
+                {channelUrl && !isScanning && (
                   <button
                     type="button"
                     onClick={() => setChannelUrl('')}
@@ -319,27 +279,27 @@ export const ScraperPage: React.FC = () => {
                 onClick={() => executeScan(channelUrl)}
                 className="w-full sm:w-auto px-6 h-11 shrink-0"
                 leftIcon={
-                  <span className="material-symbols-outlined text-[20px] animate-spin" style={{ animationDuration: '4s' }}>
+                  <span className="material-symbols-outlined text-[20px]">
                     radar
                   </span>
                 }
               >
-                <span>Varrer Canal</span>
+                <span>{isScanning ? 'Varrendo canal...' : 'Varrer Canal'}</span>
               </Button>
             </div>
           </div>
 
           {/* Barra de Filtros e Seleção em Lote */}
-          {hasScanned && (
+          {hasScanned && videos.length > 0 && !isScanning && (
             <div className="flex flex-wrap items-center justify-between gap-space-md pt-1">
-              {/* Chips de Categoria */}
+              {/* Chips de Categoria Dinâmicos */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
                 <button
                   type="button"
                   onClick={() => setFilter('all')}
                   className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer ${
                     filter === 'all'
-                      ? 'bg-primary-container/20 text-primary border border-primary/40 shadow-[0_0_10px_rgba(212,163,70,0.15)]'
+                      ? 'bg-primary-container/20 text-primary border border-primary/40 shadow-[0_0_10px_rgba(212,163,70,0.15)] font-semibold'
                       : 'bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-transparent'
                   }`}
                 >
@@ -354,13 +314,13 @@ export const ScraperPage: React.FC = () => {
                   onClick={() => setFilter('long')}
                   className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer ${
                     filter === 'long'
-                      ? 'bg-primary-container/20 text-primary border border-primary/40 shadow-[0_0_10px_rgba(212,163,70,0.15)]'
+                      ? 'bg-primary-container/20 text-primary border border-primary/40 shadow-[0_0_10px_rgba(212,163,70,0.15)] font-semibold'
                       : 'bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-transparent'
                   }`}
                 >
                   <span>Vídeos Longos</span>
                   <span className="px-1.5 py-0.2 rounded-full bg-surface-container-highest text-label-sm font-label-sm">
-                    {videos.filter((v) => !v.isShort).length}
+                    {channelMeta?.longCount ?? videos.filter((v) => !v.isShort).length}
                   </span>
                 </button>
 
@@ -369,18 +329,18 @@ export const ScraperPage: React.FC = () => {
                   onClick={() => setFilter('shorts')}
                   className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer ${
                     filter === 'shorts'
-                      ? 'bg-primary-container/20 text-primary border border-primary/40 shadow-[0_0_10px_rgba(212,163,70,0.15)]'
+                      ? 'bg-primary-container/20 text-primary border border-primary/40 shadow-[0_0_10px_rgba(212,163,70,0.15)] font-semibold'
                       : 'bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-transparent'
                   }`}
                 >
                   <span>Shorts</span>
                   <span className="px-1.5 py-0.2 rounded-full bg-surface-container-highest text-label-sm font-label-sm">
-                    {videos.filter((v) => v.isShort).length}
+                    {channelMeta?.shortsCount ?? videos.filter((v) => v.isShort).length}
                   </span>
                 </button>
               </div>
 
-              {/* Ações em Lote */}
+              {/* Botão de Selecionar / Desmarcar Todos */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -401,22 +361,72 @@ export const ScraperPage: React.FC = () => {
           )}
         </section>
 
-        {/* ================= ESTADO POPULADO ================= */}
-        {hasScanned && videos.length > 0 ? (
+        {/* ================= ESTADO DE CARREGAMENTO (AMBER NOIR SKELETONS) ================= */}
+        {isScanning && (
           <div className="flex flex-col gap-space-lg">
-            {/* Card de Cabeçalho do Canal Ativo */}
+            {/* Header Skeleton */}
+            <div className="w-full h-24 rounded-2xl bg-surface-container-low border border-surface-container-high/60 animate-pulse p-4 flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-surface-container-highest shrink-0" />
+              <div className="flex flex-col gap-2 flex-1">
+                <div className="h-5 w-48 rounded bg-surface-container-highest" />
+                <div className="h-3 w-72 rounded bg-surface-container-highest/60" />
+              </div>
+            </div>
+
+            {/* Grid de 8 Skeletons com Shimmer Âmbar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+              {Array.from({ length: 8 }).map((_, idx) => (
+                <div
+                  key={`skeleton-${idx}`}
+                  className="group relative flex flex-col rounded-2xl bg-surface-container overflow-hidden border border-surface-container-high/60 animate-pulse shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
+                >
+                  {/* Thumbnail Skeleton */}
+                  <div className="relative w-full aspect-video bg-surface-container-high overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-400/5 to-transparent animate-pulse" />
+                    {/* Badge topo direito */}
+                    <div className="absolute top-3 right-3 w-14 h-5 rounded-md bg-surface-container-highest" />
+                    {/* Duração canto inferior direito */}
+                    <div className="absolute bottom-2.5 right-2.5 w-12 h-4 rounded bg-surface-container-highest" />
+                  </div>
+
+                  {/* Detalhes do Card */}
+                  <div className="p-space-md flex flex-col flex-1 justify-between gap-3">
+                    <div className="flex flex-col gap-2">
+                      <div className="h-4 bg-surface-container-highest rounded w-5/6" />
+                      <div className="h-4 bg-surface-container-highest rounded w-3/5" />
+                    </div>
+                    <div className="h-3 bg-surface-container-highest/60 rounded w-1/3 mt-2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ================= ESTADO POPULADO COM DADOS REAIS ================= */}
+        {!isScanning && hasScanned && videos.length > 0 && (
+          <div className="flex flex-col gap-space-lg">
+            {/* Card de Cabeçalho do Canal Real */}
             {channelMeta && (
-              <div className="relative overflow-hidden rounded-2xl bg-surface-container-low p-space-md sm:p-space-lg shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-primary/15">
+              <div className="relative overflow-hidden rounded-2xl bg-surface-container-low p-space-md sm:p-space-lg shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-primary/20">
                 <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md relative z-10">
                   <div className="flex items-center gap-space-md">
                     {/* Avatar do Canal */}
                     <div className="relative shrink-0">
-                      <img
-                        src={channelMeta.avatarUrl}
-                        alt={channelMeta.name}
-                        className="w-14 h-14 md:w-16 md:h-16 rounded-2xl object-cover shadow-[0_0_16px_rgba(212,163,70,0.25)] ring-1 ring-primary/30"
-                      />
+                      {channelMeta.avatarUrl ? (
+                        <img
+                          src={channelMeta.avatarUrl}
+                          alt={channelMeta.name}
+                          className="w-14 h-14 md:w-16 md:h-16 rounded-2xl object-cover shadow-[0_0_16px_rgba(212,163,70,0.25)] ring-1 ring-primary/40"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-surface-container-highest flex items-center justify-center text-primary ring-1 ring-primary/40">
+                          <span className="material-symbols-outlined text-[28px]">
+                            smart_display
+                          </span>
+                        </div>
+                      )}
                       <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary text-on-primary flex items-center justify-center text-[12px] shadow-sm">
                         <span className="material-symbols-outlined text-[14px]">
                           check
@@ -430,18 +440,21 @@ export const ScraperPage: React.FC = () => {
                         <span className="font-headline-sm text-headline-sm font-bold text-on-surface">
                           {channelMeta.name}
                         </span>
-                        <span className="material-symbols-outlined text-primary text-[18px]" title="Canal Verificado">
+                        <span
+                          className="material-symbols-outlined text-primary text-[18px]"
+                          title="Canal Verificado"
+                        >
                           verified
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 mt-1 font-body-sm text-body-sm text-on-surface-variant">
-                        <span className="font-semibold text-on-surface">{channelMeta.subscribers}</span>
+                        <span className="font-semibold text-on-surface">Canal Oficial</span>
                         <span className="text-outline">•</span>
-                        <span>{channelMeta.totalIndexed} vídeos indexados</span>
+                        <span>{channelMeta.totalIndexed} mídias extraídas</span>
                         <span className="text-outline">•</span>
-                        <span className="text-tertiary flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-tertiary" />
-                          Sincronizado há pouco
+                        <span className="text-primary flex items-center gap-1 font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          Indexação em tempo real
                         </span>
                       </div>
                     </div>
@@ -450,25 +463,29 @@ export const ScraperPage: React.FC = () => {
                   {/* Contadores e Métricas */}
                   <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
                     <div className="bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-outline/10">
-                      <span className="text-label-sm font-label-sm text-outline">Indexados</span>
+                      <span className="text-label-sm font-label-sm text-outline">Total</span>
                       <span className="text-title-md font-title-md font-bold text-on-surface">
-                        {videos.length} Vídeos
+                        {videos.length}
                       </span>
                     </div>
                     <div className="bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-outline/10">
-                      <span className="text-label-sm font-label-sm text-outline">Taxa Retenção</span>
-                      <span className="text-title-md font-title-md font-bold text-primary">{channelMeta.retentionRate}</span>
+                      <span className="text-label-sm font-label-sm text-outline">Vídeos Longos</span>
+                      <span className="text-title-md font-title-md font-bold text-on-surface">
+                        {channelMeta.longCount}
+                      </span>
                     </div>
                     <div className="bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-outline/10">
-                      <span className="text-label-sm font-label-sm text-outline">Prontos IA</span>
-                      <span className="text-title-md font-title-md font-bold text-on-surface">100%</span>
+                      <span className="text-label-sm font-label-sm text-outline">Shorts</span>
+                      <span className="text-title-md font-title-md font-bold text-primary">
+                        {channelMeta.shortsCount}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Grid responsivo de vídeos (4 colunas no desktop, 1 no mobile) */}
+            {/* Grid responsivo de vídeos reais */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
               {filteredVideos.map((video) => (
                 <VideoCard
@@ -480,25 +497,27 @@ export const ScraperPage: React.FC = () => {
               ))}
             </div>
           </div>
-        ) : (
-          /* ================= ESTADO VAZIO INICIAL USANDO <EmptyState> ================= */
+        )}
+
+        {/* ================= ESTADO VAZIO INICIAL ================= */}
+        {!isScanning && (!hasScanned || videos.length === 0) && (
           <EmptyState
             icon="radar"
-            title="Nenhum canal consultado no AppFrame"
-            description="Cole a URL de um canal acima para carregar a lista real de vídeos e Shorts prontos para corte dinâmico, detecção de silêncio e download."
+            title="Nenhum canal consultado"
+            description="Cole a URL ou @handle de um canal acima para indexar vídeos e Shorts disponíveis."
             suggestionsTitle="Canais sugeridos para teste rápido:"
             suggestions={[
               {
+                label: '@Google',
+                onClick: () => executeScan('@Google'),
+              },
+              {
                 label: '@flowpodcast',
-                onClick: () => executeScan('https://youtube.com/@flowpodcast'),
+                onClick: () => executeScan('@flowpodcast'),
               },
               {
                 label: '@podpah',
-                onClick: () => executeScan('https://youtube.com/@podpah'),
-              },
-              {
-                label: '@inteligencialtda',
-                onClick: () => executeScan('https://youtube.com/@inteligencialtda'),
+                onClick: () => executeScan('@podpah'),
               },
             ]}
           />
@@ -506,12 +525,13 @@ export const ScraperPage: React.FC = () => {
 
         {/* ================= DOCK FLUTUANTE DE LOTE (BatchDock) ================= */}
         <BatchDock
-          visible={hasScanned && selectedCount > 0}
+          visible={hasScanned && selectedCount > 0 && !isScanning}
           selectedCount={selectedCount}
           totalDurationFormatted={formatDurationAccumulated(totalSeconds)}
           onClearSelection={handleClearSelection}
           onDownloadSelected={handleDownloadSelected}
           onOpenStudio={handleOpenStudio}
+          isDownloading={isDownloading}
         />
       </div>
     </AppShell>

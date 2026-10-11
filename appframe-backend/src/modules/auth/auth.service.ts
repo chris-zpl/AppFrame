@@ -587,4 +587,14 @@ export class AuthService {
 
     return { deleted: true };
   }
+
+  async getProfile(userId: string): Promise<UserResponseDto> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado.');
+    }
+    return UserResponseDto.fromEntity(user)!;
+  }
 }

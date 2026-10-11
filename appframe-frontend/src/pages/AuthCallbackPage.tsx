@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
+import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 
 export const AuthCallbackPage: React.FC = () => {
   const { navigate } = useNavigation();
+  const { handleOAuthCallback } = useAuth();
   const [statusText, setStatusText] = useState('Capturando credenciais do Google OAuth...');
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(25);
@@ -17,7 +20,7 @@ export const AuthCallbackPage: React.FC = () => {
         const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
 
         const token = urlParams.get('token') || urlParams.get('access_token') || hashParams.get('token') || hashParams.get('access_token');
-        const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+        const refreshToken = urlParams.get('refreshToken') || urlParams.get('refresh_token') || hashParams.get('refreshToken') || hashParams.get('refresh_token');
         const requires2fa = urlParams.get('requires2fa') === 'true' || hashParams.get('requires2fa') === 'true';
         const tempToken = urlParams.get('tempToken') || hashParams.get('tempToken');
         const errParam = urlParams.get('error') || hashParams.get('error');
@@ -41,32 +44,29 @@ export const AuthCallbackPage: React.FC = () => {
         setProgress(50);
 
         if (token) {
-          localStorage.setItem('appframe_access_token', token);
-          if (refreshToken) {
-            localStorage.setItem('appframe_refresh_token', refreshToken);
-          }
+          await handleOAuthCallback(token, refreshToken || undefined);
         } else {
-          // Se for mock local ou sem backend ativo, cria sessão de teste
-          localStorage.setItem('appframe_access_token', 'google-oauth-token-verified');
+          throw new Error('Nenhum token retornado pelo provedor de autenticação.');
         }
 
+        setStatusText('Sessão estabelecida! Redirecionando para o Workspace...');
+        setProgress(100);
         setTimeout(() => {
-          setStatusText('Sessão estabelecida! Redirecionando para o Workspace...');
-          setProgress(100);
-          setTimeout(() => {
-            navigate('scraper');
-          }, 600);
-        }, 800);
+          navigate('/', { replace: true });
+        }, 500);
       } catch (err: any) {
         setError(err.message || 'Ocorreu um erro ao sincronizar a conta do Google.');
       }
     };
 
     processCallback();
-  }, [navigate]);
+  }, [navigate, handleOAuthCallback]);
 
   return (
     <div className="min-h-screen w-full bg-surface text-on-surface flex flex-col justify-center items-center p-4 relative overflow-hidden select-none">
+      {/* Botão Fixo de Alternância de Tema */}
+      <ThemeToggle variant="auth" className="fixed top-6 right-6 z-50" />
+
       {/* Halos Luminosos Ambientais */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-primary/10 rounded-full blur-[130px] pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-72 h-72 bg-secondary-container/20 rounded-full blur-[100px] pointer-events-none" />
@@ -86,10 +86,10 @@ export const AuthCallbackPage: React.FC = () => {
                 warning
               </span>
             </div>
-            <h2 className="font-title-md text-title-md font-bold text-on-surface">
+            <h2 className="font-title-md text-title-md font-bold text-neutral-900 dark:text-[#F8F9FA]">
               Falha na Autenticação
             </h2>
-            <p className="font-body-sm text-body-sm text-on-surface-variant max-w-xs">
+            <p className="font-body-sm text-body-sm text-neutral-600 dark:text-[#949DAF] max-w-xs">
               {error}
             </p>
             <Button
@@ -116,10 +116,10 @@ export const AuthCallbackPage: React.FC = () => {
             </div>
 
             <div className="flex flex-col items-center gap-1">
-              <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">
+              <h2 className="font-headline-sm text-headline-sm font-bold text-neutral-900 dark:text-[#F8F9FA]">
                 Autenticando Conta Google
               </h2>
-              <p className="font-body-sm text-body-sm text-on-surface-variant">
+              <p className="font-body-sm text-body-sm text-neutral-600 dark:text-[#949DAF]">
                 {statusText}
               </p>
             </div>
@@ -132,7 +132,7 @@ export const AuthCallbackPage: React.FC = () => {
               />
             </div>
 
-            <span className="font-label-sm text-label-sm text-outline mt-1">
+            <span className="font-label-sm text-label-sm text-neutral-500 dark:text-[#949DAF] mt-1">
               Aguarde a validação do token OAuth 2.0...
             </span>
           </div>

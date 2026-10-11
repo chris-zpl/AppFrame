@@ -37,7 +37,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
               'w-6 h-6 rounded-md flex items-center justify-center transition-all duration-200',
               checked
                 ? 'bg-primary text-on-primary shadow-md ring-2 ring-primary/40'
-                : 'bg-surface-container-low text-on-surface/40 border border-outline/30 hover:border-primary/50',
+                : 'bg-white dark:bg-surface-container-low text-on-surface/40 border border-neutral-300 dark:border-outline/30 hover:border-primary/50',
               className,
             )}
           >
@@ -70,7 +70,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           />
           <div
             className={cn(
-              'w-4 h-4 rounded bg-surface-container-lowest transition-colors flex items-center justify-center border border-outline/20',
+              'w-4 h-4 rounded bg-white dark:bg-surface-container-lowest transition-colors flex items-center justify-center border border-neutral-300 dark:border-outline/20',
               'peer-checked:bg-primary peer-checked:border-primary',
               className,
             )}
@@ -88,7 +88,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="font-label-sm text-label-sm text-on-surface-variant cursor-pointer leading-tight"
+            className="font-label-sm text-label-sm text-neutral-600 dark:text-on-surface-variant cursor-pointer leading-tight"
           >
             {label}
           </label>

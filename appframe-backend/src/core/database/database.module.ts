@@ -5,6 +5,7 @@ import { User } from '../../modules/users/entities/user.entity';
 import { UserSession } from '../../modules/users/entities/user-session.entity';
 import { Watermark } from '../../modules/watermarks/entities/watermark.entity';
 import { VideoJob } from '../../modules/media/entities/video-job.entity';
+import { InitialAppFrameSchema1740000000000 } from './migrations/1740000000000-InitialAppFrameSchema';
 
 @Module({
   imports: [
@@ -19,7 +20,9 @@ import { VideoJob } from '../../modules/media/entities/video-job.entity';
         password: configService.get<string>('DB_PASSWORD', 'postgres'),
         database: configService.get<string>('DB_DATABASE', 'appframe'),
         entities: [User, UserSession, Watermark, VideoJob],
-        synchronize: false, // O estrito uso de migrations garante consistência de schema
+        synchronize: configService.get<string>('DB_SYNCHRONIZE', 'true') === 'true',
+        migrationsRun: configService.get<string>('DB_MIGRATIONS_RUN', 'true') === 'true',
+        migrations: [InitialAppFrameSchema1740000000000],
         logging: configService.get<string>('NODE_ENV') !== 'production',
         ssl:
           configService.get<string>('DB_SSL') === 'true'

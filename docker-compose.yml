@@ -1,28 +1,36 @@
 services:
+  # ==============================================================================
+  # 1. Banco de Dados Relacional - PostgreSQL 16
+  # ==============================================================================
   postgres:
     image: postgres:16-alpine
     container_name: appframe-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: appframe
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-appframe}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d appframe"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-appframe}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - appframe-network
 
+  # ==============================================================================
+  # 2. Broker de Mensageria e Cache - Redis 7
+  # ==============================================================================
   redis:
     image: redis:7-alpine
     container_name: appframe-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -30,7 +38,110 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - appframe-network
 
+  # ==============================================================================
+  # 3. Backend API & Workers - NestJS, FFmpeg, BullMQ
+  # ==============================================================================
+  backend:
+    build:
+      context: ./appframe-backend
+      dockerfile: Dockerfile
+    container_name: appframe-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+
+      # Conexão com containers internos via rede Docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_DATABASE: ${POSTGRES_DB:-appframe}
+      DB_SSL: "false"
+      DB_LOGGING: "false"
+      DB_SYNCHRONIZE: "true"
+      DB_MIGRATIONS_RUN: "true"
+
+      # Redis / BullMQ
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+
+      # Segurança & Criptografia
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-replace-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      REFRESH_TOKEN_EXPIRES_IN: ${REFRESH_TOKEN_EXPIRES_IN:-30d}
+
+      # Google OAuth 2.0
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/api/v1/auth/google/callback}
+
+      # Gemini AI
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+
+      # Processamento de Mídia & FFmpeg
+      FFMPEG_PATH: ffmpeg
+      FFPROBE_PATH: ffprobe
+      TEMP_DIR: storage/temp
+      FONTS_DIR: /usr/share/fonts
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    volumes:
+      - backend_storage:/app/storage
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/api/v1/auth/me > /dev/null 2>&1 || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - appframe-network
+
+  # ==============================================================================
+  # 4. Frontend Web - React 19, Vite, Tailwind CSS, Nginx
+  # ==============================================================================
+  frontend:
+    build:
+      context: ./appframe-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000}
+    container_name: appframe-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - appframe-network
+
+# ==============================================================================
+# Volumes Persistentes & Redes
+# ==============================================================================
 volumes:
   postgres_data:
   redis_data:
+  backend_storage:
+
+networks:
+  appframe-network:
+    driver: bridge

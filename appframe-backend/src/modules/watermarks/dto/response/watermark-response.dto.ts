@@ -24,6 +24,11 @@ export class WatermarkResponseDto {
   @Expose()
   created_at: Date;
 
+  @Expose()
+  get url(): string {
+    return `/api/v1/watermarks/${this.id}/file`;
+  }
+
   static fromEntity(
     watermark: Watermark | null | undefined,
   ): WatermarkResponseDto | null {

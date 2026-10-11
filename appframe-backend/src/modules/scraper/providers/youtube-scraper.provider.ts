@@ -1,4 +1,9 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { IVideoScraperProvider } from '../interfaces/video-scraper-provider.interface';
 import { ScrapedMediaItem } from '../interfaces/scraped-media-item.interface';
 
@@ -13,7 +18,8 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
     return (
       trimmed.includes('youtube.com') ||
       trimmed.includes('youtu.be') ||
-      trimmed.startsWith('@')
+      trimmed.startsWith('@') ||
+      !trimmed.includes('/') // handles simple channel names like "google"
     );
   }
 
@@ -27,6 +33,21 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
 
     const pad = (n: number) => n.toString().padStart(2, '0');
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  }
+
+  /**
+   * Converte segundos inteiros para o formato de exibição MM:SS ou HH:MM:SS
+   */
+  formatDuration(totalSeconds: number): string {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    if (hours > 0) {
+      return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+    return `${pad(minutes)}:${pad(seconds)}`;
   }
 
   /**
@@ -53,14 +74,15 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
    * Normaliza URLs ou @handles para o link canônico do canal no YouTube
    */
   normalizeChannelUrl(input: string): string {
-    let clean = input.trim();
+    let clean = input.trim().replace(/\/$/, '');
+    clean = clean.replace(/\/(videos|shorts|featured|streams)$/, '');
     if (clean.startsWith('@')) {
       return `https://www.youtube.com/${clean}`;
     }
     if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-      clean = `https://www.youtube.com/@${clean}`;
+      return `https://www.youtube.com/@${clean}`;
     }
-    return clean.replace(/\/$/, '');
+    return clean;
   }
 
   /**
@@ -71,32 +93,55 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
     this.logger.log(`Escaneando canal do YouTube: ${baseUrl}`);
 
     const itemsMap = new Map<string, ScrapedMediaItem>();
+    let tabNotFoundCount = 0;
 
     try {
       // 1. Coleta vídeos regulares (/videos)
-      const videosUrl = baseUrl.endsWith('/videos') ? baseUrl : `${baseUrl}/videos`;
-      const regularVideos = await this.scrapeTab(videosUrl, false);
-      for (const item of regularVideos) {
-        itemsMap.set(item.id, item);
-      }
-
-      // 2. Coleta Shorts recentes (/shorts)
-      const shortsUrl = baseUrl.endsWith('/shorts')
-        ? baseUrl
-        : `${baseUrl.replace(/\/videos$/, '')}/shorts`;
-      const shortsVideos = await this.scrapeTab(shortsUrl, true);
-      for (const item of shortsVideos) {
-        if (!itemsMap.has(item.id)) {
+      const videosUrl = `${baseUrl}/videos`;
+      const regularResult = await this.scrapeTab(videosUrl, false);
+      if (regularResult.notFound) {
+        tabNotFoundCount++;
+      } else {
+        for (const item of regularResult.items) {
           itemsMap.set(item.id, item);
         }
       }
 
+      // 2. Coleta Shorts recentes (/shorts)
+      const shortsUrl = `${baseUrl}/shorts`;
+      const shortsResult = await this.scrapeTab(shortsUrl, true);
+      if (shortsResult.notFound) {
+        tabNotFoundCount++;
+      } else {
+        for (const item of shortsResult.items) {
+          if (!itemsMap.has(item.id)) {
+            itemsMap.set(item.id, item);
+          }
+        }
+      }
+
+      // Se ambas as abas retornaram 404
+      if (tabNotFoundCount === 2) {
+        throw new NotFoundException(
+          'Canal não encontrado no YouTube. Verifique o @handle ou URL informada.',
+        );
+      }
+
       const results = Array.from(itemsMap.values());
+      if (results.length === 0) {
+        throw new NotFoundException(
+          'Nenhum vídeo ou Short público encontrado para este canal.',
+        );
+      }
+
       this.logger.log(
-        `Canal escaneado com sucesso. ${results.length} itens extraídos (${results.filter((i) => i.is_short).length} Shorts).`,
+        `Canal escaneado com sucesso. ${results.length} itens extraídos (${results.filter((i) => i.isShort).length} Shorts).`,
       );
       return results;
     } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       this.logger.error(`Erro ao escanear canal do YouTube (${baseUrl}): ${error.message}`);
       throw new BadRequestException(
         `Falha ao extrair mídias do canal do YouTube: ${error.message}`,
@@ -107,7 +152,10 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   /**
    * Realiza o scraping de uma aba específica (Videos ou Shorts) através do ytInitialData
    */
-  private async scrapeTab(url: string, isShortTab: boolean): Promise<ScrapedMediaItem[]> {
+  private async scrapeTab(
+    url: string,
+    isShortTab: boolean,
+  ): Promise<{ items: ScrapedMediaItem[]; notFound: boolean }> {
     try {
       const response = await fetch(url, {
         headers: {
@@ -117,16 +165,22 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         },
       });
 
+      if (response.status === 404) {
+        this.logger.warn(`Canal/aba não encontrado(a): ${url} (404)`);
+        return { items: [], notFound: true };
+      }
+
       if (!response.ok) {
         this.logger.warn(`Requisição HTTP falhou para ${url} com status ${response.status}`);
-        return [];
+        return { items: [], notFound: false };
       }
 
       const html = await response.text();
-      return this.parseInitialDataFromHtml(html, isShortTab);
+      const items = this.parseInitialDataFromHtml(html, isShortTab);
+      return { items, notFound: false };
     } catch (err: any) {
       this.logger.warn(`Erro ao baixar página ${url}: ${err.message}`);
-      return [];
+      return { items: [], notFound: false };
     }
   }
 
@@ -166,7 +220,99 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
     const traverse = (node: any) => {
       if (!node || typeof node !== 'object') return;
 
-      // Renderizador de vídeo padrão (richItemRenderer ou videoRenderer ou gridVideoRenderer)
+      // 1. YouTube Modern LockupViewModel (2024-2026) para vídeos regulares
+      if (node.lockupViewModel) {
+        const lockup = node.lockupViewModel;
+        const id = lockup.contentId;
+        if (id && !visitedIds.has(id)) {
+          visitedIds.add(id);
+
+          const title =
+            lockup.metadata?.lockupMetadataViewModel?.title?.content ||
+            'Sem título';
+
+          const badge =
+            lockup.contentImage?.thumbnailViewModel?.overlays?.[0]
+              ?.thumbnailBottomOverlayViewModel?.badges?.[0]
+              ?.thumbnailBadgeViewModel;
+
+          const durationText = badge?.text || '00:00';
+          const durationSeconds = this.parseDurationToSeconds(durationText);
+          const durationFormatted = this.formatDuration(durationSeconds);
+          const timestampFormatted = this.formatTimestamp(durationSeconds);
+
+          const sources =
+            lockup.contentImage?.thumbnailViewModel?.image?.sources || [];
+          const thumb =
+            sources.length > 0
+              ? sources[sources.length - 1].url
+              : `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+          const thumbnailUrl = thumb.startsWith('//') ? `https:${thumb}` : thumb;
+
+          const isShort = isShortTab || durationSeconds <= 60;
+
+          results.push({
+            id,
+            url: isShort
+              ? `https://www.youtube.com/shorts/${id}`
+              : `https://www.youtube.com/watch?v=${id}`,
+            title,
+            thumbnailUrl,
+            thumbnail_url: thumbnailUrl,
+            durationSeconds,
+            duration_seconds: durationSeconds,
+            durationFormatted,
+            timestamp_formatted: timestampFormatted,
+            isShort,
+            is_short: isShort,
+          });
+        }
+      }
+
+      // 2. YouTube Modern ShortsLockupViewModel (2024-2026) para Shorts
+      if (node.shortsLockupViewModel) {
+        const short = node.shortsLockupViewModel;
+        let id = short.onTap?.innertubeCommand?.reelWatchEndpoint?.videoId;
+        if (!id && short.entityId) {
+          id = short.entityId.replace(/^shorts-shelf-item-/, '');
+        }
+
+        if (id && !visitedIds.has(id)) {
+          visitedIds.add(id);
+
+          const title =
+            short.overlayMetadata?.primaryText?.content ||
+            short.accessibilityText?.split(',')?.[0]?.trim() ||
+            'Short do YouTube';
+
+          const sources = short.thumbnail?.sources || [];
+          const thumb =
+            sources.length > 0
+              ? sources[sources.length - 1].url
+              : `https://i.ytimg.com/vi/${id}/frame0.jpg`;
+          const thumbnailUrl = thumb.startsWith('//') ? `https:${thumb}` : thumb;
+
+          const durationSeconds = 60;
+          const durationFormatted = '01:00';
+          const timestampFormatted = '00:01:00';
+
+          results.push({
+            id,
+            url: `https://www.youtube.com/shorts/${id}`,
+            title,
+            thumbnailUrl,
+            thumbnail_url: thumbnailUrl,
+            durationSeconds,
+            duration_seconds: durationSeconds,
+            durationFormatted,
+            timestamp_formatted: timestampFormatted,
+            isShort: true,
+            is_short: true,
+          });
+        }
+      }
+
+      // 3. Renderizador de vídeo legado (richItemRenderer ou videoRenderer ou gridVideoRenderer)
       const videoRenderer =
         node.videoRenderer ||
         node.gridVideoRenderer ||
@@ -190,25 +336,35 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             '00:00';
 
           const durationSeconds = this.parseDurationToSeconds(durationText);
+          const durationFormatted = this.formatDuration(durationSeconds);
           const timestampFormatted = this.formatTimestamp(durationSeconds);
 
           const bestThumb =
             videoRenderer.thumbnail?.thumbnails?.slice(-1)?.[0]?.url ||
             `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+          const thumbnailUrl = bestThumb.startsWith('//') ? `https:${bestThumb}` : bestThumb;
+
+          const isShort = isShortTab || durationSeconds <= 60;
 
           results.push({
             id,
-            url: `https://www.youtube.com/watch?v=${id}`,
+            url: isShort
+              ? `https://www.youtube.com/shorts/${id}`
+              : `https://www.youtube.com/watch?v=${id}`,
             title,
+            thumbnailUrl,
+            thumbnail_url: thumbnailUrl,
+            durationSeconds,
             duration_seconds: durationSeconds,
+            durationFormatted,
             timestamp_formatted: timestampFormatted,
-            thumbnail_url: bestThumb.startsWith('//') ? `https:${bestThumb}` : bestThumb,
-            is_short: isShortTab || durationSeconds <= 60,
+            isShort,
+            is_short: isShort,
           });
         }
       }
 
-      // Renderizador específico de Shorts (reelItemRenderer)
+      // 4. Renderizador específico de Shorts legado (reelItemRenderer)
       const reelRenderer = node.reelItemRenderer;
       if (reelRenderer && reelRenderer.videoId) {
         const id = reelRenderer.videoId;
@@ -220,21 +376,26 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             reelRenderer.headline?.runs?.[0]?.text ||
             'Short do YouTube';
 
-          // Shorts do YouTube têm duração máxima de 60s
           const durationSeconds = 60;
-          const timestampFormatted = this.formatTimestamp(durationSeconds);
+          const durationFormatted = '01:00';
+          const timestampFormatted = '00:01:00';
 
           const bestThumb =
             reelRenderer.thumbnail?.thumbnails?.slice(-1)?.[0]?.url ||
             `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+          const thumbnailUrl = bestThumb.startsWith('//') ? `https:${bestThumb}` : bestThumb;
 
           results.push({
             id,
             url: `https://www.youtube.com/shorts/${id}`,
             title,
+            thumbnailUrl,
+            thumbnail_url: thumbnailUrl,
+            durationSeconds,
             duration_seconds: durationSeconds,
+            durationFormatted,
             timestamp_formatted: timestampFormatted,
-            thumbnail_url: bestThumb.startsWith('//') ? `https:${bestThumb}` : bestThumb,
+            isShort: true,
             is_short: true,
           });
         }

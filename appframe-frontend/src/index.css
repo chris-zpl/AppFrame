@@ -4,15 +4,27 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
+    --app-surface: #f8f9fd;
+    --app-on-surface: #0f1115;
+    --app-on-surface-variant: #4b5563;
+    --app-container: #ffffff;
+    --app-container-low: #f3f4f8;
+    --app-container-high: #e5e7eb;
+    --app-container-highest: #d1d5db;
+    --app-border: #e5e7eb;
   }
 
   html.dark {
     color-scheme: dark;
-  }
-
-  html:not(.dark) {
-    color-scheme: light;
+    --app-surface: #10131a;
+    --app-on-surface: #e0e2ec;
+    --app-on-surface-variant: #d3c4b1;
+    --app-container: #1d2027;
+    --app-container-low: #191c23;
+    --app-container-high: #272a31;
+    --app-container-highest: #32353c;
+    --app-border: #272a31;
   }
 
   html,
@@ -25,6 +37,8 @@
   body {
     overscroll-behavior: none;
     font-variant-numeric: tabular-nums;
+    background-color: var(--app-surface);
+    color: var(--app-on-surface);
   }
 
   main > :first-child {
@@ -62,17 +76,24 @@
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
-/* Suporte Light Mode suave adaptado aos tokens */
+/* ========================================================================= */
+/* Blindagem de Alto Contraste em Modo Claro (Light Mode)                    */
+/* ========================================================================= */
+html:not(.dark) {
+  background-color: #f8f9fd !important;
+  color: #0f1115 !important;
+}
+
 html:not(.dark) .bg-surface {
-  background-color: #f7f8fc !important;
+  background-color: #f8f9fd !important;
 }
 
 html:not(.dark) .text-on-surface {
-  color: #1a1d26 !important;
+  color: #0f1115 !important;
 }
 
 html:not(.dark) .text-on-surface-variant {
-  color: #555966 !important;
+  color: #4b5563 !important;
 }
 
 html:not(.dark) .bg-surface-container {
@@ -80,7 +101,7 @@ html:not(.dark) .bg-surface-container {
 }
 
 html:not(.dark) .bg-surface-container-low {
-  background-color: #f0f2f8 !important;
+  background-color: #f3f4f8 !important;
 }
 
 html:not(.dark) .bg-surface-container-lowest {
@@ -88,9 +109,25 @@ html:not(.dark) .bg-surface-container-lowest {
 }
 
 html:not(.dark) .bg-surface-container-high {
-  background-color: #e4e7f0 !important;
+  background-color: #e5e7eb !important;
 }
 
 html:not(.dark) .bg-surface-container-highest {
-  background-color: #d8dbe5 !important;
+  background-color: #d1d5db !important;
+}
+
+html:not(.dark) .border-surface-container-high {
+  border-color: #e5e7eb !important;
+}
+
+html:not(.dark) .border-surface-container-highest {
+  border-color: #d1d5db !important;
+}
+
+html:not(.dark) .border-surface-container {
+  border-color: #e5e7eb !important;
+}
+
+html:not(.dark) .text-outline {
+  color: #6b7280 !important;
 }

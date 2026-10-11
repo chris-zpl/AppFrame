@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { cn } from '../../lib/utils';
 import { AppFrameLogo } from '../common/AppFrameLogo';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { useAuth } from '../../contexts/AuthContext';
 
 export type AppNavigationPath = 'varredura' | 'studio' | 'marcas-dagua' | 'historico' | 'configuracoes';
 
@@ -31,11 +32,14 @@ export const AppShell: React.FC<AppShellProps> = ({
   currentPath = 'varredura',
   onNavigate,
   userAvatarUrl,
-  userName = 'Christian',
+  userName,
   onUserAvatarClick,
   children,
 }) => {
   const [activePath, setActivePath] = useState<AppNavigationPath>(currentPath);
+  const { user, logout } = useAuth();
+
+  const effectiveUserName = userName || user?.name || user?.email?.split('@')[0] || 'Usuário';
 
   const handleNavClick = (path: AppNavigationPath) => {
     setActivePath(path);
@@ -44,10 +48,18 @@ export const AppShell: React.FC<AppShellProps> = ({
     }
   };
 
+  const handleAvatarClick = () => {
+    if (onUserAvatarClick) {
+      onUserAvatarClick();
+    } else {
+      handleNavClick('configuracoes');
+    }
+  };
+
   return (
     <div className="min-h-screen w-full bg-surface text-on-surface flex flex-col antialiased selection:bg-primary/20 selection:text-primary">
-      {/* ================= HEADER FIXO 64px ================= */}
-      <header className="fixed top-0 w-full z-40 bg-surface/80 backdrop-blur-xl border-b border-surface-container-high/60 shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+      {/* ================= HEADER FIXO 64px COM ALTO CONTRASTE ================= */}
+      <header className="fixed top-0 w-full z-40 bg-white/95 dark:bg-[#10131a]/90 backdrop-blur-xl border-b border-neutral-200 dark:border-surface-container-high/60 shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-colors">
         <div className="h-16 max-w-7xl mx-auto px-4 md:px-margin flex items-center justify-between gap-space-md">
           {/* Logo Oficial */}
           <AppFrameLogo
@@ -58,32 +70,35 @@ export const AppShell: React.FC<AppShellProps> = ({
           {/* Navegação Desktop (oculta em mobile < 768px) */}
           <nav className="hidden md:flex items-center gap-space-sm">
             {NAV_ITEMS.map((item) => {
-              const isActive = activePath === item.key;
+              const isActive = (currentPath || activePath) === item.key;
               return (
                 <button
                   key={item.key}
                   type="button"
                   onClick={() => handleNavClick(item.key)}
                   className={cn(
-                    'px-space-md py-space-xs font-title-sm text-title-sm rounded-lg transition-colors cursor-pointer',
+                    'px-space-md py-space-xs font-title-sm text-title-sm rounded-lg transition-colors cursor-pointer relative',
                     isActive
-                      ? 'text-on-primary-container bg-primary-container font-semibold shadow-sm'
-                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high',
+                      ? 'text-primary font-semibold bg-primary/15 dark:bg-primary/20 border border-primary/40 shadow-sm shadow-primary/10'
+                      : 'text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100 dark:text-on-surface-variant dark:hover:text-on-surface dark:hover:bg-surface-container-high border border-transparent',
                   )}
                 >
                   {item.label}
+                  {isActive && (
+                    <span className="absolute bottom-[-1px] left-2 right-2 h-[2px] bg-primary rounded-full" />
+                  )}
                 </button>
               );
             })}
           </nav>
 
-          {/* Ações da Direita: ThemeToggle + Avatar */}
+          {/* Ações da Direita: ThemeToggle + Avatar + Logout */}
           <div className="flex items-center gap-3 md:gap-space-md">
             <ThemeToggle variant="header" />
 
             <div
-              onClick={onUserAvatarClick}
-              title={userName}
+              onClick={handleAvatarClick}
+              title={`Perfil: ${effectiveUserName}`}
               className={cn(
                 'relative flex items-center justify-center p-[2px] rounded-full shadow-[0_0_12px_rgba(212,163,70,0.25)] bg-surface-container cursor-pointer transition-transform hover:scale-105',
               )}
@@ -91,17 +106,25 @@ export const AppShell: React.FC<AppShellProps> = ({
               {userAvatarUrl ? (
                 <img
                   src={userAvatarUrl}
-                  alt={userName}
+                  alt={effectiveUserName}
                   className="w-8 h-8 rounded-full object-cover ring-2 ring-primary-container"
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center ring-2 ring-primary-container text-on-primary font-bold text-[13px]">
-                  <span className="material-symbols-outlined text-on-primary text-[18px]">
-                    person
-                  </span>
+                  {effectiveUserName.charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
+
+            {/* Botão de Logout rápido */}
+            <button
+              type="button"
+              onClick={logout}
+              title="Encerrar Sessão"
+              className="p-1.5 rounded-lg text-neutral-500 hover:text-red-500 hover:bg-neutral-100 dark:text-on-surface-variant dark:hover:text-red-400 dark:hover:bg-surface-container-high transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[20px]">logout</span>
+            </button>
           </div>
         </div>
       </header>
@@ -114,7 +137,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       </main>
 
       {/* ================= BARRA DE NAVEGAÇÃO MÓVEL (BOTTOM BAR < 768px) ================= */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-surface/90 backdrop-blur-xl border-t border-surface-container-high/80 px-2 py-1.5 flex items-center justify-around shadow-lg pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-surface/90 backdrop-blur-xl border-t border-neutral-200 dark:border-surface-container-high/80 px-2 py-1.5 flex items-center justify-around shadow-lg pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-colors">
         {NAV_ITEMS.map((item) => {
           const isActive = activePath === item.key;
           return (
@@ -125,8 +148,8 @@ export const AppShell: React.FC<AppShellProps> = ({
               className={cn(
                 'flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer',
                 isActive
-                  ? 'text-primary font-semibold'
-                  : 'text-on-surface-variant hover:text-on-surface',
+                  ? 'text-primary font-bold'
+                  : 'text-neutral-600 hover:text-neutral-900 dark:text-on-surface-variant dark:hover:text-on-surface',
               )}
             >
               <span
@@ -146,14 +169,14 @@ export const AppShell: React.FC<AppShellProps> = ({
       </nav>
 
       {/* ================= FOOTER MESTRE ================= */}
-      <footer className="w-full bg-surface-container-lowest mt-auto border-t border-surface-container/60 hidden md:block">
+      <footer className="w-full bg-neutral-50 dark:bg-surface-container-lowest mt-auto border-t border-neutral-200 dark:border-surface-container/60 hidden md:block transition-colors">
         <div className="max-w-7xl mx-auto px-margin py-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md">
-          <div className="flex items-center gap-space-xs font-body-sm text-body-sm text-on-surface-variant">
+          <div className="flex items-center gap-space-xs font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
             <span>AppFrame © 2026</span>
-            <span className="text-outline">•</span>
+            <span className="text-neutral-400 dark:text-outline">•</span>
             <span>Executive Video Intelligence</span>
           </div>
-          <div className="flex items-center gap-space-lg font-body-sm text-body-sm text-on-surface-variant">
+          <div className="flex items-center gap-space-lg font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
             <span className="hover:text-primary transition-colors cursor-pointer">
               Privacidade
             </span>
