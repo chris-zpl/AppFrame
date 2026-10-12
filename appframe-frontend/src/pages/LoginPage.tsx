@@ -84,16 +84,6 @@ export const LoginPage: React.FC = () => {
             variant="auth"
             className="w-full p-6 md:p-space-lg relative overflow-hidden transition-all duration-300 shadow-[0_16px_40px_rgba(0,0,0,0.5)] border border-surface-container-high/80"
           >
-            {/* Notificação de conta recém-registrada */}
-            {params.registered && (
-              <div className="mb-4 p-3 rounded-lg bg-primary-container/20 border border-primary/40 text-primary font-body-sm text-body-sm flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px]">
-                  check_circle
-                </span>
-                <span>Conta criada com sucesso! Faça seu primeiro acesso abaixo.</span>
-              </div>
-            )}
-
             {/* Cabeçalho do Card */}
             <div className="flex flex-col items-center text-center">
               <div className="mb-space-sm">
