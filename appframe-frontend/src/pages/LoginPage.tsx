@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useAuth } from '../contexts/AuthContext';
+import { authService } from '../services/auth.service';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
 import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
@@ -11,7 +12,7 @@ import { API_BASE_URL } from '../services/api';
 
 export const LoginPage: React.FC = () => {
   const { navigate, params } = useNavigation();
-  const { login } = useAuth();
+  const { refreshProfile } = useAuth();
   const [email, setEmail] = useState(params.email || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,17 +33,23 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const res = await login(email, password);
-      if (res.requires2fa) {
-        navigate('2fa', { tempToken: res.tempToken || '', email });
+      const data = await authService.login({ email, password });
+      if (data.requires2fa || data.require_2fa) {
+        navigate('2fa', { tempToken: data.tempToken || data.temp_token || '', email });
         return;
       }
+      await refreshProfile();
       navigate('/', { replace: true });
     } catch (err: any) {
-      const msg =
+      const status = err?.response?.status;
+      let msg =
         err?.response?.data?.message ||
-        err?.message ||
-        'Credenciais inválidas. Verifique seu e-mail e senha.';
+        err?.message;
+
+      if (status === 401 || !msg) {
+        msg = 'Credenciais inválidas. Verifique seu e-mail e senha.';
+      }
+
       setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       setIsLoading(false);
@@ -125,11 +132,11 @@ export const LoginPage: React.FC = () => {
 
               {/* Mensagem de Erro */}
               {errorMessage && (
-                <div className="p-3 rounded-lg bg-error-container/40 border border-error/30 text-error text-body-sm font-body-sm flex items-start gap-2 animate-in fade-in">
-                  <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5">
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-error-container/30 border border-red-200 dark:border-error/40 text-red-800 dark:text-[#ffdad6] text-body-sm font-body-sm flex items-start gap-2 animate-in fade-in">
+                  <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5 text-red-600 dark:text-error">
                     error
                   </span>
-                  <span>{errorMessage}</span>
+                  <span className="font-medium">{errorMessage}</span>
                 </div>
               )}
 
@@ -140,7 +147,10 @@ export const LoginPage: React.FC = () => {
                   placeholder="nome@empresa.com"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
                   required
                   leftIcon={
                     <span className="material-symbols-outlined text-[18px]">
@@ -155,7 +165,10 @@ export const LoginPage: React.FC = () => {
                     placeholder="••••••••••••"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errorMessage) setErrorMessage(null);
+                    }}
                     required
                     leftIcon={
                       <span className="material-symbols-outlined text-[18px]">

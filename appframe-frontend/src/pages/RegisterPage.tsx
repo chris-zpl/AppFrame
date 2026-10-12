@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
+import { authService } from '../services/auth.service';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
 import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
@@ -7,12 +8,10 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Checkbox } from '../components/ui/Checkbox';
 import { API_BASE_URL } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 
 export const RegisterPage: React.FC = () => {
   const { navigate } = useNavigation();
-  const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -66,14 +65,22 @@ export const RegisterPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await register(name, email, password);
-      toast.success('Conta criada com sucesso! Redirecionando...');
-      navigate('/', { replace: true });
+      await authService.register({ name, email, password });
+      toast.success('Conta criada com sucesso! Faça login para acessar o AppFrame.');
+      navigate('login', { registered: 'true', email });
     } catch (err: any) {
-      const msg =
+      const status = err?.response?.status;
+      let msg =
         err?.response?.data?.message ||
-        err?.message ||
-        'Falha ao registrar conta. Tente novamente.';
+        err?.message;
+
+      if (status === 409) {
+        msg = 'Já existe um usuário cadastrado com este e-mail. Faça login ou utilize outro e-mail.';
+      } else if (!msg) {
+        msg = 'Falha ao registrar conta. Tente novamente.';
+      }
+
+      // Exibe inline no formulário e NÃO dispara via Sonner toast
       setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       setIsLoading(false);
@@ -146,11 +153,11 @@ export const RegisterPage: React.FC = () => {
 
               {/* Mensagem de Erro */}
               {errorMessage && (
-                <div className="p-3 rounded-lg bg-error-container/40 border border-error/30 text-error text-body-sm font-body-sm flex items-start gap-2 animate-in fade-in">
-                  <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5">
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-error-container/30 border border-red-200 dark:border-error/40 text-red-800 dark:text-[#ffdad6] text-body-sm font-body-sm flex items-start gap-2 animate-in fade-in">
+                  <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5 text-red-600 dark:text-error">
                     error
                   </span>
-                  <span>{errorMessage}</span>
+                  <span className="font-medium">{errorMessage}</span>
                 </div>
               )}
 
@@ -161,7 +168,10 @@ export const RegisterPage: React.FC = () => {
                   placeholder="Seu nome e sobrenome"
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
                   required
                   leftIcon={
                     <span className="material-symbols-outlined text-[18px]">
@@ -175,7 +185,10 @@ export const RegisterPage: React.FC = () => {
                   placeholder="nome@empresa.com"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
                   required
                   leftIcon={
                     <span className="material-symbols-outlined text-[18px]">
