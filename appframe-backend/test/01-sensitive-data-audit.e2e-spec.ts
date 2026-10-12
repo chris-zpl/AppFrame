@@ -41,8 +41,6 @@ describe('1. Auditoria de Vazamento de Dados Sensíveis nos Endpoints (E2E)', ()
 
   const mockAuthService = {
     register: jest.fn().mockImplementation((dto) => ({
-      access_token: 'fake-jwt-token',
-      refresh_token: 'fake-refresh-token',
       user: {
         id: mockUser.id,
         name: dto.name,
@@ -152,6 +150,9 @@ describe('1. Auditoria de Vazamento de Dados Sensíveis nos Endpoints (E2E)', ()
     expect(bodyStr).not.toContain('refresh_token_hash');
     expect(res.body.user).toBeDefined();
     expect(res.body.user.password_hash).toBeUndefined();
+    expect(res.body.access_token).toBeUndefined();
+    expect(res.body.refresh_token).toBeUndefined();
+    expect(res.headers['set-cookie']).toBeUndefined();
   });
 
   it('1.2 POST /auth/login - não deve vazar password_hash, totp_secret, recovery_codes ou refresh_token_hash', async () => {

@@ -182,7 +182,9 @@ export class AuthService {
     });
 
     const savedUser = await this.userRepository.save(user);
-    return this.createSessionAndTokens(savedUser, meta);
+    return {
+      user: UserResponseDto.fromEntity(savedUser)!,
+    };
   }
 
   async login(

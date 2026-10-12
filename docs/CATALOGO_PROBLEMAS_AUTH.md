@@ -77,7 +77,12 @@ Anteriormente, o fluxo de registro autenticava o usuário na hora e redirecionav
      ```tsx
      navigate('login', { registered: 'true', email });
      ```
-  3. A página de login recebe os parâmetros, preenche automaticamente o campo de e-mail e exibe uma badge de boas-vindas ("Conta criada com sucesso! Faça seu primeiro acesso abaixo.").
+  3. A página de login recebe os parâmetros e preenche automaticamente o campo de e-mail.
+
+- **Eliminação de Sessão e Cookies no Registro (`POST /auth/register`):**
+  - O endpoint `POST /auth/register` no backend **não cria sessões nem emite tokens JWT ou cookies `Set-Cookie`**.
+  - Retorna estritamente o objeto sanitizado `{ user: UserResponseDto }`.
+  - Tokens e cookies HTTP só passam a existir quando o usuário realiza login válido via `POST /auth/login`.
 
 ### Consideração Futura (Roadmap)
 Este fluxo foi estruturado para suportar nativamente a futura implementação de **Confirmação de E-mail**:

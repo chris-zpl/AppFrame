@@ -140,13 +140,8 @@ export class AuthController {
   async register(
     @Body() dto: RegisterDto,
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
-    const result = await this.authService.register(dto, this.extractMeta(req));
-    if (result.access_token && result.refresh_token) {
-      this.setAuthCookies(res, result.access_token, result.refresh_token);
-    }
-    return result;
+    return this.authService.register(dto, this.extractMeta(req));
   }
 
   @Get('login')
