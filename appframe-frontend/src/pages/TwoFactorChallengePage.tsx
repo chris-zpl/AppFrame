@@ -5,7 +5,7 @@ import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, isPublicAuthRoute } from '../contexts/AuthContext';
 
 export const TwoFactorChallengePage: React.FC = () => {
   const { navigate, params } = useNavigation();
@@ -84,7 +84,13 @@ export const TwoFactorChallengePage: React.FC = () => {
 
     try {
       await verify2fa(tempToken, code);
-      navigate('/', { replace: true });
+      let lastActive: string | null = null;
+      try {
+        lastActive = sessionStorage.getItem('appframe_last_active_route');
+      } catch {}
+
+      const target = lastActive && !isPublicAuthRoute(lastActive) ? lastActive : '/varredura';
+      navigate(target, { replace: true });
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||

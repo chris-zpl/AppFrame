@@ -69,16 +69,17 @@ api.interceptors.response.use(
 
     const requestUrl = originalRequest?.url || '';
 
-    // Endpoints de autenticação pública / checagem inicial de sessão
-    const isAuthEndpoint =
-      requestUrl.includes('/auth/me') ||
+    // Endpoints de autenticação pública (login e registro)
+    const isPublicAuthEndpoint =
       requestUrl.includes('/auth/login') ||
       requestUrl.includes('/auth/register');
 
     // Erros gerais de servidor/rede (500+ ou erro de conexão): dispara notificação Sonner,
-    // garantindo que endpoints de autenticação NUNCA emitam notificações globais de erro
+    // garantindo que endpoints de autenticação nunca emitam notificações globais espúrias
     if (
-      !isAuthEndpoint &&
+      !isPublicAuthEndpoint &&
+      !requestUrl.includes('/auth/refresh') &&
+      !requestUrl.includes('/auth/me') &&
       ((!error.response && error.code === 'ERR_NETWORK') ||
         (error.response && error.response.status >= 500))
     ) {
@@ -89,14 +90,15 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Se o status for 401 e a URL for /auth/me, /auth/login ou /auth/register,
-    // NÃO tenta disparar a rotação de refresh token (/auth/refresh)
-    if (
-      isAuthEndpoint ||
+    // Se o status for 401 em rotas de login, registro, logout ou no próprio refresh,
+    // NÃO tenta disparar nova rotação recursiva
+    const shouldSkipRefresh =
+      isPublicAuthEndpoint ||
       requestUrl.includes('/auth/refresh') ||
       requestUrl.includes('/auth/logout') ||
-      originalRequest._retry
-    ) {
+      originalRequest._retry;
+
+    if (shouldSkipRefresh) {
       return Promise.reject(error);
     }
 
@@ -112,7 +114,7 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      // Chama o endpoint de renovação via cookies seguros
+      // Chama o endpoint de renovação via cookies seguros (refresh_token com Path=/)
       await axios.post(
         `${API_BASE_URL}/auth/refresh`,
         {},
@@ -123,6 +125,12 @@ api.interceptors.response.use(
       return api(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError);
+      try {
+        localStorage.removeItem('appframe_has_session');
+        sessionStorage.removeItem('appframe_last_active_route');
+      } catch {
+        // Fallback silencioso para ambientes com restrição de storage
+      }
       window.dispatchEvent(new Event('appframe-auth-logout'));
       return Promise.reject(refreshError);
     } finally {

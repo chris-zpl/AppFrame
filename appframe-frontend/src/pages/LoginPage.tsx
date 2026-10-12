@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useNavigation } from '../contexts/NavigationContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, isPublicAuthRoute } from '../contexts/AuthContext';
 import { authService } from '../services/auth.service';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
 import { ThemeToggle } from '../components/common/ThemeToggle';
@@ -12,7 +13,8 @@ import { API_BASE_URL } from '../services/api';
 
 export const LoginPage: React.FC = () => {
   const { navigate, params } = useNavigation();
-  const { refreshProfile } = useAuth();
+  const { isAuthenticated, refreshProfile } = useAuth();
+  const location = useLocation();
   const [email, setEmail] = useState(params.email || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,6 +24,28 @@ export const LoginPage: React.FC = () => {
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
+
+  // Retorna usuário já autenticado para a tela em que estava, impedindo acesso ao login
+  useEffect(() => {
+    if (isAuthenticated) {
+      const fromPath = (location.state as any)?.from?.pathname;
+      const fromSearch = (location.state as any)?.from?.search || '';
+      const fromUrl = fromPath ? `${fromPath}${fromSearch}` : null;
+      let lastActive: string | null = null;
+      try {
+        lastActive = sessionStorage.getItem('appframe_last_active_route');
+      } catch {}
+
+      const target =
+        fromUrl && !isPublicAuthRoute(fromUrl)
+          ? fromUrl
+          : lastActive && !isPublicAuthRoute(lastActive)
+          ? lastActive
+          : '/varredura';
+
+      navigate(target, { replace: true });
+    }
+  }, [isAuthenticated, location.state, navigate]);
 
   const handleGoogleLogin = () => {
     window.location.href = `${API_BASE_URL}/auth/google`;
@@ -39,7 +63,23 @@ export const LoginPage: React.FC = () => {
         return;
       }
       await refreshProfile();
-      navigate('/', { replace: true });
+
+      const fromPath = (location.state as any)?.from?.pathname;
+      const fromSearch = (location.state as any)?.from?.search || '';
+      const fromUrl = fromPath ? `${fromPath}${fromSearch}` : null;
+      let lastActive: string | null = null;
+      try {
+        lastActive = sessionStorage.getItem('appframe_last_active_route');
+      } catch {}
+
+      const target =
+        fromUrl && !isPublicAuthRoute(fromUrl)
+          ? fromUrl
+          : lastActive && !isPublicAuthRoute(lastActive)
+          ? lastActive
+          : '/varredura';
+
+      navigate(target, { replace: true });
     } catch (err: any) {
       const status = err?.response?.status;
       let msg =

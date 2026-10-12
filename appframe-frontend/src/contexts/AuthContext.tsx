@@ -49,13 +49,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const resolvedUser = (profile as any)?.user || (profile as any)?.data || profile;
         if (resolvedUser && resolvedUser.id) {
           setUser(resolvedUser);
+          try {
+            localStorage.setItem('appframe_has_session', 'true');
+          } catch {}
           return resolvedUser as UserProfile;
         } else {
           setUser(null);
+          try {
+            localStorage.removeItem('appframe_has_session');
+          } catch {}
           return null;
         }
       } catch {
         setUser(null);
+        try {
+          localStorage.removeItem('appframe_has_session');
+        } catch {}
         return null;
       } finally {
         profileRequestPromiseRef.current = null;
@@ -73,6 +82,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {
       // Ignora falhas de rede no logout
     } finally {
+      try {
+        localStorage.removeItem('appframe_has_session');
+        sessionStorage.removeItem('appframe_last_active_route');
+      } catch {}
       setUser(null);
       setIsLoading(false);
     }
@@ -81,9 +94,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 2. Desvincular checagem de autenticação da navegação: roda exclusivamente na montagem
   useEffect(() => {
     const initialPath = window.location.pathname;
+    let hasStoredSession = false;
+    try {
+      hasStoredSession = localStorage.getItem('appframe_has_session') === 'true';
+    } catch {}
 
-    // Se estiver explicitamente em rotas públicas de autenticação, NÃO dispara /auth/me
-    if (isPublicAuthRoute(initialPath)) {
+    // Se estiver explicitamente em rota pública e NÃO tiver sessão ativa salva,
+    // NÃO dispara chamada de rede para evitar 401 indevido
+    if (isPublicAuthRoute(initialPath) && !hasStoredSession) {
       setUser(null);
       setIsLoading(false);
       return;
@@ -104,6 +122,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const handleAuthLogout = () => {
+      try {
+        localStorage.removeItem('appframe_has_session');
+        sessionStorage.removeItem('appframe_last_active_route');
+      } catch {}
       setUser(null);
       setIsLoading(false);
     };
@@ -133,6 +155,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(resolvedUser);
       }
 
+      if (resolvedUser && resolvedUser.id) {
+        try {
+          localStorage.setItem('appframe_has_session', 'true');
+        } catch {}
+      }
+
       setIsLoading(false);
       return { requires2fa: false, user: resolvedUser || undefined };
     } catch (error) {
@@ -149,14 +177,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const data = await authService.register({ name, email, password });
-      let resolvedUser = data.user || (data as any)?.data?.user;
-      if (!resolvedUser || !resolvedUser.id) {
-        resolvedUser = await refreshProfile();
-      } else {
-        setUser(resolvedUser);
-      }
       setIsLoading(false);
-      return { user: resolvedUser || undefined };
+      return { user: data.user || (data as any)?.data?.user || undefined };
     } catch (error) {
       setIsLoading(false);
       throw error;
@@ -176,6 +198,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setUser(resolvedUser);
       }
+
+      if (resolvedUser && resolvedUser.id) {
+        try {
+          localStorage.setItem('appframe_has_session', 'true');
+        } catch {}
+      }
+
       setIsLoading(false);
       return { user: resolvedUser || undefined };
     } catch (error) {
@@ -187,7 +216,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleOAuthCallback = async () => {
     setIsLoading(true);
     try {
-      await refreshProfile();
+      const profile = await refreshProfile();
+      if (profile && profile.id) {
+        try {
+          localStorage.setItem('appframe_has_session', 'true');
+        } catch {}
+      }
     } finally {
       setIsLoading(false);
     }

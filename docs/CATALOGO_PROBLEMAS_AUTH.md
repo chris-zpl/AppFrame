@@ -89,3 +89,56 @@ Este fluxo foi estruturado para suportar nativamente a futura implementação de
 - O backend enviará um e-mail com token/link seguro de ativação.
 - O usuário permanecerá na tela de login até clicar no link do e-mail.
 - Ao confirmar o e-mail, a flag `is_email_verified` será ativada no banco e o login será liberado.
+
+---
+
+## 4. Bloqueio de Acesso e Retorno a Login/Registro para Usuários Autenticados
+
+### Sintoma
+Após realizar o login, se o usuário tentasse voltar para a tela de `/login` ou `/register` (seja digitando a URL diretamente, clicando no botão de voltar do navegador ou clicando em links como "Não tem conta? Cadastre-se"), a aplicação permitia o acesso ou recarregava a tela de login como se o usuário não estivesse autenticado.
+
+### Causa Raiz
+1. No `AuthContext.tsx`, o efeito de montagem possuía uma trava cega: se a rota atual fosse pública (`/login` ou `/register`), executava `setUser(null)` e abortava a validação. Assim, qualquer recarregamento na rota `/login` limpava o usuário em memória, mesmo que o usuário possuísse cookies de sessão ativos.
+2. O componente `<PublicRoute>` em `routes/index.tsx` redirecionava estaticamente para `/varredura`, sem histórico da tela anterior em que o usuário estava trabalhando.
+3. As páginas `<LoginPage>` e `<RegisterPage>` não possuíam guarda reativa interna para redirecionar usuários autenticados imediatamente para a rota anterior gravada.
+
+### Solução Aplicada
+1. **Flag de Sessão no Cliente (`appframe_has_session`):**
+   - Ao realizar login ou autenticação OAuth, uma flag `localStorage.setItem('appframe_has_session', 'true')` é armazenada.
+   - No `AuthContext.tsx`, o `initAuth` só ignora a chamada a `/auth/me` se for uma rota pública **E** não houver flag de sessão ativa. Se houver flag de sessão ativa, o perfil é recuperado e validado silenciosamente.
+   - No `logout()` ou ao revogar sessão, a flag é removida.
+2. **Rastreamento da Última Rota Ativa (`appframe_last_active_route`):**
+   - No `<ProtectedRoute>`, sempre que o usuário navega por rotas protegidas (`/varredura`, `/studio`, `/marcas-dagua`, etc.), a rota com seus parâmetros de busca é salva em `sessionStorage.setItem('appframe_last_active_route', fullPath)`.
+3. **Redirecionamento Inteligente no `<PublicRoute>` e Páginas de Auth:**
+   - Se o usuário autenticado tentar acessar `/login` ou `/register`:
+     - O `<PublicRoute>` consulta `sessionStorage.getItem('appframe_last_active_route')` ou o estado `location.state?.from`.
+     - Executa `<Navigate to={target} replace />`. O uso de `replace` garante que a entrada de `/login` no histórico do navegador seja substituída pela rota destino, impedindo loops no botão "Voltar" do navegador.
+   - Em [`LoginPage.tsx`](../appframe-frontend/src/pages/LoginPage.tsx) e [`RegisterPage.tsx`](../appframe-frontend/src/pages/RegisterPage.tsx), um efeito síncrono garante o redirecionamento imediato caso um usuário autenticado acesse os componentes.
+
+---
+
+## 5. Persistência do Refresh Token em Todas as Páginas e Rotação Silenciosa sem 401
+
+### Sintoma
+1. Na inspeção de rede do navegador (DevTools Network tab), ao verificar requisições para `GET /api/v1/auth/me` e outros endpoints protegidos, apenas o cookie `access_token` era enviado. O `refresh_token` só aparecia na resposta inicial do `/auth/login`.
+2. Quando o `access_token` expirava (15 minutos), a requisição a `/auth/me` falhava com 401 e o sistema deslogava o usuário compulsoriamente para a tela de login, em vez de renovar a sessão silenciosamente via `POST /api/v1/auth/refresh`.
+
+### Causa Raiz
+1. **Escopo do Cookie no Backend:**
+   - Em `auth.controller.ts`, o cookie `refresh_token` estava configurado com `path: '/api/v1/auth/refresh'`.
+   - Conforme a RFC 6265, o navegador restringe o envio do cookie exclusivamente a URLs que correspondam a esse prefixo. Portanto, requisições como `GET /api/v1/auth/me` ou `POST /api/v1/scraper/scan` não recebiam o `refresh_token`.
+2. **Bloqueio no Interceptor do Frontend (`api.ts`):**
+   - No interceptor de resposta do Axios (`api.ts`), a constante `isAuthEndpoint` incluía `/auth/me`.
+   - Ao receber status 401, a lógica verificava se o endpoint era `isAuthEndpoint` e, se fosse, **abortava o refresh** (`return Promise.reject(error)`).
+   - Isso impedia que a expiração do token em `/auth/me` disparasse o fluxo de rotação em fila, causando a perda imediata da sessão em memória no `AuthContext`.
+
+### Solução Aplicada
+1. **Ajuste de Path do Cookie no Backend (`auth.controller.ts`):**
+   - O `refresh_token` passou a ser configurado com `path: '/'`.
+   - Com isso, o navegador passa a anexar tanto `access_token` quanto `refresh_token` em todas as requisições autenticadas da aplicação (inclusive `/auth/me`).
+   - O método `clearAuthCookies` foi atualizado para limpar `refresh_token` em ambos os escopos (`'/'` e `'/api/v1/auth/refresh'`), garantindo limpeza retrocompatível.
+2. **Habilitação de Rotação Automática em `/auth/me` no Interceptor (`api.ts`):**
+   - Separado `isPublicAuthEndpoint` (apenas `/auth/login` e `/auth/register`) de endpoints protegidos.
+   - A chamada `GET /auth/me`, ao receber 401 por expiração do access token, agora aciona transparentemente o `POST /api/v1/auth/refresh`.
+   - Com o `refresh_token` presente nos cookies (via `Path=/`), a renovação de tokens é concluída com sucesso, novos cookies são definidos e a requisição original é repetida automaticamente sem interrupção para o usuário.
+

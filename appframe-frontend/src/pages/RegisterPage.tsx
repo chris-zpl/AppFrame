@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
+import { useAuth, isPublicAuthRoute } from '../contexts/AuthContext';
 import { authService } from '../services/auth.service';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
 import { ThemeToggle } from '../components/common/ThemeToggle';
@@ -12,6 +13,7 @@ import { toast } from 'sonner';
 
 export const RegisterPage: React.FC = () => {
   const { navigate } = useNavigation();
+  const { isAuthenticated } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,6 +21,19 @@ export const RegisterPage: React.FC = () => {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Retorna usuário já autenticado para a tela em que estava, impedindo acesso ao registro
+  useEffect(() => {
+    if (isAuthenticated) {
+      let lastActive: string | null = null;
+      try {
+        lastActive = sessionStorage.getItem('appframe_last_active_route');
+      } catch {}
+
+      const target = lastActive && !isPublicAuthRoute(lastActive) ? lastActive : '/varredura';
+      navigate(target, { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   // Análise determinística de força de senha
   const passwordStrength = useMemo(() => {

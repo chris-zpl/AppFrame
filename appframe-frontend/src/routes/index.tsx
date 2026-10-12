@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, isPublicAuthRoute } from '../contexts/AuthContext';
 import {
   RegisterPage,
   LoginPage,
@@ -17,6 +17,15 @@ import {
 export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+
+  // Rastreia a última rota protegida navegada para redirecionamento inteligente
+  React.useEffect(() => {
+    if (isAuthenticated && !isPublicAuthRoute(location.pathname)) {
+      try {
+        sessionStorage.setItem('appframe_last_active_route', location.pathname + location.search);
+      } catch {}
+    }
+  }, [isAuthenticated, location.pathname, location.search]);
 
   if (isLoading) {
     return (
@@ -37,6 +46,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
 // Componente para rotas públicas (impede usuário autenticado de acessar login/register)
 export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -47,7 +57,23 @@ export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children 
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/varredura" replace />;
+    const fromPath = (location.state as any)?.from?.pathname;
+    const fromSearch = (location.state as any)?.from?.search || '';
+    const fromUrl = fromPath ? `${fromPath}${fromSearch}` : null;
+
+    let lastActive: string | null = null;
+    try {
+      lastActive = sessionStorage.getItem('appframe_last_active_route');
+    } catch {}
+
+    const target =
+      fromUrl && !isPublicAuthRoute(fromUrl)
+        ? fromUrl
+        : lastActive && !isPublicAuthRoute(lastActive)
+        ? lastActive
+        : '/varredura';
+
+    return <Navigate to={target} replace />;
   }
 
   return <>{children}</>;
