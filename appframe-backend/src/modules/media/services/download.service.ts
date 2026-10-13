@@ -132,19 +132,61 @@ export class DownloadService {
   }
 
   /**
-   * Faz download real de vídeo/Short do YouTube usando yt-dlp em MP4 compatível com HTML5/FFmpeg.
+   * Faz download real de vídeo/Short do YouTube usando yt-dlp em MP4 (H.264/AAC) compatível com HTML5/FFmpeg.
+   * Utiliza clientes de player (web_embedded / tv / ios / android) com player_skip=webpage
+   * para evitar bloqueios 429 / "Sign in to confirm you're not a bot" na página web padrão.
    */
-  private downloadWithYtDlp(
+  private async downloadWithYtDlp(
     sourceUrl: string,
     destinationPath: string,
     onProgress?: (progressPercent: number) => Promise<void> | void,
   ): Promise<void> {
     this.logger.log(`Baixando vídeo do YouTube via yt-dlp: ${sourceUrl}`);
 
+    const clientStrategies = [
+      'youtube:player_client=web_embedded;player_skip=webpage',
+      'youtube:player_client=tv,web_embedded,mweb,ios,android;player_skip=webpage',
+    ];
+
+    let lastError = 'erro no download';
+
+    for (const extractorArgs of clientStrategies) {
+      try {
+        await this.runYtDlpProcess(
+          sourceUrl,
+          destinationPath,
+          extractorArgs,
+          onProgress,
+        );
+        if (fs.existsSync(destinationPath)) {
+          return;
+        }
+      } catch (err: any) {
+        lastError = err?.message || 'erro no download';
+        this.logger.warn(
+          `Tentativa yt-dlp com (${extractorArgs}) falhou: ${lastError}`,
+        );
+        await this.cleanupFile(destinationPath);
+      }
+    }
+
+    throw new BadRequestException(
+      `Não foi possível baixar o vídeo selecionado (${lastError}).`,
+    );
+  }
+
+  private runYtDlpProcess(
+    sourceUrl: string,
+    destinationPath: string,
+    extractorArgs: string,
+    onProgress?: (progressPercent: number) => Promise<void> | void,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       const args = [
+        '--extractor-args',
+        extractorArgs,
         '-f',
-        'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        'bestvideo[height<=1080][vcodec^=avc1]+bestaudio[ext=m4a]/bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[height<=1080]/best',
         '--merge-output-format',
         'mp4',
         '--no-playlist',
@@ -181,22 +223,20 @@ export class DownloadService {
         if (code === 0 && fs.existsSync(destinationPath)) {
           resolve();
         } else {
-          this.logger.error(`yt-dlp falhou (code ${code}): ${stderrBuffer}`);
-          reject(
-            new BadRequestException(
-              `Não foi possível baixar o vídeo selecionado (${stderrBuffer.trim().split('\n').pop() || 'erro no download'}).`,
-            ),
-          );
+          const errorLine =
+            stderrBuffer
+              .trim()
+              .split('\n')
+              .filter((line) => line.includes('ERROR:'))
+              .pop() ||
+            stderrBuffer.trim().split('\n').pop() ||
+            `código ${code}`;
+          reject(new Error(errorLine));
         }
       });
 
       proc.on('error', (err) => {
-        this.logger.error(`Erro ao executar yt-dlp: ${err.message}`);
-        reject(
-          new BadRequestException(
-            `Falha ao iniciar o utilitário de download de vídeo: ${err.message}`,
-          ),
-        );
+        reject(new Error(err.message));
       });
     });
   }

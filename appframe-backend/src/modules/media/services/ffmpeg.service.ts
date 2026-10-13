@@ -102,6 +102,102 @@ export class FFmpegService {
   }
 
   /**
+   * Extrai a onda sonora real (Audio Waveform) do arquivo de vídeo/áudio via FFmpeg (PCM 16-bit mono),
+   * dividindo o sinal real em buckets normalizados [0.08 .. 1.0] para exibição fiel na timeline do Studio.
+   */
+  async extractAudioWaveform(
+    filePath: string,
+    bucketsCount: number = 70,
+  ): Promise<number[]> {
+    return new Promise((resolve) => {
+      const proc = spawn(this.ffmpegPath, [
+        '-v',
+        'error',
+        '-i',
+        filePath,
+        '-vn',
+        '-ac',
+        '1',
+        '-ar',
+        '1000',
+        '-f',
+        's16le',
+        'pipe:1',
+      ]);
+
+      const chunks: Buffer[] = [];
+      let totalLength = 0;
+      const maxBufferBytes = 10 * 1024 * 1024;
+
+      proc.stdout.on('data', (chunk: Buffer) => {
+        if (totalLength < maxBufferBytes) {
+          chunks.push(chunk);
+          totalLength += chunk.length;
+        }
+      });
+
+      proc.on('close', () => {
+        const buffer = Buffer.concat(chunks);
+        const totalSamples = Math.floor(buffer.length / 2);
+
+        if (totalSamples < bucketsCount) {
+          resolve(Array(bucketsCount).fill(0.08));
+          return;
+        }
+
+        const samplesPerBucket = Math.max(
+          1,
+          Math.floor(totalSamples / bucketsCount),
+        );
+        const rawPeaks: number[] = [];
+        let maxPeak = 0;
+
+        for (let b = 0; b < bucketsCount; b++) {
+          const startSample = b * samplesPerBucket;
+          const endSample =
+            b === bucketsCount - 1
+              ? totalSamples
+              : Math.min(totalSamples, startSample + samplesPerBucket);
+
+          let sumSquares = 0;
+          let count = 0;
+          let localMax = 0;
+
+          for (let s = startSample; s < endSample; s++) {
+            const sample = Math.abs(buffer.readInt16LE(s * 2)) / 32768;
+            sumSquares += sample * sample;
+            if (sample > localMax) {
+              localMax = sample;
+            }
+            count++;
+          }
+
+          const rms = count > 0 ? Math.sqrt(sumSquares / count) : 0;
+          const combined = rms * 0.65 + localMax * 0.35;
+          rawPeaks.push(combined);
+          if (combined > maxPeak) {
+            maxPeak = combined;
+          }
+        }
+
+        if (maxPeak <= 0.0001) {
+          resolve(Array(bucketsCount).fill(0.08));
+          return;
+        }
+
+        const normalized = rawPeaks.map((val) =>
+          Math.max(0.08, Math.min(1, Number((val / maxPeak).toFixed(3)))),
+        );
+        resolve(normalized);
+      });
+
+      proc.on('error', () => {
+        resolve(Array(bucketsCount).fill(0.08));
+      });
+    });
+  }
+
+  /**
    * Calcula coordenadas para matriz 3x3 de posicionamento da marca d'água.
    * Preserva canal alfa transparente PNG e respeita margens de segurança.
    */

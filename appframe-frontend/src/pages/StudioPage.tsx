@@ -109,15 +109,16 @@ export const StudioPage: React.FC = () => {
   const [selectedMediaFile, setSelectedMediaFile] = useState<File | null>(null);
   const mediaFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Configurações Globais do Player e Formato
+  // Configurações Globais do Player e Formato (sem valores mockados)
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0.0);
-  const [totalDuration, setTotalDuration] = useState<number>(60.0);
+  const [totalDuration, setTotalDuration] = useState<number>(0.0);
 
-  // Timeline & Cortes de Precisão (In e Out)
+  // Timeline & Cortes de Precisão (In, Out e Onda Sonora Real do Vídeo)
   const [trimIn, setTrimIn] = useState<number>(0.0);
-  const [trimOut, setTrimOut] = useState<number>(45.0);
+  const [trimOut, setTrimOut] = useState<number>(0.0);
+  const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<'legendas' | 'marca-dagua'>('legendas');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [renderProgress, setRenderProgress] = useState<number>(0);
@@ -271,17 +272,6 @@ export const StudioPage: React.FC = () => {
     return base;
   };
 
-  // Onda sonora representativa da timeline
-  const waveformPeaks = useMemo(() => {
-    const peaks: number[] = [];
-    for (let i = 0; i < 70; i++) {
-      const sin = Math.sin(i * 0.25) * 0.4 + 0.5;
-      const noise = ((i * 37) % 19) / 19 * 0.4;
-      peaks.push(Math.min(1, Math.max(0.15, sin * 0.7 + noise * 0.3)));
-    }
-    return peaks;
-  }, []);
-
   // Renderização determinística no Canvas com cálculo estrito de quebra de linha (fix_bounds)
   const drawCanvasOverlay = useCallback(() => {
     const canvas = canvasRef.current;
@@ -294,6 +284,11 @@ export const StudioPage: React.FC = () => {
 
     // Limpa quadro anterior
     ctx.clearRect(0, 0, width, height);
+
+    // Só desenha legendas e marca d'água quando o vídeo real estiver pronto no player
+    if (!previewStreamUrl || isPreparingPreview || previewError) {
+      return;
+    }
 
     // ==========================================
     // 1. RENDERIZAÇÃO DA LEGENDA COM FIX_BOUNDS
@@ -466,6 +461,9 @@ export const StudioPage: React.FC = () => {
     watermarkOpacity,
     watermarkScale,
     currentTime,
+    previewStreamUrl,
+    isPreparingPreview,
+    previewError,
   ]);
 
   // Sincroniza seek de tempo no estado e no elemento <video> real
@@ -490,7 +488,11 @@ export const StudioPage: React.FC = () => {
     setIsPreparingPreview(true);
     setPreviewError(null);
     setPreviewStreamUrl(null);
-    setCurrentTime(0);
+    setWaveformPeaks([]);
+    setTotalDuration(0.0);
+    setTrimIn(0.0);
+    setTrimOut(0.0);
+    setCurrentTime(0.0);
     setStaticText(videoItem.title || '');
     setGeminiPrompt(videoItem.title || '');
     setDynamicSegments([]);
@@ -501,13 +503,18 @@ export const StudioPage: React.FC = () => {
       const realDuration =
         preview.durationSeconds && preview.durationSeconds > 0
           ? Number(preview.durationSeconds.toFixed(2))
-          : 60.0;
+          : 0.0;
 
       setPreviewStreamUrl(streamUrl);
       setTotalDuration(realDuration);
       setTrimIn(0.0);
       setTrimOut(realDuration);
       setCurrentTime(0.0);
+      setWaveformPeaks(
+        Array.isArray(preview.waveformPeaks) && preview.waveformPeaks.length > 0
+          ? preview.waveformPeaks
+          : []
+      );
 
       if (
         videoItem.isShort ||
@@ -1023,7 +1030,7 @@ export const StudioPage: React.FC = () => {
                       if (Number.isFinite(vid.duration) && vid.duration > 0) {
                         const dur = Number(vid.duration.toFixed(2));
                         setTotalDuration(dur);
-                        setTrimOut((prev) => (prev > dur || prev === 45 ? dur : prev));
+                        setTrimOut((prev) => (prev > dur || prev <= 0 ? dur : prev));
                       }
                     }}
                     onTimeUpdate={(e) => {
@@ -1046,12 +1053,16 @@ export const StudioPage: React.FC = () => {
                   />
                 ) : null}
 
-                {/* Camada de Canvas Sobreposta ao Vídeo */}
+                {/* Camada de Canvas Sobreposta ao Vídeo (visível apenas quando o vídeo real está carregado) */}
                 <canvas
                   ref={canvasRef}
                   width={aspectRatio === '9:16' ? 360 : 640}
                   height={aspectRatio === '9:16' ? 640 : 360}
-                  className="absolute inset-0 w-full h-full object-contain pointer-events-none z-20"
+                  className={cn(
+                    'absolute inset-0 w-full h-full object-contain pointer-events-none z-20',
+                    (!previewStreamUrl || isPreparingPreview || Boolean(previewError)) &&
+                      'hidden'
+                  )}
                 />
 
                 {/* Indicador de Margens Seguras (Safe Zone) */}
@@ -1117,7 +1128,7 @@ export const StudioPage: React.FC = () => {
                     {formatTime(currentTime)} / {formatTime(totalDuration)}
                   </span>
                   <span className="text-[10px] text-outline px-1 py-0.5 rounded bg-surface-container font-mono">
-                    Corte: {formatTime(trimOut - trimIn)}
+                    Corte: {formatTime(Math.max(0, trimOut - trimIn))}
                   </span>
                 </div>
 
@@ -1167,7 +1178,7 @@ export const StudioPage: React.FC = () => {
                   </span>
                   <span className="text-outline">•</span>
                   <span className="text-tertiary">
-                    Duração: <strong>{(trimOut - trimIn).toFixed(2)}s</strong>
+                    Duração: <strong>{Math.max(0, trimOut - trimIn).toFixed(2)}s</strong>
                   </span>
                 </div>
               </div>
@@ -1181,96 +1192,125 @@ export const StudioPage: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Pista da Onda Sonora e Região de Corte */}
+                {/* Pista da Onda Sonora Real do Vídeo e Região de Corte */}
                 <div
                   ref={timelineRef}
-                  onClick={handleTimelineClick}
-                  className="relative w-full h-20 rounded-xl bg-surface-container-lowest border border-surface-container-highest/80 overflow-hidden cursor-pointer flex items-center px-1"
+                  onClick={totalDuration > 0 ? handleTimelineClick : undefined}
+                  className={cn(
+                    'relative w-full h-20 rounded-xl bg-surface-container-lowest border border-surface-container-highest/80 overflow-hidden flex items-center px-1',
+                    totalDuration > 0 ? 'cursor-pointer' : 'cursor-default'
+                  )}
                 >
-                  {/* Gráfico da Onda Sonora (Waveform de Áudio) */}
-                  <div className="w-full h-full flex items-center justify-between gap-[2px] px-1 pointer-events-none">
-                    {waveformPeaks.map((peak, idx) => {
-                      const peakTime = (idx / waveformPeaks.length) * totalDuration;
-                      const isInsideCut = peakTime >= trimIn && peakTime <= trimOut;
+                  {waveformPeaks.length === 0 || totalDuration <= 0 ? (
+                    <div className="w-full h-full flex items-center justify-center gap-2 text-label-sm text-on-surface-variant">
+                      {isPreparingPreview ? (
+                        <>
+                          <span className="material-symbols-outlined text-[18px] text-primary animate-spin">
+                            progress_activity
+                          </span>
+                          <span>Extraindo onda sonora real (Audio Waveform) do vídeo...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-[18px] text-outline">
+                            graphic_eq
+                          </span>
+                          <span>
+                            {previewError
+                              ? 'Não foi possível extrair o áudio do vídeo.'
+                              : 'Aguardando carregamento do vídeo para exibir a onda sonora real.'}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {/* Gráfico da Onda Sonora Real extraída via FFmpeg */}
+                      <div className="w-full h-full flex items-center justify-between gap-[2px] px-1 pointer-events-none">
+                        {waveformPeaks.map((peak, idx) => {
+                          const peakTime = (idx / waveformPeaks.length) * totalDuration;
+                          const isInsideCut = peakTime >= trimIn && peakTime <= trimOut;
 
-                      return (
-                        <div
-                          key={idx}
-                          className={cn(
-                            'flex-1 rounded-full transition-colors',
-                            isInsideCut
-                              ? 'bg-primary shadow-[0_0_6px_rgba(242,190,94,0.3)]'
-                              : 'bg-surface-container-highest/60 opacity-30'
-                          )}
-                          style={{
-                            height: `${peak * 85}%`,
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-
-                  {/* Faixa Sombreada Excluída (Antes do In) */}
-                  <div
-                    className="absolute top-0 bottom-0 left-0 bg-black/60 pointer-events-none border-r border-primary/40"
-                    style={{ width: `${(trimIn / totalDuration) * 100}%` }}
-                  />
-
-                  {/* Faixa Sombreada Excluída (Depois do Out) */}
-                  <div
-                    className="absolute top-0 bottom-0 right-0 bg-black/60 pointer-events-none border-l border-primary/40"
-                    style={{ width: `${100 - (trimOut / totalDuration) * 100}%` }}
-                  />
-
-                  {/* Faixa Ativa com Destaque Âmbar (#D4A346) */}
-                  <div
-                    className="absolute top-0 bottom-0 pointer-events-none border-y-2 border-primary bg-primary/10"
-                    style={{
-                      left: `${(trimIn / totalDuration) * 100}%`,
-                      width: `${((trimOut - trimIn) / totalDuration) * 100}%`,
-                    }}
-                  />
-
-                  {/* Marcador Início (In) - Arrastável */}
-                  <div
-                    onMouseDown={(e) => handleTimelineMouseDown(e, 'in')}
-                    className="absolute top-0 bottom-0 z-30 flex flex-col items-center cursor-ew-resize group"
-                    style={{ left: `${(trimIn / totalDuration) * 100}%` }}
-                  >
-                    <div className="w-4 h-full bg-primary/30 flex items-center justify-center relative -translate-x-1/2">
-                      <div className="w-1.5 h-full bg-primary rounded-full shadow-[0_0_8px_rgba(212,163,70,0.8)]" />
-                      {/* Handle Superior com Tooltip */}
-                      <div className="absolute -top-3 w-5 h-5 rounded-md bg-primary text-on-primary flex items-center justify-center text-[10px] font-bold shadow-md">
-                        In
+                          return (
+                            <div
+                              key={idx}
+                              className={cn(
+                                'flex-1 rounded-full transition-colors',
+                                isInsideCut
+                                  ? 'bg-primary shadow-[0_0_6px_rgba(242,190,94,0.3)]'
+                                  : 'bg-surface-container-highest/60 opacity-30'
+                              )}
+                              style={{
+                                height: `${peak * 85}%`,
+                              }}
+                            />
+                          );
+                        })}
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Marcador Fim (Out) - Arrastável */}
-                  <div
-                    onMouseDown={(e) => handleTimelineMouseDown(e, 'out')}
-                    className="absolute top-0 bottom-0 z-30 flex flex-col items-center cursor-ew-resize group"
-                    style={{ left: `${(trimOut / totalDuration) * 100}%` }}
-                  >
-                    <div className="w-4 h-full bg-primary/30 flex items-center justify-center relative -translate-x-1/2">
-                      <div className="w-1.5 h-full bg-primary rounded-full shadow-[0_0_8px_rgba(212,163,70,0.8)]" />
-                      {/* Handle Superior com Tooltip */}
-                      <div className="absolute -top-3 w-5 h-5 rounded-md bg-primary text-on-primary flex items-center justify-center text-[10px] font-bold shadow-md">
-                        Out
+                      {/* Faixa Sombreada Excluída (Antes do In) */}
+                      <div
+                        className="absolute top-0 bottom-0 left-0 bg-black/60 pointer-events-none border-r border-primary/40"
+                        style={{ width: `${(trimIn / totalDuration) * 100}%` }}
+                      />
+
+                      {/* Faixa Sombreada Excluída (Depois do Out) */}
+                      <div
+                        className="absolute top-0 bottom-0 right-0 bg-black/60 pointer-events-none border-l border-primary/40"
+                        style={{ width: `${100 - (trimOut / totalDuration) * 100}%` }}
+                      />
+
+                      {/* Faixa Ativa com Destaque Âmbar (#D4A346) */}
+                      <div
+                        className="absolute top-0 bottom-0 pointer-events-none border-y-2 border-primary bg-primary/10"
+                        style={{
+                          left: `${(trimIn / totalDuration) * 100}%`,
+                          width: `${((trimOut - trimIn) / totalDuration) * 100}%`,
+                        }}
+                      />
+
+                      {/* Marcador Início (In) - Arrastável */}
+                      <div
+                        onMouseDown={(e) => handleTimelineMouseDown(e, 'in')}
+                        className="absolute top-0 bottom-0 z-30 flex flex-col items-center cursor-ew-resize group"
+                        style={{ left: `${(trimIn / totalDuration) * 100}%` }}
+                      >
+                        <div className="w-4 h-full bg-primary/30 flex items-center justify-center relative -translate-x-1/2">
+                          <div className="w-1.5 h-full bg-primary rounded-full shadow-[0_0_8px_rgba(212,163,70,0.8)]" />
+                          {/* Handle Superior com Tooltip */}
+                          <div className="absolute -top-3 w-5 h-5 rounded-md bg-primary text-on-primary flex items-center justify-center text-[10px] font-bold shadow-md">
+                            In
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Agulha de Reprodução (Playhead) */}
-                  <div
-                    onMouseDown={(e) => handleTimelineMouseDown(e, 'playhead')}
-                    className="absolute top-0 bottom-0 z-40 flex flex-col items-center cursor-ew-resize"
-                    style={{ left: `${(currentTime / totalDuration) * 100}%` }}
-                  >
-                    <div className="w-0.5 h-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)] relative -translate-x-1/2">
-                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45 rounded-xs" />
-                    </div>
-                  </div>
+                      {/* Marcador Fim (Out) - Arrastável */}
+                      <div
+                        onMouseDown={(e) => handleTimelineMouseDown(e, 'out')}
+                        className="absolute top-0 bottom-0 z-30 flex flex-col items-center cursor-ew-resize group"
+                        style={{ left: `${(trimOut / totalDuration) * 100}%` }}
+                      >
+                        <div className="w-4 h-full bg-primary/30 flex items-center justify-center relative -translate-x-1/2">
+                          <div className="w-1.5 h-full bg-primary rounded-full shadow-[0_0_8px_rgba(212,163,70,0.8)]" />
+                          {/* Handle Superior com Tooltip */}
+                          <div className="absolute -top-3 w-5 h-5 rounded-md bg-primary text-on-primary flex items-center justify-center text-[10px] font-bold shadow-md">
+                            Out
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Agulha de Reprodução (Playhead) */}
+                      <div
+                        onMouseDown={(e) => handleTimelineMouseDown(e, 'playhead')}
+                        className="absolute top-0 bottom-0 z-40 flex flex-col items-center cursor-ew-resize"
+                        style={{ left: `${(currentTime / totalDuration) * 100}%` }}
+                      >
+                        <div className="w-0.5 h-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)] relative -translate-x-1/2">
+                          <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45 rounded-xs" />
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Botões de Micro-ajuste de 0.1s */}

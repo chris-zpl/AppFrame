@@ -75,6 +75,7 @@ export interface StudioPreviewResponse {
   durationSeconds: number;
   width: number;
   height: number;
+  waveformPeaks?: number[];
 }
 
 export const mediaService = {

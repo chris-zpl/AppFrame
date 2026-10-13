@@ -31,7 +31,7 @@ export class MediaService {
 
   /**
    * Baixa o vídeo selecionado na varredura para visualização em tempo real no Studio
-   * e retorna metadados reais (duração, dimensões e URL de stream).
+   * e retorna metadados reais (duração, dimensões, onda sonora real do áudio e URL de stream).
    */
   async prepareStudioPreview(sourceUrl: string): Promise<{
     previewId: string;
@@ -39,11 +39,15 @@ export class MediaService {
     durationSeconds: number;
     width: number;
     height: number;
+    waveformPeaks: number[];
   }> {
     const { previewId, filePath } = await this.downloadService.ensurePreviewDownloaded(
       sourceUrl,
     );
-    const metadata = await this.ffmpegService.probeMetadata(filePath);
+    const [metadata, waveformPeaks] = await Promise.all([
+      this.ffmpegService.probeMetadata(filePath),
+      this.ffmpegService.extractAudioWaveform(filePath, 70),
+    ]);
 
     return {
       previewId,
@@ -51,6 +55,7 @@ export class MediaService {
       durationSeconds: metadata.durationSeconds,
       width: metadata.width,
       height: metadata.height,
+      waveformPeaks,
     };
   }
 
