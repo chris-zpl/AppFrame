@@ -14,6 +14,8 @@ interface ScrapedVideoCardData extends VideoCardData {
   url: string;
 }
 
+const ITEMS_PER_PAGE = 20; // 5 linhas × 4 colunas
+
 export const ScraperPage: React.FC = () => {
   const { navigate } = useNavigation();
   const [channelUrl, setChannelUrl] = useState('');
@@ -22,6 +24,7 @@ export const ScraperPage: React.FC = () => {
   const [hasScanned, setHasScanned] = useState(false);
   const [videos, setVideos] = useState<ScrapedVideoCardData[]>([]);
   const [filter, setFilter] = useState<'all' | 'long' | 'shorts'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [channelMeta, setChannelMeta] = useState<{
     name: string;
@@ -39,6 +42,45 @@ export const ScraperPage: React.FC = () => {
       return true;
     });
   }, [videos, filter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredVideos.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  // Paginação (20 vídeos por página: 5 linhas x 4 colunas)
+  const paginatedVideos = useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+    return filteredVideos.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredVideos, safeCurrentPage]);
+
+  const pageNumbers = useMemo(() => {
+    const pages: (number | 'ellipsis-start' | 'ellipsis-end')[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+      return pages;
+    }
+
+    pages.push(1);
+    const start = Math.max(2, safeCurrentPage - 1);
+    const end = Math.min(totalPages - 1, safeCurrentPage + 1);
+
+    if (start > 2) pages.push('ellipsis-start');
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < totalPages - 1) pages.push('ellipsis-end');
+
+    pages.push(totalPages);
+    return pages;
+  }, [totalPages, safeCurrentPage]);
+
+  const handleFilterChange = (nextFilter: 'all' | 'long' | 'shorts') => {
+    setFilter(nextFilter);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    const clamped = Math.max(1, Math.min(totalPages, page));
+    setCurrentPage(clamped);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Contagem de vídeos selecionados e duração acumulada
   const { selectedCount, totalSeconds } = useMemo(() => {
@@ -148,10 +190,12 @@ export const ScraperPage: React.FC = () => {
           shortsCount,
           longCount,
         });
+        setFilter('all');
+        setCurrentPage(1);
         setHasScanned(true);
         setSelectedIds(new Set());
         toast.success(
-          `${mappedVideos.length} mídias encontradas (${shortsCount} Shorts, ${longCount} vídeos longos)!`,
+          `${mappedVideos.length} mídias encontradas (${shortsCount} Shorts, ${longCount} vídeos)!`,
         );
       } else {
         setVideos([]);
@@ -214,6 +258,9 @@ export const ScraperPage: React.FC = () => {
     });
   };
 
+  const startItemIndex = filteredVideos.length === 0 ? 0 : (safeCurrentPage - 1) * ITEMS_PER_PAGE + 1;
+  const endItemIndex = Math.min(safeCurrentPage * ITEMS_PER_PAGE, filteredVideos.length);
+
   return (
     <AppShell
       currentPath="varredura"
@@ -239,7 +286,7 @@ export const ScraperPage: React.FC = () => {
           </div>
 
           {/* Barra de Pesquisa de URL */}
-          <div className="relative w-full rounded-xl bg-surface-container-low p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-all focus-within:shadow-[0_0_0_2px_rgba(212,163,70,0.3)] border border-surface-container-high">
+          <div className="relative w-full rounded-xl bg-white dark:bg-surface-container-low p-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-all focus-within:shadow-[0_0_0_2px_rgba(212,163,70,0.3)] border border-neutral-200 dark:border-surface-container-high">
             <div className="flex flex-col sm:flex-row items-center gap-2">
               <div className="flex items-center gap-3 flex-1 px-3 py-1 w-full">
                 <div className="w-8 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary shrink-0">
@@ -255,7 +302,7 @@ export const ScraperPage: React.FC = () => {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') executeScan(channelUrl);
                   }}
-                  placeholder="Cole a URL do canal do YouTube ou @handle (ex: @Google, @flowpodcast)..."
+                  placeholder="Cole a URL do canal do YouTube ou @handle..."
                   className="w-full bg-transparent border-0 outline-none text-on-surface placeholder:text-outline font-body-md text-body-md h-10 tracking-tight disabled:opacity-50"
                 />
                 {channelUrl && !isScanning && (
@@ -296,7 +343,7 @@ export const ScraperPage: React.FC = () => {
               <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
                 <button
                   type="button"
-                  onClick={() => setFilter('all')}
+                  onClick={() => handleFilterChange('all')}
                   className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer ${
                     filter === 'all'
                       ? 'bg-primary-container/20 text-primary border border-primary/40 shadow-[0_0_10px_rgba(212,163,70,0.15)] font-semibold'
@@ -311,14 +358,14 @@ export const ScraperPage: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => setFilter('long')}
+                  onClick={() => handleFilterChange('long')}
                   className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer ${
                     filter === 'long'
                       ? 'bg-primary-container/20 text-primary border border-primary/40 shadow-[0_0_10px_rgba(212,163,70,0.15)] font-semibold'
                       : 'bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-transparent'
                   }`}
                 >
-                  <span>Vídeos Longos</span>
+                  <span>Vídeos</span>
                   <span className="px-1.5 py-0.2 rounded-full bg-surface-container-highest text-label-sm font-label-sm">
                     {channelMeta?.longCount ?? videos.filter((v) => !v.isShort).length}
                   </span>
@@ -326,7 +373,7 @@ export const ScraperPage: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => setFilter('shorts')}
+                  onClick={() => handleFilterChange('shorts')}
                   className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer ${
                     filter === 'shorts'
                       ? 'bg-primary-container/20 text-primary border border-primary/40 shadow-[0_0_10px_rgba(212,163,70,0.15)] font-semibold'
@@ -408,7 +455,7 @@ export const ScraperPage: React.FC = () => {
           <div className="flex flex-col gap-space-lg">
             {/* Card de Cabeçalho do Canal Real */}
             {channelMeta && (
-              <div className="relative overflow-hidden rounded-2xl bg-surface-container-low p-space-md sm:p-space-lg shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-primary/20">
+              <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-surface-container-low p-space-md sm:p-space-lg shadow-[0_6px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-neutral-200 dark:border-primary/20">
                 <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md relative z-10">
                   <div className="flex items-center gap-space-md">
@@ -427,7 +474,7 @@ export const ScraperPage: React.FC = () => {
                           </span>
                         </div>
                       )}
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary text-on-primary flex items-center justify-center text-[12px] shadow-sm">
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary text-neutral-950 flex items-center justify-center text-[12px] shadow-sm">
                         <span className="material-symbols-outlined text-[14px]">
                           check
                         </span>
@@ -469,7 +516,7 @@ export const ScraperPage: React.FC = () => {
                       </span>
                     </div>
                     <div className="bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-outline/10">
-                      <span className="text-label-sm font-label-sm text-outline">Vídeos Longos</span>
+                      <span className="text-label-sm font-label-sm text-outline">Vídeos</span>
                       <span className="text-title-md font-title-md font-bold text-on-surface">
                         {channelMeta.longCount}
                       </span>
@@ -485,9 +532,9 @@ export const ScraperPage: React.FC = () => {
               </div>
             )}
 
-            {/* Grid responsivo de vídeos reais */}
+            {/* Grid responsivo de vídeos reais (5 linhas × 4 colunas = 20 vídeos por página) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
-              {filteredVideos.map((video) => (
+              {paginatedVideos.map((video) => (
                 <VideoCard
                   key={video.id}
                   video={video}
@@ -496,6 +543,67 @@ export const ScraperPage: React.FC = () => {
                 />
               ))}
             </div>
+
+            {/* Paginação */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 pb-2 border-t border-neutral-200 dark:border-surface-container-high/60">
+                <span className="font-body-sm text-body-sm text-on-surface-variant">
+                  Mostrando <strong className="text-on-surface">{startItemIndex}–{endItemIndex}</strong> de{' '}
+                  <strong className="text-on-surface">{filteredVideos.length}</strong> mídias
+                </span>
+
+                <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                  <button
+                    type="button"
+                    disabled={safeCurrentPage <= 1}
+                    onClick={() => handlePageChange(safeCurrentPage - 1)}
+                    className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-title-sm font-title-sm text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-outline/10"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                    <span>Anterior</span>
+                  </button>
+
+                  {pageNumbers.map((pageItem) => {
+                    if (pageItem === 'ellipsis-start' || pageItem === 'ellipsis-end') {
+                      return (
+                        <span
+                          key={pageItem}
+                          className="px-2 py-1 text-on-surface-variant font-mono select-none"
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+
+                    const isActive = pageItem === safeCurrentPage;
+                    return (
+                      <button
+                        key={pageItem}
+                        type="button"
+                        onClick={() => handlePageChange(pageItem)}
+                        className={`min-w-[36px] h-9 px-2.5 rounded-lg font-title-sm text-title-sm transition-all cursor-pointer flex items-center justify-center ${
+                          isActive
+                            ? 'bg-primary text-neutral-950 dark:text-neutral-950 font-bold shadow-sm'
+                            : 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-outline/10'
+                        }`}
+                      >
+                        {pageItem}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    disabled={safeCurrentPage >= totalPages}
+                    onClick={() => handlePageChange(safeCurrentPage + 1)}
+                    className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-title-sm font-title-sm text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-outline/10"
+                  >
+                    <span>Próxima</span>
+                    <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -505,21 +613,6 @@ export const ScraperPage: React.FC = () => {
             icon="radar"
             title="Nenhum canal consultado"
             description="Cole a URL ou @handle de um canal acima para indexar vídeos e Shorts disponíveis."
-            suggestionsTitle="Canais sugeridos para teste rápido:"
-            suggestions={[
-              {
-                label: '@Google',
-                onClick: () => executeScan('@Google'),
-              },
-              {
-                label: '@flowpodcast',
-                onClick: () => executeScan('@flowpodcast'),
-              },
-              {
-                label: '@podpah',
-                onClick: () => executeScan('@podpah'),
-              },
-            ]}
           />
         )}
 

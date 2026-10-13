@@ -96,9 +96,15 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
     let tabNotFoundCount = 0;
 
     try {
-      // 1. Coleta vídeos regulares (/videos)
       const videosUrl = `${baseUrl}/videos`;
-      const regularResult = await this.scrapeTab(videosUrl, false);
+      const shortsUrl = `${baseUrl}/shorts`;
+
+      // Coleta vídeos regulares (/videos) e Shorts (/shorts) em paralelo com paginação InnerTube
+      const [regularResult, shortsResult] = await Promise.all([
+        this.scrapeTab(videosUrl, false),
+        this.scrapeTab(shortsUrl, true),
+      ]);
+
       if (regularResult.notFound) {
         tabNotFoundCount++;
       } else {
@@ -107,9 +113,6 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         }
       }
 
-      // 2. Coleta Shorts recentes (/shorts)
-      const shortsUrl = `${baseUrl}/shorts`;
-      const shortsResult = await this.scrapeTab(shortsUrl, true);
       if (shortsResult.notFound) {
         tabNotFoundCount++;
       } else {
@@ -150,20 +153,20 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   }
 
   /**
-   * Realiza o scraping de uma aba específica (Videos ou Shorts) através do ytInitialData
+   * Realiza o scraping completo de uma aba (Videos ou Shorts) percorrendo ytInitialData e tokens de continuação InnerTube
    */
   private async scrapeTab(
     url: string,
     isShortTab: boolean,
   ): Promise<{ items: ScrapedMediaItem[]; notFound: boolean }> {
+    const headers = {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+    };
+
     try {
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-        },
-      });
+      const response = await fetch(url, { headers });
 
       if (response.status === 404) {
         this.logger.warn(`Canal/aba não encontrado(a): ${url} (404)`);
@@ -176,11 +179,98 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       }
 
       const html = await response.text();
-      const items = this.parseInitialDataFromHtml(html, isShortTab);
-      return { items, notFound: false };
+      const initialData = this.extractInitialJsonFromHtml(html);
+      if (!initialData) {
+        return { items: [], notFound: false };
+      }
+
+      const visitedIds = new Set<string>();
+      const allItems: ScrapedMediaItem[] = [
+        ...this.extractItemsFromData(initialData, isShortTab, visitedIds),
+      ];
+
+      let continuationToken = this.extractGridContinuationToken(initialData);
+      const startTime = Date.now();
+      const maxDurationMs = 45000;
+      const maxPages = 60;
+      let page = 1;
+
+      while (
+        continuationToken &&
+        page < maxPages &&
+        Date.now() - startTime < maxDurationMs
+      ) {
+        page++;
+        try {
+          const browseRes = await fetch(
+            'https://www.youtube.com/youtubei/v1/browse?prettyPrint=false',
+            {
+              method: 'POST',
+              headers: {
+                ...headers,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                context: {
+                  client: {
+                    clientName: 'WEB',
+                    clientVersion: '2.20241001.00.00',
+                    hl: 'pt-BR',
+                    gl: 'BR',
+                  },
+                },
+                continuation: continuationToken,
+              }),
+            },
+          );
+
+          if (!browseRes.ok) {
+            break;
+          }
+
+          const browseData = await browseRes.json();
+          const newItems = this.extractItemsFromData(
+            browseData,
+            isShortTab,
+            visitedIds,
+          );
+          if (newItems.length === 0) {
+            break;
+          }
+
+          allItems.push(...newItems);
+          continuationToken = this.extractGridContinuationToken(browseData);
+        } catch (contErr: any) {
+          this.logger.warn(
+            `Interrupção na paginação InnerTube (${url}, pág ${page}): ${contErr.message}`,
+          );
+          break;
+        }
+      }
+
+      return { items: allItems, notFound: false };
     } catch (err: any) {
       this.logger.warn(`Erro ao baixar página ${url}: ${err.message}`);
       return { items: [], notFound: false };
+    }
+  }
+
+  /**
+   * Extrai o objeto JSON ytInitialData embutido no HTML
+   */
+  private extractInitialJsonFromHtml(html: string): any | null {
+    const regex = /(?:var\s+ytInitialData\s*=|window\["ytInitialData"\]\s*=)\s*({.+?});<\/script>/s;
+    const match = html.match(regex);
+
+    if (!match || !match[1]) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(match[1]);
+    } catch (e: any) {
+      this.logger.warn(`Falha no parsing JSON do ytInitialData: ${e.message}`);
+      return null;
     }
   }
 
@@ -191,20 +281,49 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
     html: string,
     isShortTab: boolean,
   ): ScrapedMediaItem[] {
-    const regex = /(?:var\s+ytInitialData\s*=|window\["ytInitialData"\]\s*=)\s*({.+?});<\/script>/s;
-    const match = html.match(regex);
+    const data = this.extractInitialJsonFromHtml(html);
+    if (!data) return [];
+    return this.extractItemsFromData(data, isShortTab);
+  }
 
-    if (!match || !match[1]) {
-      return [];
+  /**
+   * Localiza o token de continuação da grade principal (ignorando painéis de cabeçalho/descrição)
+   */
+  private extractGridContinuationToken(node: any): string | null {
+    if (!node || typeof node !== 'object') return null;
+
+    if (node.continuationItemRenderer) {
+      const ep = node.continuationItemRenderer.continuationEndpoint;
+      const token =
+        ep?.continuationCommand?.token ||
+        ep?.commandExecutorCommand?.commands?.find(
+          (c: any) => c.continuationCommand,
+        )?.continuationCommand?.token;
+      if (token) return token;
     }
 
-    try {
-      const data = JSON.parse(match[1]);
-      return this.extractItemsFromData(data, isShortTab);
-    } catch (e: any) {
-      this.logger.warn(`Falha no parsing JSON do ytInitialData: ${e.message}`);
-      return [];
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const found = this.extractGridContinuationToken(item);
+        if (found) return found;
+      }
+    } else {
+      for (const key of Object.keys(node)) {
+        if (
+          key === 'header' ||
+          key === 'topbar' ||
+          key === 'engagementPanel' ||
+          key === 'engagementPanelSectionListRenderer' ||
+          key === 'microformat'
+        ) {
+          continue;
+        }
+        const found = this.extractGridContinuationToken(node[key]);
+        if (found) return found;
+      }
     }
+
+    return null;
   }
 
   /**
@@ -213,9 +332,9 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   private extractItemsFromData(
     data: any,
     isShortTab: boolean,
+    visitedIds: Set<string> = new Set<string>(),
   ): ScrapedMediaItem[] {
     const results: ScrapedMediaItem[] = [];
-    const visitedIds = new Set<string>();
 
     const traverse = (node: any) => {
       if (!node || typeof node !== 'object') return;
@@ -249,7 +368,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
               : `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
           const thumbnailUrl = thumb.startsWith('//') ? `https:${thumb}` : thumb;
 
-          const isShort = isShortTab || durationSeconds <= 60;
+          const isShort = isShortTab;
 
           results.push({
             id,
@@ -344,7 +463,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
           const thumbnailUrl = bestThumb.startsWith('//') ? `https:${bestThumb}` : bestThumb;
 
-          const isShort = isShortTab || durationSeconds <= 60;
+          const isShort = isShortTab;
 
           results.push({
             id,

@@ -31,9 +31,11 @@ export interface ScrapedVideoMetadata {
 
 export const scraperService = {
   async scanChannel(channelUrl: string): Promise<ScrapedMediaItem[]> {
-    const res = await api.post<ScrapedMediaItem[]>('/scraper/scan', {
-      channelUrl,
-    });
+    const res = await api.post<ScrapedMediaItem[]>(
+      '/scraper/scan',
+      { channelUrl },
+      { timeout: 120000 },
+    );
     return res.data;
   },
 

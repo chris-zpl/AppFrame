@@ -74,12 +74,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({
           />
         </div>
 
-        {/* Tag Short / Long-form no Topo Direito */}
+        {/* Tag Shorts / Vídeo no Topo Direito */}
         <div className="absolute top-3 right-3 z-10">
           {video.isShort ? (
-            <Badge variant="short">Short</Badge>
+            <Badge variant="short">Shorts</Badge>
           ) : (
-            <Badge variant="long">Long-form</Badge>
+            <Badge variant="long">Vídeo</Badge>
           )}
         </div>
 
