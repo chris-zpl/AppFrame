@@ -7,6 +7,7 @@ export interface UserProfile {
   google_id?: string | null;
   auth_provider: 'local' | 'google';
   is_two_factor_enabled: boolean;
+  has_gemini_key?: boolean;
   created_at: string;
   updated_at?: string;
 }

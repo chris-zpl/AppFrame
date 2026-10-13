@@ -47,6 +47,18 @@ export interface VideoJobItem {
   updated_at: string;
 }
 
+export interface GeminiSubtitleSegment {
+  start: number;
+  end: number;
+  text: string;
+}
+
+export interface GeminiSubtitlesResponse {
+  fullText: string;
+  language?: string;
+  segments: GeminiSubtitleSegment[];
+}
+
 export const mediaService = {
   async listJobs(): Promise<VideoJobItem[]> {
     const res = await api.get<VideoJobItem[]>('/jobs');
@@ -71,5 +83,50 @@ export const mediaService = {
   async downloadBatch(videos: Array<{ url: string; title?: string }>): Promise<VideoJobItem[]> {
     const res = await api.post<VideoJobItem[]>('/media/download-batch', { videos });
     return res.data;
+  },
+
+  async getGeminiStatus(): Promise<{ connected: boolean }> {
+    const res = await api.get<any>('/gemini/status');
+    return res.data?.data || res.data;
+  },
+
+  async connectGeminiAccount(apiKey: string): Promise<{ connected: boolean }> {
+    const res = await api.post<any>('/gemini/connect', { apiKey });
+    return res.data?.data || res.data;
+  },
+
+  async disconnectGeminiAccount(): Promise<{ connected: boolean }> {
+    const res = await api.delete<any>('/gemini/disconnect');
+    return res.data?.data || res.data;
+  },
+
+  async generateGeminiSubtitles(params: {
+    file?: File | null;
+    title?: string;
+    context?: string;
+    durationSeconds?: number;
+    language?: string;
+  }): Promise<GeminiSubtitlesResponse> {
+    if (params.file) {
+      const formData = new FormData();
+      formData.append('file', params.file);
+      if (params.title) formData.append('title', params.title);
+      if (params.context) formData.append('context', params.context);
+      if (params.durationSeconds) formData.append('durationSeconds', String(params.durationSeconds));
+      if (params.language) formData.append('language', params.language);
+
+      const res = await api.post<any>('/gemini/subtitles', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data?.data || res.data;
+    }
+
+    const res = await api.post<any>('/gemini/subtitles', {
+      title: params.title,
+      context: params.context,
+      durationSeconds: params.durationSeconds,
+      language: params.language,
+    });
+    return res.data?.data || res.data;
   },
 };

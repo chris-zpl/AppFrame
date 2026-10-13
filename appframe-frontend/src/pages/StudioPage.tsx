@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AppShell } from '../components/layout/AppShell';
@@ -9,7 +9,11 @@ import { Badge } from '../components/ui/Badge';
 import { cn } from '../lib/utils';
 import { API_BASE_URL } from '../config/api';
 import { watermarksService } from '../services/watermarks.service';
-import { mediaService, type CreateVideoJobPayload } from '../services/media.service';
+import {
+  mediaService,
+  type CreateVideoJobPayload,
+  type GeminiSubtitleSegment,
+} from '../services/media.service';
 import { toast } from 'sonner';
 
 export type AspectRatio = '9:16' | '16:9';
@@ -26,30 +30,10 @@ export type WatermarkPosition =
   | 'bottom-center'
   | 'bottom-right';
 
-// Transcrição simulada para o modo Legenda Dinâmica Gemini
-const DYNAMIC_WORDS_SAMPLE = [
-  { word: 'O', start: 0.2, end: 0.5 },
-  { word: 'segredo', start: 0.5, end: 1.1 },
-  { word: 'para', start: 1.1, end: 1.4 },
-  { word: 'reter', start: 1.4, end: 1.9 },
-  { word: 'a', start: 1.9, end: 2.1 },
-  { word: 'audiência', start: 2.1, end: 2.8 },
-  { word: 'nos', start: 2.8, end: 3.1 },
-  { word: 'primeiros', start: 3.1, end: 3.7 },
-  { word: '3', start: 3.7, end: 4.1 },
-  { word: 'segundos', start: 4.1, end: 4.9 },
-  { word: 'é', start: 4.9, end: 5.2 },
-  { word: 'gerar', start: 5.2, end: 5.7 },
-  { word: 'uma', start: 5.7, end: 5.9 },
-  { word: 'quebra', start: 5.9, end: 6.4 },
-  { word: 'de', start: 6.4, end: 6.6 },
-  { word: 'padrão', start: 6.6, end: 7.2 },
-  { word: 'imediata!', start: 7.2, end: 8.0 },
-];
-
 export const StudioPage: React.FC = () => {
   const { navigate, params } = useNavigation();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
 
   // Consulta real de marcas d'água cadastradas
   const { data: userWatermarks = [], isLoading: isLoadingWatermarks } = useQuery({
@@ -57,32 +41,147 @@ export const StudioPage: React.FC = () => {
     queryFn: watermarksService.list,
   });
 
+  // Consulta real do status de vinculação da conta Google AI Studio (Gemini)
+  const { data: geminiStatus, isLoading: isLoadingGeminiStatus } = useQuery({
+    queryKey: ['gemini-status'],
+    queryFn: mediaService.getGeminiStatus,
+  });
+
+  const isGeminiConnected = Boolean(geminiStatus?.connected ?? user?.has_gemini_key);
+
+  // Estados do Modal BYOK (Vinculação de Conta Google AI Studio)
+  const [isGeminiModalOpen, setIsGeminiModalOpen] = useState<boolean>(false);
+  const [geminiApiKeyInput, setGeminiApiKeyInput] = useState<string>('');
+  const [showApiKey, setShowApiKey] = useState<boolean>(false);
+  const [isConnectingGemini, setIsConnectingGemini] = useState<boolean>(false);
+  const [isDisconnectingGemini, setIsDisconnectingGemini] = useState<boolean>(false);
+
+  // Estados reais do Gerador de Legendas Gemini
+  const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState<boolean>(false);
+  const [dynamicSegments, setDynamicSegments] = useState<GeminiSubtitleSegment[]>([]);
+  const [selectedMediaFile, setSelectedMediaFile] = useState<File | null>(null);
+  const mediaFileInputRef = useRef<HTMLInputElement | null>(null);
+
   // Configurações Globais do Player e Formato
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [currentTime, setCurrentTime] = useState<number>(5.5);
+  const [currentTime, setCurrentTime] = useState<number>(0.0);
   const totalDuration = 60.0; // 01:00 total
 
   // Timeline & Cortes de Precisão (In e Out)
-  const [trimIn, setTrimIn] = useState<number>(2.0); // 00:02.000
-  const [trimOut, setTrimOut] = useState<number>(45.0); // 00:45.000
+  const [trimIn, setTrimIn] = useState<number>(0.0);
+  const [trimOut, setTrimOut] = useState<number>(45.0);
   const [activeTab, setActiveTab] = useState<'legendas' | 'marca-dagua'>('legendas');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
 
-  // Configurações da Aba Legendas
-  const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>('dynamic');
-  const [staticText, setStaticText] = useState<string>(
-    'O SEGREDO PARA RETER AUDIÊNCIA NOS PRIMEIROS 3 SEGUNDOS'
-  );
-  const [geminiPrompt, setGeminiPrompt] = useState<string>(
-    'Extrair timestamps de falas com alta energia e destacar palavras-chave'
-  );
+  // Configurações da Aba Legendas (sem dados mockados)
+  const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>('static');
+  const [staticText, setStaticText] = useState<string>(params.videoTitle || '');
+  const [geminiPrompt, setGeminiPrompt] = useState<string>(params.videoTitle || '');
   const [fontFamily, setFontFamily] = useState<FontFamily>('Plus Jakarta Sans');
   const [textColor, setTextColor] = useState<string>('#FFFFFF');
   const [bgColor, setBgColor] = useState<string>('#10131A');
   const [strokeColor, setStrokeColor] = useState<string>('#000000');
   const [fontSize, setFontSize] = useState<number>(28);
   const [useBackgroundBox, setUseBackgroundBox] = useState<boolean>(true);
+
+  // Garante que o modo dinâmico fique bloqueado caso a conta não esteja conectada
+  useEffect(() => {
+    if (!isLoadingGeminiStatus && !isGeminiConnected && subtitleMode === 'dynamic') {
+      setSubtitleMode('static');
+    }
+  }, [isLoadingGeminiStatus, isGeminiConnected, subtitleMode]);
+
+  // Ação real: Conectar conta Google AI Studio (BYOK)
+  const handleConnectGemini = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanKey = geminiApiKeyInput.trim();
+    if (!cleanKey) {
+      toast.error('Cole sua chave de API do Google AI Studio para conectar.');
+      return;
+    }
+
+    setIsConnectingGemini(true);
+    try {
+      await mediaService.connectGeminiAccount(cleanKey);
+      await queryClient.invalidateQueries({ queryKey: ['gemini-status'] });
+      await refreshProfile();
+      setGeminiApiKeyInput('');
+      setIsGeminiModalOpen(false);
+      setSubtitleMode('dynamic');
+      toast.success('Conta do Google AI Studio conectada! Gerador de legendas Gemini habilitado.');
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        'Não foi possível validar a chave no Google Gemini. Verifique e tente novamente.';
+      toast.error(Array.isArray(msg) ? msg[0] : msg);
+    } finally {
+      setIsConnectingGemini(false);
+    }
+  };
+
+  // Ação real: Desconectar conta Google AI Studio
+  const handleDisconnectGemini = async () => {
+    setIsDisconnectingGemini(true);
+    try {
+      await mediaService.disconnectGeminiAccount();
+      await queryClient.invalidateQueries({ queryKey: ['gemini-status'] });
+      await refreshProfile();
+      setSubtitleMode('static');
+      setDynamicSegments([]);
+      toast.success('Conta do Google AI Studio desconectada com sucesso.');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Erro ao desconectar conta do Gemini.';
+      toast.error(Array.isArray(msg) ? msg[0] : msg);
+    } finally {
+      setIsDisconnectingGemini(false);
+    }
+  };
+
+  // Ação real: Gerar legendas sincronizadas pelo Gemini no backend
+  const handleGenerateGeminiSubtitles = async () => {
+    if (!isGeminiConnected) {
+      setIsGeminiModalOpen(true);
+      return;
+    }
+
+    const contextToUse = geminiPrompt.trim() || params.videoTitle || '';
+    if (!selectedMediaFile && !contextToUse) {
+      toast.error(
+        'Selecione um arquivo de áudio/vídeo ou descreva o tema/roteiro do vídeo para gerar as legendas pelo Gemini.'
+      );
+      return;
+    }
+
+    setIsGeneratingSubtitles(true);
+    try {
+      const result = await mediaService.generateGeminiSubtitles({
+        file: selectedMediaFile,
+        title: params.videoTitle,
+        context: contextToUse,
+        durationSeconds: Math.max(5, Math.round(trimOut - trimIn)),
+        language: 'pt-BR',
+      });
+
+      if (result.segments && result.segments.length > 0) {
+        setDynamicSegments(result.segments);
+        setSubtitleMode('dynamic');
+        setCurrentTime(result.segments[0].start);
+        toast.success(
+          `${result.segments.length} blocos de legenda gerados com sucesso pelo Google Gemini!`
+        );
+      } else {
+        toast.error('O Gemini não retornou segmentos de legenda para o conteúdo informado.');
+      }
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        'Falha ao gerar legendas pelo Google Gemini. Verifique sua conexão e cota da conta.';
+      toast.error(Array.isArray(msg) ? msg[0] : msg);
+    } finally {
+      setIsGeneratingSubtitles(false);
+    }
+  };
 
   // Configurações da Aba Marca d'Água
   const [selectedWatermarkId, setSelectedWatermarkId] = useState<string>('none');
@@ -120,7 +219,7 @@ export const StudioPage: React.FC = () => {
     return base;
   };
 
-  // Onda sonora representativa simulada com 70 picos
+  // Onda sonora representativa da timeline
   const waveformPeaks = useMemo(() => {
     const peaks: number[] = [];
     for (let i = 0; i < 70; i++) {
@@ -179,23 +278,26 @@ export const StudioPage: React.FC = () => {
     let highlightWord = '';
 
     if (subtitleMode === 'static') {
-      displayLines = wrapText(staticText, maxTextWidth);
-    } else {
-      // Modo Legenda Dinâmica (Gemini STT): seleciona palavras próximas ao currentTime
-      const activeWordObj = DYNAMIC_WORDS_SAMPLE.find(
-        (w) => currentTime >= w.start && currentTime <= w.end
-      );
-      highlightWord = activeWordObj ? activeWordObj.word : '';
+      if (staticText.trim()) {
+        displayLines = wrapText(staticText, maxTextWidth);
+      }
+    } else if (dynamicSegments.length > 0) {
+      // Modo Legenda Dinâmica (Gemini real): exibe o segmento ativo no currentTime (ou o primeiro segmento se fora da faixa)
+      const activeSeg =
+        dynamicSegments.find((s) => currentTime >= s.start && currentTime <= s.end) ||
+        dynamicSegments.find((s) => Math.abs(s.start - currentTime) <= 1.5) ||
+        dynamicSegments[0];
 
-      // Agrupa janela de fala no tempo atual
-      const activeWordsWindow = DYNAMIC_WORDS_SAMPLE.filter(
-        (w) => currentTime >= w.start - 1.2 && currentTime <= w.end + 1.2
-      );
-      const phrase = activeWordsWindow.length > 0
-        ? activeWordsWindow.map((w) => w.word).join(' ')
-        : 'O segredo para reter audiência nos primeiros 3 segundos';
-
-      displayLines = wrapText(phrase, maxTextWidth);
+      if (activeSeg && activeSeg.text) {
+        const segWords = activeSeg.text.trim().split(/\s+/).filter(Boolean);
+        if (segWords.length > 0) {
+          const segDuration = Math.max(0.2, activeSeg.end - activeSeg.start);
+          const progress = Math.max(0, Math.min(0.999, (currentTime - activeSeg.start) / segDuration));
+          const wordIdx = Math.floor(progress * segWords.length);
+          highlightWord = segWords[wordIdx] || '';
+        }
+        displayLines = wrapText(activeSeg.text, maxTextWidth);
+      }
     }
 
     // Desenha as linhas de legenda no canvas
@@ -300,6 +402,7 @@ export const StudioPage: React.FC = () => {
     aspectRatio,
     subtitleMode,
     staticText,
+    dynamicSegments,
     fontFamily,
     fontSize,
     textColor,
@@ -390,26 +493,41 @@ export const StudioPage: React.FC = () => {
 
   // Ação de Conclusão: "Gerar Vídeo" via NestJS real
   const handleGenerateVideo = async () => {
+    let rawSourceUrl = params.videoUrl || params.sourceUrl;
+    if (!rawSourceUrl && params.selectedVideos) {
+      rawSourceUrl = params.selectedVideos.startsWith('http')
+        ? params.selectedVideos
+        : `https://www.youtube.com/watch?v=${params.selectedVideos}`;
+    }
+
+    if (!rawSourceUrl) {
+      toast.error('Selecione um vídeo na Varredura antes de iniciar a renderização.');
+      return;
+    }
+
+    if (subtitleMode === 'dynamic' && !isGeminiConnected) {
+      toast.error('Conecte sua conta do Google AI Studio (Gemini) para usar legendas dinâmicas.');
+      setIsGeminiModalOpen(true);
+      return;
+    }
+
     setIsGenerating(true);
 
     try {
       const isUuid = (val?: string) =>
         Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
 
-      // Determina URL válida do vídeo de origem
-      let rawSourceUrl = params.videoUrl || params.sourceUrl;
-      if (!rawSourceUrl && params.selectedVideos) {
-        rawSourceUrl = params.selectedVideos.startsWith('http')
-          ? params.selectedVideos
-          : `https://www.youtube.com/watch?v=${params.selectedVideos}`;
-      }
-      if (!rawSourceUrl) {
-        rawSourceUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-      }
-
       const originalTitle =
         params.videoTitle ||
+        selectedMediaFile?.name ||
         (params.selectedVideos ? `Vídeo ${params.selectedVideos}` : 'Corte de Vídeo AppFrame');
+
+      const resolvedSubtitleText =
+        subtitleMode === 'static'
+          ? staticText
+          : dynamicSegments.length > 0
+            ? dynamicSegments.map((s) => s.text).join(' ')
+            : geminiPrompt;
 
       const payload: CreateVideoJobPayload = {
         source_url: rawSourceUrl,
@@ -420,7 +538,7 @@ export const StudioPage: React.FC = () => {
         watermark_id: isUuid(selectedWatermarkId) ? selectedWatermarkId : undefined,
         subtitle_config: {
           mode: subtitleMode,
-          text: subtitleMode === 'static' ? staticText : geminiPrompt,
+          text: resolvedSubtitleText,
           font_family: fontFamily,
           font_size: fontSize,
           text_color: textColor,
@@ -438,11 +556,12 @@ export const StudioPage: React.FC = () => {
         jobId: job.id,
         title: job.original_title || originalTitle,
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Falha ao submeter render job:', err);
-      navigate('historico', {
-        jobCreated: 'pending',
-      });
+      const msg =
+        err?.response?.data?.message ||
+        'Falha ao enviar vídeo para a fila de renderização.';
+      toast.error(Array.isArray(msg) ? msg[0] : msg);
     } finally {
       setIsGenerating(false);
     }
@@ -461,11 +580,16 @@ export const StudioPage: React.FC = () => {
     { key: 'bottom-right', label: 'Inferior Direito', icon: 'south_east' },
   ];
 
+  const studioProjectTitle =
+    params.videoTitle ||
+    selectedMediaFile?.name ||
+    (params.selectedVideos ? `Vídeo Selecionado (${params.selectedVideos})` : 'Projeto de Edição no Studio');
+
   return (
     <AppShell
       currentPath="studio"
       onNavigate={(path) => navigate(path)}
-      userName={user?.name || 'Christian'}
+      userName={user?.name || ''}
       onUserAvatarClick={() => navigate('configuracoes')}
     >
       <div className="flex flex-col w-full text-on-surface select-none pb-8">
@@ -484,7 +608,7 @@ export const StudioPage: React.FC = () => {
             <div className="flex flex-col">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-title-md text-title-md font-bold text-on-surface line-clamp-1 max-w-md">
-                  EP. 412 - INTELIGÊNCIA ARTIFICIAL E O FUTURO DA CRIAÇÃO DE CONTEÚDO
+                  {studioProjectTitle}
                 </span>
                 <Badge variant={aspectRatio === '9:16' ? 'short' : 'long'}>
                   {aspectRatio === '9:16' ? '9:16 Shorts' : '16:9 Widescreen'}
@@ -887,6 +1011,64 @@ export const StudioPage: React.FC = () => {
               {/* ================= ABA 1: CONFIGURAÇÕES DE LEGENDA ================= */}
               {activeTab === 'legendas' && (
                 <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+                  {/* Painel de Conexão da Conta Google AI Studio (BYOK Gemini) */}
+                  <div
+                    className={cn(
+                      'p-3 rounded-xl border flex flex-col gap-2.5 transition-all',
+                      isGeminiConnected
+                        ? 'bg-emerald-500/10 border-emerald-500/30'
+                        : 'bg-surface-container border-surface-container-highest'
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={cn(
+                            'material-symbols-outlined text-[20px] shrink-0',
+                            isGeminiConnected ? 'text-emerald-400' : 'text-primary'
+                          )}
+                        >
+                          {isGeminiConnected ? 'verified_user' : 'key'}
+                        </span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-label-md font-bold text-on-surface truncate">
+                            {isGeminiConnected
+                              ? 'Google AI Studio Conectado'
+                              : 'Conta Google Gemini'}
+                          </span>
+                          <span className="text-[11px] text-on-surface-variant truncate">
+                            {isGeminiConnected
+                              ? 'Gerador de legendas Gemini habilitado'
+                              : 'Conecte sua conta para liberar o gerador'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {isGeminiConnected ? (
+                        <button
+                          type="button"
+                          onClick={handleDisconnectGemini}
+                          disabled={isDisconnectingGemini}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-error/15 text-error hover:bg-error/25 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                        >
+                          {isDisconnectingGemini ? 'Saindo...' : 'Desconectar'}
+                        </button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          onClick={() => setIsGeminiModalOpen(true)}
+                          leftIcon={
+                            <span className="material-symbols-outlined text-[16px]">login</span>
+                          }
+                          className="shrink-0"
+                        >
+                          Conectar Conta
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Alternador entre Legenda Fixa e Legenda Dinâmica Gemini */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-label-sm font-label-sm text-outline font-semibold uppercase tracking-wider">
@@ -908,21 +1090,34 @@ export const StudioPage: React.FC = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setSubtitleMode('dynamic')}
+                        onClick={() => {
+                          if (!isGeminiConnected) {
+                            toast.info(
+                              'Conecte sua conta do Google AI Studio para desbloquear o gerador de legendas pelo Gemini.'
+                            );
+                            setIsGeminiModalOpen(true);
+                            return;
+                          }
+                          setSubtitleMode('dynamic');
+                        }}
                         className={cn(
                           'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-label-md font-label-md transition-all cursor-pointer',
-                          subtitleMode === 'dynamic'
+                          subtitleMode === 'dynamic' && isGeminiConnected
                             ? 'bg-primary/15 border-primary text-primary font-bold shadow-[0_0_10px_rgba(212,163,70,0.15)]'
-                            : 'bg-surface-container border-surface-container-highest text-on-surface-variant hover:text-on-surface'
+                            : !isGeminiConnected
+                              ? 'bg-surface-container-lowest border-surface-container-highest text-outline opacity-75 hover:border-primary/40'
+                              : 'bg-surface-container border-surface-container-highest text-on-surface-variant hover:text-on-surface'
                         )}
                       >
-                        <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+                        <span className="material-symbols-outlined text-[18px]">
+                          {isGeminiConnected ? 'auto_awesome' : 'lock'}
+                        </span>
                         <span>Dinâmica (Gemini)</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Campo de Texto Estático ou Prompt Gemini */}
+                  {/* Campo de Texto Estático ou Gerador Dinâmico Gemini */}
                   {subtitleMode === 'static' ? (
                     <div className="flex flex-col gap-1.5">
                       <label className="text-label-sm font-label-sm text-outline font-semibold">
@@ -937,22 +1132,135 @@ export const StudioPage: React.FC = () => {
                       />
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-label-sm font-label-sm text-outline font-semibold">
-                          Prompt Roteiro Gemini STT / TTS
-                        </label>
-                        <span className="text-[10px] text-primary font-semibold">
-                          IA Automática
-                        </span>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-label-sm font-label-sm text-outline font-semibold">
+                            Roteiro / Contexto ou Áudio para o Gemini
+                          </label>
+                          <span className="text-[10px] text-primary font-semibold">
+                            Conta Pessoal Vinculada
+                          </span>
+                        </div>
+                        <textarea
+                          value={geminiPrompt}
+                          onChange={(e) => setGeminiPrompt(e.target.value)}
+                          rows={3}
+                          disabled={!isGeminiConnected}
+                          placeholder="Informe o tema/roteiro do vídeo ou anexe um arquivo de áudio/vídeo abaixo para transcrição..."
+                          className="w-full bg-surface-container-lowest border border-surface-container-highest rounded-xl p-3 text-body-md text-on-surface outline-none focus:border-primary/80 transition-all resize-none disabled:opacity-50"
+                        />
                       </div>
-                      <textarea
-                        value={geminiPrompt}
-                        onChange={(e) => setGeminiPrompt(e.target.value)}
-                        rows={3}
-                        placeholder="Instruções para reconhecimento de voz ou síntese vocal..."
-                        className="w-full bg-surface-container-lowest border border-surface-container-highest rounded-xl p-3 text-body-md text-on-surface outline-none focus:border-primary/80 transition-all resize-none"
-                      />
+
+                      {/* Upload opcional de arquivo de áudio/vídeo para transcrição STT real */}
+                      <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-container-lowest border border-surface-container-highest">
+                        <input
+                          ref={mediaFileInputRef}
+                          type="file"
+                          accept="audio/*,video/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0] || null;
+                            setSelectedMediaFile(f);
+                          }}
+                        />
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="material-symbols-outlined text-[18px] text-primary shrink-0">
+                            audio_file
+                          </span>
+                          <span className="text-body-xs text-on-surface-variant truncate">
+                            {selectedMediaFile
+                              ? selectedMediaFile.name
+                              : 'Áudio/Vídeo opcional para transcrição direta'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {selectedMediaFile && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedMediaFile(null);
+                                if (mediaFileInputRef.current) {
+                                  mediaFileInputRef.current.value = '';
+                                }
+                              }}
+                              className="p-1 rounded-lg text-outline hover:text-error cursor-pointer"
+                              title="Remover arquivo"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">close</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={!isGeminiConnected}
+                            onClick={() => mediaFileInputRef.current?.click()}
+                            className="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-[11px] font-semibold text-on-surface transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            Escolher Arquivo
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Botão de Gerar Legendas pelo Gemini (bloqueado até conectar a conta) */}
+                  <div className="flex flex-col gap-1.5">
+                    <Button
+                      variant={isGeminiConnected ? 'primary' : 'secondary'}
+                      size="md"
+                      disabled={!isGeminiConnected || isGeneratingSubtitles}
+                      isLoading={isGeneratingSubtitles}
+                      onClick={handleGenerateGeminiSubtitles}
+                      leftIcon={
+                        <span className="material-symbols-outlined text-[18px]">
+                          {isGeminiConnected ? 'auto_awesome' : 'lock'}
+                        </span>
+                      }
+                      className="w-full font-bold"
+                    >
+                      {isGeminiConnected
+                        ? 'Gerar Legendas pelo Gemini'
+                        : 'Gerador Gemini Bloqueado (Conecte sua Conta)'}
+                    </Button>
+
+                    {!isGeminiConnected && (
+                      <p className="text-[11px] text-outline text-center">
+                        Conecte sua conta do Google AI Studio acima para habilitar a geração de legendas.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Lista Real de Segmentos Gerados pelo Gemini */}
+                  {dynamicSegments.length > 0 && (
+                    <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-surface-container-lowest border border-surface-container-highest max-h-40 overflow-y-auto">
+                      <div className="flex items-center justify-between text-[11px] text-outline font-semibold mb-1">
+                        <span>Legendas Sincronizadas ({dynamicSegments.length})</span>
+                        <span>Clique para pré-visualizar</span>
+                      </div>
+                      {dynamicSegments.map((seg, idx) => {
+                        const isActive = currentTime >= seg.start && currentTime <= seg.end;
+                        return (
+                          <button
+                            key={`${seg.start}-${idx}`}
+                            type="button"
+                            onClick={() => {
+                              setSubtitleMode('dynamic');
+                              setCurrentTime(seg.start);
+                            }}
+                            className={cn(
+                              'flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-left text-body-xs transition-colors cursor-pointer',
+                              isActive
+                                ? 'bg-primary/20 text-primary font-bold border border-primary/40'
+                                : 'hover:bg-surface-container text-on-surface'
+                            )}
+                          >
+                            <span className="truncate">{seg.text}</span>
+                            <span className="font-mono text-[10px] text-outline shrink-0">
+                              {seg.start.toFixed(1)}s - {seg.end.toFixed(1)}s
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -1252,6 +1560,115 @@ export const StudioPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ================= MODAL DE VINCULAÇÃO DE CONTA GOOGLE AI STUDIO (BYOK) ================= */}
+      {isGeminiModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => !isConnectingGemini && setIsGeminiModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-surface-container-low border border-surface-container-highest p-6 shadow-2xl flex flex-col gap-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col gap-1">
+                <h3 className="font-title-lg text-title-lg font-bold text-on-surface flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[22px] text-primary">
+                    auto_awesome
+                  </span>
+                  <span>Conectar Conta Google (Gemini)</span>
+                </h3>
+                <p className="text-body-sm text-on-surface-variant">
+                  Vincule sua chave pessoal do Google AI Studio para desbloquear o gerador de legendas dinâmicas com o Gemini.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => !isConnectingGemini && setIsGeminiModalOpen(false)}
+                className="p-1.5 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
+                title="Fechar"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleConnectGemini} className="flex flex-col gap-4">
+              <div className="p-3.5 rounded-xl bg-surface-container-lowest border border-surface-container-highest flex flex-col gap-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-label-md font-bold text-on-surface">
+                    1. Entre na sua conta Google AI Studio
+                  </span>
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/15 text-primary hover:bg-primary/25 text-label-sm font-bold transition-colors"
+                  >
+                    <span>Abrir Google AI Studio</span>
+                    <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                  </a>
+                </div>
+                <p className="text-body-xs text-on-surface-variant leading-relaxed">
+                  Faça login com sua conta Google no portal oficial do Google AI Studio, clique em{' '}
+                  <strong className="text-on-surface">"Create API Key"</strong> e copie a chave gerada.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-label-md font-bold text-on-surface">
+                  2. Cole sua chave de API do Gemini
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showApiKey ? 'text' : 'password'}
+                    value={geminiApiKeyInput}
+                    onChange={(e) => setGeminiApiKeyInput(e.target.value)}
+                    placeholder="AIzaSy..."
+                    autoComplete="off"
+                    className="w-full bg-surface-container-lowest border border-surface-container-highest rounded-xl pl-3.5 pr-10 py-2.5 text-body-md font-mono text-on-surface outline-none focus:border-primary transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey((v) => !v)}
+                    className="absolute right-2.5 text-outline hover:text-on-surface cursor-pointer p-1"
+                    title={showApiKey ? 'Ocultar chave' : 'Mostrar chave'}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {showApiKey ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
+                <span className="text-[11px] text-outline flex items-center gap-1 mt-0.5">
+                  <span className="material-symbols-outlined text-[14px] text-primary">lock</span>
+                  Sua chave é validada em tempo real e armazenada com criptografia AES-256-GCM no servidor.
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsGeminiModalOpen(false)}
+                  disabled={isConnectingGemini}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  isLoading={isConnectingGemini}
+                  leftIcon={
+                    <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                  }
+                >
+                  Vincular e Habilitar Gemini
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 };

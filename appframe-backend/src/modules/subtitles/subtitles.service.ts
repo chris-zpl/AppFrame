@@ -15,31 +15,16 @@ export class SubtitlesService {
   constructor(private readonly geminiService: GeminiService) {}
 
   async generateSubtitles(
+    userId: string,
     audioOrVideoPath: string,
-    config?: SubtitleConfig,
+    _config?: SubtitleConfig,
   ): Promise<GeneratedSubtitleItem[]> {
     this.logger.log(`Iniciando transcrição de legendas com Gemini para ${audioOrVideoPath}`);
 
-    try {
-      const transcription = await this.geminiService.transcribeAudio({
-        audioPath: audioOrVideoPath,
-      });
+    const transcription = await this.geminiService.transcribeAudio(userId, {
+      audioPath: audioOrVideoPath,
+    });
 
-      if (transcription.segments && transcription.segments.length > 0) {
-        return transcription.segments;
-      }
-    } catch (err: any) {
-      this.logger.warn(
-        `Falha ao transcrever com Gemini (${err.message}). Utilizando fallback determinístico.`,
-      );
-    }
-
-    return [
-      {
-        start: 0.0,
-        end: 2.5,
-        text: config?.text || 'Transcrição automática com Gemini AI',
-      },
-    ];
+    return transcription.segments || [];
   }
 }

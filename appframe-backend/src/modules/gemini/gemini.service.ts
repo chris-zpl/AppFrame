@@ -1,10 +1,20 @@
-import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  ForbiddenException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { GoogleGenAI } from '@google/genai';
 import * as fsPromises from 'fs/promises';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { User } from '../users/entities/user.entity';
+import { EncryptionService } from '../../core/security/encryption.service';
 import {
   AudioTimestampSegment,
   TranscriptionResult,
@@ -17,28 +27,16 @@ import {
 @Injectable()
 export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
-  private readonly ai: GoogleGenAI | null = null;
-  private readonly apiKey: string;
   private readonly modelName: string;
   private readonly ttsDir = path.resolve(process.cwd(), 'storage/temp/tts');
 
-  constructor(private readonly configService: ConfigService) {
-    this.apiKey = this.configService.get<string>('GEMINI_API_KEY', '');
+  constructor(
+    private readonly configService: ConfigService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly encryptionService: EncryptionService,
+  ) {
     this.modelName = this.configService.get<string>('GEMINI_MODEL', 'gemini-2.5-flash');
-
-    if (this.apiKey && !this.apiKey.startsWith('dummy-')) {
-      try {
-        this.ai = new GoogleGenAI({ apiKey: this.apiKey });
-        this.logger.log(`SDK oficial @google/genai inicializado com modelo: ${this.modelName}`);
-      } catch (err: any) {
-        this.logger.error(`Falha ao instanciar GoogleGenAI: ${err.message}`);
-      }
-    } else {
-      this.logger.warn(
-        'GEMINI_API_KEY não configurada ou com valor placeholder. O serviço funcionará com mocks estruturados.',
-      );
-    }
-
     this.ensureDirs();
   }
 
@@ -51,15 +49,197 @@ export class GeminiService {
   }
 
   /**
-   * Transcrição de áudio com extração determinística de marcações de tempo (timestamps)
-   * para alimentação de legendas dinâmicas.
+   * Obtém o status de conexão da conta Google AI Studio (Gemini) do usuário.
    */
-  async transcribeAudio(params: {
-    audioBuffer?: Buffer;
-    audioPath?: string;
-    mimeType?: string;
-    language?: string;
-  }): Promise<TranscriptionResult> {
+  async getStatus(userId: string): Promise<{ connected: boolean }> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    return {
+      connected: Boolean(user?.gemini_api_key),
+    };
+  }
+
+  /**
+   * Valida a chave do Google AI Studio na API oficial do Gemini,
+   * criptografa com AES-256-GCM e vincula à conta do usuário.
+   */
+  async connectAccount(userId: string, apiKey: string): Promise<{ connected: boolean }> {
+    const cleanKey = (apiKey || '').trim();
+    if (!cleanKey || cleanKey.length < 15) {
+      throw new BadRequestException(
+        'Informe uma chave de API válida do Google AI Studio.',
+      );
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException('Usuário não encontrado.');
+    }
+
+    try {
+      const testClient = new GoogleGenAI({ apiKey: cleanKey });
+      await testClient.models.generateContent({
+        model: this.modelName,
+        contents: 'Responda apenas OK',
+      });
+    } catch (err: any) {
+      this.logger.warn(
+        `Falha ao validar chave do Google AI Studio para o usuário ${userId}: ${err.message}`,
+      );
+      throw new BadRequestException(
+        'Não foi possível autenticar no Google Gemini com esta chave. Verifique se a chave do Google AI Studio está correta e ativa.',
+      );
+    }
+
+    user.gemini_api_key = this.encryptionService.encrypt(cleanKey);
+    await this.userRepository.save(user);
+
+    return { connected: true };
+  }
+
+  /**
+   * Remove o vínculo da chave do Google AI Studio da conta do usuário.
+   */
+  async disconnectAccount(userId: string): Promise<{ connected: boolean }> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException('Usuário não encontrado.');
+    }
+
+    user.gemini_api_key = null;
+    await this.userRepository.save(user);
+
+    return { connected: false };
+  }
+
+  /**
+   * Instancia o cliente GoogleGenAI exclusivamente com a chave vinculada pelo usuário.
+   * Nenhuma chave padrão do servidor é utilizada.
+   */
+  private async getClientForUser(userId: string): Promise<GoogleGenAI> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user || !user.gemini_api_key) {
+      throw new ForbiddenException(
+        'Conecte sua conta do Google AI Studio (Gemini) para habilitar o gerador de legendas.',
+      );
+    }
+
+    try {
+      const decryptedKey = this.encryptionService.decrypt(user.gemini_api_key);
+      if (!decryptedKey) {
+        throw new Error('Chave descriptografada vazia');
+      }
+      return new GoogleGenAI({ apiKey: decryptedKey });
+    } catch (err: any) {
+      this.logger.error(`Erro ao descriptografar chave Gemini do usuário ${userId}: ${err.message}`);
+      throw new ForbiddenException(
+        'Sua credencial do Google Gemini expirou ou é inválida. Reconecte sua conta no Studio.',
+      );
+    }
+  }
+
+  /**
+   * Gera legendas dinâmicas sincronizadas via Gemini utilizando a conta conectada do usuário.
+   * Aceita arquivo de áudio/vídeo real (STT multimodal) ou contexto/roteiro do vídeo carregado.
+   */
+  async generateSubtitles(
+    userId: string,
+    params: {
+      audioBuffer?: Buffer;
+      audioPath?: string;
+      mimeType?: string;
+      title?: string;
+      context?: string;
+      durationSeconds?: number;
+      language?: string;
+    },
+  ): Promise<TranscriptionResult> {
+    if (params.audioBuffer || params.audioPath) {
+      return this.transcribeAudio(userId, {
+        audioBuffer: params.audioBuffer,
+        audioPath: params.audioPath,
+        mimeType: params.mimeType,
+        language: params.language,
+      });
+    }
+
+    const ai = await this.getClientForUser(userId);
+    const topicText = (params.context || params.title || '').trim();
+    if (!topicText) {
+      throw new BadRequestException(
+        'Envie um arquivo de vídeo/áudio ou informe o tema/roteiro para gerar as legendas pelo Gemini.',
+      );
+    }
+
+    const duration = Math.max(5, Math.min(180, Number(params.durationSeconds) || 15));
+    const language = params.language || 'pt-BR';
+
+    try {
+      const prompt = `Você é um gerador profissional de legendas dinâmicas sincronizadas para vídeos curtos (Shorts/Reels).
+Com base no seguinte título/roteiro/contexto do vídeo:
+"${topicText}"
+
+Gere as legendas dinâmicas faladas e sincronizadas cobrindo uma duração de aproximadamente ${duration} segundos no idioma ${language}.
+Divida em blocos curtos e impactantes (2 a 5 palavras por bloco, estilo retenção dinâmica), sem sobreposição de tempo.
+Retorne estritamente um JSON válido no seguinte formato:
+{
+  "fullText": "Texto corrido completo das legendas...",
+  "language": "${language}",
+  "segments": [
+    { "start": 0.00, "end": 1.80, "text": "Primeira frase curta" },
+    { "start": 1.85, "end": 3.60, "text": "Segunda frase curta" }
+  ]
+}`;
+
+      const response = await ai.models.generateContent({
+        model: this.modelName,
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
+
+      const rawJsonText = response.text || '';
+      const parsed = JSON.parse(rawJsonText);
+
+      const segments: AudioTimestampSegment[] = (parsed.segments || [])
+        .map((seg: any) => ({
+          start: typeof seg.start === 'number' ? Number(seg.start.toFixed(2)) : 0.0,
+          end: typeof seg.end === 'number' ? Number(seg.end.toFixed(2)) : 2.0,
+          text: String(seg.text || '').trim(),
+        }))
+        .filter((seg: AudioTimestampSegment) => seg.text.length > 0);
+
+      if (segments.length === 0) {
+        throw new Error('O modelo não retornou segmentos de legenda válidos.');
+      }
+
+      return {
+        fullText: parsed.fullText || segments.map((s) => s.text).join(' '),
+        language: parsed.language || language,
+        segments,
+      };
+    } catch (err: any) {
+      this.logger.error(`Erro ao gerar legendas no Gemini para usuário ${userId}: ${err.message}`);
+      throw new InternalServerErrorException(
+        `Falha ao gerar legendas no Google Gemini: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Transcrição de áudio com extração determinística de marcações de tempo (timestamps)
+   * usando exclusivamente a conta Google AI Studio vinculada pelo usuário.
+   */
+  async transcribeAudio(
+    userId: string,
+    params: {
+      audioBuffer?: Buffer;
+      audioPath?: string;
+      mimeType?: string;
+      language?: string;
+    },
+  ): Promise<TranscriptionResult> {
+    const ai = await this.getClientForUser(userId);
     let buffer = params.audioBuffer;
     const mimeType = params.mimeType || 'audio/mp3';
 
@@ -78,199 +258,126 @@ export class GeminiService {
       throw new BadRequestException('Buffer ou caminho de áudio válido é obrigatório para transcrição.');
     }
 
-    // Se o cliente da Google GenAI estiver ativo com chave real
-    if (this.ai && this.apiKey && !this.apiKey.startsWith('dummy-')) {
-      try {
-        this.logger.log(`Enviando áudio (${buffer.length} bytes) para o modelo Gemini: ${this.modelName}`);
+    try {
+      this.logger.log(`Enviando mídia (${buffer.length} bytes) para o modelo Gemini: ${this.modelName}`);
 
-        const prompt = `Você é um motor especializado em reconhecimento de fala (STT) para geração de legendas dinâmicas.
-Transcreva todo o conteúdo de fala do áudio fornecido, segmentando as frases faladas com seus respectivos tempos de início (start) e término (end) em segundos (com duas casas decimais).
+      const prompt = `Você é um motor especializado em reconhecimento de fala (STT) para geração de legendas dinâmicas.
+Transcreva todo o conteúdo de fala do arquivo fornecido, segmentando os trechos falados em blocos curtos (2 a 6 palavras) com seus respectivos tempos de início (start) e término (end) em segundos (com duas casas decimais).
 Retorne estritamente um JSON no seguinte formato:
 {
   "fullText": "Texto completo transcrito aqui...",
-  "language": "pt-BR",
+  "language": "${params.language || 'pt-BR'}",
   "segments": [
-    { "start": 0.00, "end": 2.40, "text": "Primeira frase ou expressão falada" },
-    { "start": 2.45, "end": 4.80, "text": "Segunda frase falada" }
+    { "start": 0.00, "end": 1.80, "text": "Primeira expressão falada" },
+    { "start": 1.85, "end": 3.60, "text": "Segunda expressão falada" }
   ]
 }`;
 
-        const response = await this.ai.models.generateContent({
-          model: this.modelName,
-          contents: [
-            {
-              inlineData: {
-                data: buffer.toString('base64'),
-                mimeType,
-              },
+      const response = await ai.models.generateContent({
+        model: this.modelName,
+        contents: [
+          {
+            inlineData: {
+              data: buffer.toString('base64'),
+              mimeType,
             },
-            {
-              text: prompt,
-            },
-          ],
-          config: {
-            responseMimeType: 'application/json',
           },
-        });
+          {
+            text: prompt,
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
 
-        const rawJsonText = response.text || '';
-        const parsed = JSON.parse(rawJsonText);
+      const rawJsonText = response.text || '';
+      const parsed = JSON.parse(rawJsonText);
 
-        const segments: AudioTimestampSegment[] = (parsed.segments || []).map((seg: any) => ({
+      const segments: AudioTimestampSegment[] = (parsed.segments || [])
+        .map((seg: any) => ({
           start: typeof seg.start === 'number' ? Number(seg.start.toFixed(2)) : 0.0,
           end: typeof seg.end === 'number' ? Number(seg.end.toFixed(2)) : 2.0,
           text: String(seg.text || '').trim(),
-        }));
+        }))
+        .filter((seg: AudioTimestampSegment) => seg.text.length > 0);
 
-        return {
-          fullText: parsed.fullText || segments.map((s) => s.text).join(' '),
-          language: parsed.language || params.language || 'pt-BR',
-          segments,
-        };
-      } catch (err: any) {
-        this.logger.error(`Erro na chamada da API Gemini GenAI: ${err.message}`);
-        throw new InternalServerErrorException(
-          `Falha ao processar transcrição no Google Gemini: ${err.message}`,
-        );
-      }
+      return {
+        fullText: parsed.fullText || segments.map((s) => s.text).join(' '),
+        language: parsed.language || params.language || 'pt-BR',
+        segments,
+      };
+    } catch (err: any) {
+      this.logger.error(`Erro na chamada da API Gemini GenAI: ${err.message}`);
+      throw new InternalServerErrorException(
+        `Falha ao processar transcrição no Google Gemini: ${err.message}`,
+      );
     }
-
-    // Fallback estruturado para desenvolvimento e testes
-    this.logger.log('Gerando transcrição simulada com timestamps para desenvolvimento.');
-    return {
-      fullText: 'Bem-vindo ao AppFrame! Esta é uma transcrição automática com timestamps sincronizados.',
-      language: params.language || 'pt-BR',
-      segments: [
-        {
-          start: 0.0,
-          end: 2.1,
-          text: 'Bem-vindo ao AppFrame!',
-        },
-        {
-          start: 2.15,
-          end: 5.5,
-          text: 'Esta é uma transcrição automática com timestamps sincronizados.',
-        },
-      ],
-    };
   }
 
   /**
    * Geração de áudio sintetizado (TTS) a partir de texto digitado pelo usuário
-   * para sobreposição de narração na timeline do vídeo.
+   * usando exclusivamente a conta Google AI Studio vinculada pelo usuário.
    */
-  async synthesizeSpeech(options: SynthesizeSpeechOptions): Promise<SynthesizeSpeechResult> {
+  async synthesizeSpeech(
+    userId: string,
+    options: SynthesizeSpeechOptions,
+  ): Promise<SynthesizeSpeechResult> {
     if (!options.text || options.text.trim().length === 0) {
       throw new BadRequestException('O texto para síntese de voz não pode estar vazio.');
     }
 
+    const ai = await this.getClientForUser(userId);
     await this.ensureDirs();
     const cleanText = options.text.trim();
     const voiceName = options.voiceName || 'Puck';
     const filename = `narration_${Date.now()}_${Math.random().toString(36).substring(7)}.wav`;
     const outputPath = path.join(this.ttsDir, filename);
 
-    // Se o cliente da Google GenAI estiver ativo com chave real
-    if (this.ai && this.apiKey && !this.apiKey.startsWith('dummy-')) {
-      try {
-        this.logger.log(`Sintetizando fala via Gemini para o texto (${cleanText.length} chars) com voz: ${voiceName}`);
+    try {
+      this.logger.log(`Sintetizando fala via Gemini para o texto (${cleanText.length} chars) com voz: ${voiceName}`);
 
-        const response = await this.ai.models.generateContent({
-          model: this.modelName,
-          contents: cleanText,
-          config: {
-            responseModalities: ['AUDIO'],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName,
-                },
+      const response = await ai.models.generateContent({
+        model: this.modelName,
+        contents: cleanText,
+        config: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName,
               },
             },
           },
-        });
+        },
+      });
 
-        // Extrai a parte de áudio dos candidatos retornados
-        const candidate = response.candidates?.[0];
-        const audioPart = candidate?.content?.parts?.find(
-          (part: any) => part.inlineData && part.inlineData.data,
-        );
+      const candidate = response.candidates?.[0];
+      const audioPart = candidate?.content?.parts?.find(
+        (part: any) => part.inlineData && part.inlineData.data,
+      );
 
-        if (audioPart && audioPart.inlineData?.data) {
-          const audioBuffer = Buffer.from(audioPart.inlineData.data, 'base64');
-          const mimeType = audioPart.inlineData.mimeType || 'audio/wav';
-
-          await fsPromises.writeFile(outputPath, audioBuffer);
-          this.logger.log(`Áudio de narração salvo com sucesso em: ${outputPath}`);
-
-          // Estimativa de duração: média de ~15 caracteres por segundo de fala
-          const durationEstimate = Math.max(1, Number((cleanText.length / 15).toFixed(2)));
-
-          return {
-            audioBuffer,
-            mimeType,
-            savedFilePath: path.relative(process.cwd(), outputPath),
-            durationEstimateSeconds: durationEstimate,
-          };
-        }
-      } catch (err: any) {
-        this.logger.warn(`Chamada de síntese Gemini falhou ou não retornou áudio: ${err.message}`);
+      if (!audioPart || !audioPart.inlineData?.data) {
+        throw new Error('O modelo Gemini não retornou dados de áudio.');
       }
+
+      const audioBuffer = Buffer.from(audioPart.inlineData.data, 'base64');
+      const mimeType = audioPart.inlineData.mimeType || 'audio/wav';
+
+      await fsPromises.writeFile(outputPath, audioBuffer);
+      const durationEstimate = Math.max(1, Number((cleanText.length / 15).toFixed(2)));
+
+      return {
+        audioBuffer,
+        mimeType,
+        savedFilePath: path.relative(process.cwd(), outputPath),
+        durationEstimateSeconds: durationEstimate,
+      };
+    } catch (err: any) {
+      this.logger.error(`Chamada de síntese Gemini falhou: ${err.message}`);
+      throw new InternalServerErrorException(
+        `Falha ao sintetizar áudio no Google Gemini: ${err.message}`,
+      );
     }
-
-    // Fallback gerador de áudio WAV sintético válido para ambientes locais de desenvolvimento
-    this.logger.log(`Gerando áudio WAV de narração simulada para: "${cleanText.substring(0, 30)}..."`);
-    const durationSeconds = Math.max(1.5, Math.min(30, cleanText.length * 0.08));
-    const sampleRate = 16000;
-    const numSamples = Math.floor(sampleRate * durationSeconds);
-    const wavBuffer = this.createSyntheticWavBuffer(numSamples, sampleRate);
-
-    await fsPromises.writeFile(outputPath, wavBuffer);
-
-    return {
-      audioBuffer: wavBuffer,
-      mimeType: 'audio/wav',
-      savedFilePath: path.relative(process.cwd(), outputPath),
-      durationEstimateSeconds: Number(durationSeconds.toFixed(2)),
-    };
-  }
-
-  /**
-   * Constrói cabeçalho e buffer WAV PCM estritamente válido de 16-bit mono
-   */
-  private createSyntheticWavBuffer(numSamples: number, sampleRate: number): Buffer {
-    const byteRate = sampleRate * 2;
-    const dataSize = numSamples * 2;
-    const buffer = Buffer.alloc(44 + dataSize);
-
-    // RIFF chunk descriptor
-    buffer.write('RIFF', 0);
-    buffer.writeUInt32LE(36 + dataSize, 4);
-    buffer.write('WAVE', 8);
-
-    // "fmt " sub-chunk
-    buffer.write('fmt ', 12);
-    buffer.writeUInt32LE(16, 16); // Subchunk1Size (16 para PCM)
-    buffer.writeUInt16LE(1, 20);  // AudioFormat (1 = PCM)
-    buffer.writeUInt16LE(1, 22);  // NumChannels (1 = Mono)
-    buffer.writeUInt32LE(sampleRate, 24); // SampleRate
-    buffer.writeUInt32LE(byteRate, 28);   // ByteRate
-    buffer.writeUInt16LE(2, 32);  // BlockAlign
-    buffer.writeUInt16LE(16, 34); // BitsPerSample
-
-    // "data" sub-chunk
-    buffer.write('data', 36);
-    buffer.writeUInt32LE(dataSize, 40);
-
-    // Preenche com áudio senoidal suave de 440Hz
-    const freq = 440;
-    for (let i = 0; i < numSamples; i++) {
-      const t = i / sampleRate;
-      const sample = Math.sin(2 * Math.PI * freq * t) * 0.2; // Volume baixo e limpo
-      const intSample = Math.max(-32768, Math.min(32767, Math.floor(sample * 32767)));
-      buffer.writeInt16LE(intSample, 44 + i * 2);
-    }
-
-    return buffer;
   }
 }

@@ -23,6 +23,9 @@ export class UserResponseDto {
   is_two_factor_enabled: boolean;
 
   @Expose()
+  has_gemini_key: boolean;
+
+  @Expose()
   created_at: Date;
 
   @Expose()
@@ -34,9 +37,11 @@ export class UserResponseDto {
    */
   static fromEntity(user: User | null | undefined): UserResponseDto | null {
     if (!user) return null;
-    return plainToInstance(UserResponseDto, user, {
+    const dto = plainToInstance(UserResponseDto, user, {
       excludeExtraneousValues: true,
     });
+    dto.has_gemini_key = Boolean(user.gemini_api_key);
+    return dto;
   }
 
   static fromEntities(users: User[]): UserResponseDto[] {
