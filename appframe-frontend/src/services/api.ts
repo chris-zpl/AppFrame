@@ -69,10 +69,11 @@ api.interceptors.response.use(
 
     const requestUrl = originalRequest?.url || '';
 
-    // Endpoints de autenticação pública (login e registro)
+    // Endpoints de autenticação pública (login, registro e desafio 2FA)
     const isPublicAuthEndpoint =
       requestUrl.includes('/auth/login') ||
-      requestUrl.includes('/auth/register');
+      requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/2fa/verify');
 
     // Erros gerais de servidor/rede (500+ ou erro de conexão): dispara notificação Sonner,
     // garantindo que endpoints de autenticação nunca emitam notificações globais espúrias
