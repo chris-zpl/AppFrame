@@ -3,6 +3,7 @@ export interface JwtPayload {
   email: string;
   sessionId?: string;
   purpose?: 'access' | 'refresh' | '2fa_challenge';
+  rememberMe?: boolean;
 }
 
 export interface AuthenticatedUser {

@@ -18,7 +18,7 @@ export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState(params.email || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -57,7 +57,18 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const data = await authService.login({ email, password });
+      const data = await authService.login({ email, password, rememberMe });
+      try {
+        if (rememberMe) {
+          localStorage.setItem('appframe_remember_me', 'true');
+          localStorage.setItem('appframe_has_session', 'true');
+        } else {
+          localStorage.removeItem('appframe_remember_me');
+          localStorage.removeItem('appframe_has_session');
+          sessionStorage.setItem('appframe_has_session', 'true');
+        }
+      } catch {}
+
       if (data.requires2fa || data.require_2fa) {
         navigate('2fa', { tempToken: data.tempToken || data.temp_token || '', email });
         return;

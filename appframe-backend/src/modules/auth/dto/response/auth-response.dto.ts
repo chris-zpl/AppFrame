@@ -16,6 +16,9 @@ export class AuthResponseDto {
   refresh_token?: string;
 
   @Expose()
+  remember_me?: boolean;
+
+  @Expose()
   @Type(() => UserResponseDto)
   user?: UserResponseDto;
 }

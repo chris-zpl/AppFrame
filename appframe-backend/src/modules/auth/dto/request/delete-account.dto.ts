@@ -4,4 +4,8 @@ export class DeleteAccountDto {
   @IsOptional()
   @IsString()
   password?: string;
+
+  @IsOptional()
+  @IsString()
+  confirmation?: string;
 }

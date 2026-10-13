@@ -70,8 +70,10 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           />
           <div
             className={cn(
-              'w-4 h-4 rounded bg-white dark:bg-surface-container-lowest transition-colors flex items-center justify-center border border-neutral-300 dark:border-outline/20',
-              'peer-checked:bg-primary peer-checked:border-primary',
+              'w-4 h-4 rounded transition-colors flex items-center justify-center border',
+              checked
+                ? 'bg-primary border-primary'
+                : 'bg-white dark:bg-surface-container-lowest border-neutral-300 dark:border-outline/20',
               className,
             )}
           >

@@ -50,13 +50,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (resolvedUser && resolvedUser.id) {
           setUser(resolvedUser);
           try {
-            localStorage.setItem('appframe_has_session', 'true');
+            sessionStorage.setItem('appframe_has_session', 'true');
+            if (localStorage.getItem('appframe_remember_me') === 'true') {
+              localStorage.setItem('appframe_has_session', 'true');
+            }
           } catch {}
           return resolvedUser as UserProfile;
         } else {
           setUser(null);
           try {
             localStorage.removeItem('appframe_has_session');
+            localStorage.removeItem('appframe_remember_me');
+            sessionStorage.removeItem('appframe_has_session');
           } catch {}
           return null;
         }
@@ -64,6 +69,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         try {
           localStorage.removeItem('appframe_has_session');
+          localStorage.removeItem('appframe_remember_me');
+          sessionStorage.removeItem('appframe_has_session');
         } catch {}
         return null;
       } finally {
@@ -84,6 +91,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       try {
         localStorage.removeItem('appframe_has_session');
+        localStorage.removeItem('appframe_remember_me');
+        sessionStorage.removeItem('appframe_has_session');
         sessionStorage.removeItem('appframe_last_active_route');
       } catch {}
       setUser(null);
@@ -96,7 +105,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initialPath = window.location.pathname;
     let hasStoredSession = false;
     try {
-      hasStoredSession = localStorage.getItem('appframe_has_session') === 'true';
+      hasStoredSession =
+        localStorage.getItem('appframe_has_session') === 'true' ||
+        sessionStorage.getItem('appframe_has_session') === 'true';
     } catch {}
 
     // Se estiver explicitamente em rota pública e NÃO tiver sessão ativa salva,
@@ -124,6 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleAuthLogout = () => {
       try {
         localStorage.removeItem('appframe_has_session');
+        localStorage.removeItem('appframe_remember_me');
+        sessionStorage.removeItem('appframe_has_session');
         sessionStorage.removeItem('appframe_last_active_route');
       } catch {}
       setUser(null);

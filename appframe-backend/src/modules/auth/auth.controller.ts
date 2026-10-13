@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Delete,
   Body,
   Req,
@@ -26,6 +27,7 @@ import { Enable2faDto } from './dto/request/enable-2fa.dto';
 import { Verify2faDto } from './dto/request/verify-2fa.dto';
 import { ChangePasswordDto } from './dto/request/change-password.dto';
 import { DeleteAccountDto } from './dto/request/delete-account.dto';
+import { UpdateProfileDto } from './dto/request/update-profile.dto';
 
 import { AuthResponseDto } from './dto/response/auth-response.dto';
 import { Generate2faResponseDto } from './dto/response/generate-2fa-response.dto';
@@ -61,7 +63,12 @@ export class AuthController {
     return { ip, userAgent };
   }
 
-  private setAuthCookies(res: Response, accessToken: string, refreshToken?: string) {
+  private setAuthCookies(
+    res: Response,
+    accessToken: string,
+    refreshToken?: string,
+    rememberMe: boolean = false,
+  ) {
     const isProduction =
       this.configService.get<string>('NODE_ENV') === 'production' &&
       this.configService.get<string>('COOKIE_SECURE') !== 'false';
@@ -71,7 +78,7 @@ export class AuthController {
       secure: isProduction,
       sameSite: 'lax',
       path: '/',
-      maxAge: 15 * 60 * 1000,
+      ...(rememberMe ? { maxAge: 15 * 60 * 1000 } : {}),
     });
 
     if (refreshToken) {
@@ -80,7 +87,7 @@ export class AuthController {
         secure: isProduction,
         sameSite: 'lax',
         path: '/',
-        maxAge: 30 * 24 * 60 * 60 * 1000,
+        ...(rememberMe ? { maxAge: 30 * 24 * 60 * 60 * 1000 } : {}),
       });
     }
   }
@@ -119,7 +126,12 @@ export class AuthController {
 
     // Configura cookies seguros antes do redirecionamento
     if (authResult.access_token && authResult.refresh_token) {
-      this.setAuthCookies(res, authResult.access_token, authResult.refresh_token);
+      this.setAuthCookies(
+        res,
+        authResult.access_token,
+        authResult.refresh_token,
+        Boolean(authResult.remember_me ?? true),
+      );
     }
 
     // Redirecionamento seguro para a aplicação cliente com os tokens
@@ -159,7 +171,12 @@ export class AuthController {
   ): Promise<AuthResponseDto> {
     const result = await this.authService.login(dto, this.extractMeta(req));
     if (result.access_token && result.refresh_token) {
-      this.setAuthCookies(res, result.access_token, result.refresh_token);
+      this.setAuthCookies(
+        res,
+        result.access_token,
+        result.refresh_token,
+        Boolean(result.remember_me ?? dto.rememberMe),
+      );
     }
     return result;
   }
@@ -177,7 +194,12 @@ export class AuthController {
     }
     const result = await this.authService.refreshTokens({ refreshToken: token }, this.extractMeta(req));
     if (result.access_token && result.refresh_token) {
-      this.setAuthCookies(res, result.access_token, result.refresh_token);
+      this.setAuthCookies(
+        res,
+        result.access_token,
+        result.refresh_token,
+        Boolean(result.remember_me),
+      );
     }
     return result;
   }
@@ -219,6 +241,14 @@ export class AuthController {
     return this.authService.disable2fa(userId, token);
   }
 
+  @Get('2fa/recovery-codes')
+  @UseGuards(JwtAuthGuard)
+  async getRecoveryCodes(
+    @CurrentUser('userId') userId: string,
+  ): Promise<{ recovery_codes: string[] }> {
+    return this.authService.getRecoveryCodes(userId);
+  }
+
   @Post('2fa/verify')
   @HttpCode(HttpStatus.OK)
   async verify2fa(
@@ -228,7 +258,12 @@ export class AuthController {
   ): Promise<AuthResponseDto> {
     const result = await this.authService.verify2faChallenge(dto, this.extractMeta(req));
     if (result.access_token && result.refresh_token) {
-      this.setAuthCookies(res, result.access_token, result.refresh_token);
+      this.setAuthCookies(
+        res,
+        result.access_token,
+        result.refresh_token,
+        Boolean(result.remember_me),
+      );
     }
     return result;
   }
@@ -241,6 +276,24 @@ export class AuthController {
     @CurrentUser('userId') userId: string,
   ) {
     return this.authService.getProfile(userId);
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  async updateProfile(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.authService.updateProfile(userId, dto);
+  }
+
+  @Post('google/unlink')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async unlinkGoogle(
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.authService.unlinkGoogle(userId);
   }
 
   // --- Gerenciamento de Sessões ---
@@ -287,7 +340,10 @@ export class AuthController {
   async deleteAccount(
     @CurrentUser('userId') userId: string,
     @Body() dto: DeleteAccountDto,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<{ deleted: boolean }> {
-    return this.authService.deleteAccount(userId, dto);
+    const result = await this.authService.deleteAccount(userId, dto);
+    this.clearAuthCookies(res);
+    return result;
   }
 }

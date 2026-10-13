@@ -25,6 +25,7 @@ import { Enable2faDto } from './dto/request/enable-2fa.dto';
 import { Verify2faDto } from './dto/request/verify-2fa.dto';
 import { ChangePasswordDto } from './dto/request/change-password.dto';
 import { DeleteAccountDto } from './dto/request/delete-account.dto';
+import { UpdateProfileDto } from './dto/request/update-profile.dto';
 
 import { AuthResponseDto } from './dto/response/auth-response.dto';
 import { Generate2faResponseDto } from './dto/response/generate-2fa-response.dto';
@@ -101,21 +102,24 @@ export class AuthService {
     return this.jwtService.sign(payload, { expiresIn: this.jwtExpiresIn as any });
   }
 
-  private signRefreshToken(user: User, sessionId: string): string {
+  private signRefreshToken(user: User, sessionId: string, rememberMe: boolean = false): string {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       sessionId,
       purpose: 'refresh',
+      rememberMe,
     };
-    return this.jwtService.sign(payload, { expiresIn: this.refreshExpiresIn as any });
+    const expiresIn = rememberMe ? this.refreshExpiresIn : '1d';
+    return this.jwtService.sign(payload, { expiresIn: expiresIn as any });
   }
 
-  private sign2faChallengeToken(user: User): string {
+  private sign2faChallengeToken(user: User, rememberMe: boolean = false): string {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       purpose: '2fa_challenge',
+      rememberMe,
     };
     return this.jwtService.sign(payload, { expiresIn: '5m' });
   }
@@ -125,9 +129,10 @@ export class AuthService {
   private async createSessionAndTokens(
     user: User,
     meta?: SessionMeta,
+    rememberMe: boolean = false,
   ): Promise<AuthResponseDto> {
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30 dias de validade
+    expiresAt.setDate(expiresAt.getDate() + (rememberMe ? 30 : 1));
 
     const deviceName =
       meta?.deviceName || DeviceDetectorHelper.getFriendlyDeviceName(meta?.userAgent);
@@ -146,7 +151,7 @@ export class AuthService {
     const savedSession = await this.sessionRepository.save(session);
 
     const accessToken = this.signAccessToken(user, savedSession.id);
-    const refreshToken = this.signRefreshToken(user, savedSession.id);
+    const refreshToken = this.signRefreshToken(user, savedSession.id, rememberMe);
 
     // Persiste o hash SHA-256 do refresh token
     savedSession.refresh_token_hash = this.hashToken(refreshToken);
@@ -155,6 +160,7 @@ export class AuthService {
     return {
       access_token: accessToken,
       refresh_token: refreshToken,
+      remember_me: rememberMe,
       user: UserResponseDto.fromEntity(user)!,
     };
   }
@@ -205,16 +211,18 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
 
+    const rememberMe = Boolean(dto.rememberMe);
+
     // Se 2FA estiver ativado, retorna desafio em vez de tokens definitivos
     if (user.is_two_factor_enabled) {
-      const tempToken = this.sign2faChallengeToken(user);
+      const tempToken = this.sign2faChallengeToken(user, rememberMe);
       return {
         require_2fa: true,
         temp_token: tempToken,
       };
     }
 
-    return this.createSessionAndTokens(user, meta);
+    return this.createSessionAndTokens(user, meta, rememberMe);
   }
 
   // --- Rotação de Refresh Token ---
@@ -267,15 +275,17 @@ export class AuthService {
       throw new UnauthorizedException('Usuário não encontrado.');
     }
 
+    const rememberMe = Boolean(payload.rememberMe);
+
     // Rotação estrita: gera novo par de tokens
     const newAccessToken = this.signAccessToken(user, session.id);
-    const newRefreshToken = this.signRefreshToken(user, session.id);
+    const newRefreshToken = this.signRefreshToken(user, session.id, rememberMe);
 
     // Atualiza a sessão com o hash do NOVO token
     session.refresh_token_hash = this.hashToken(newRefreshToken);
     session.last_active_at = new Date();
     const newExpiresAt = new Date();
-    newExpiresAt.setDate(newExpiresAt.getDate() + 30);
+    newExpiresAt.setDate(newExpiresAt.getDate() + (rememberMe ? 30 : 1));
     session.expires_at = newExpiresAt;
 
     if (meta?.ip) session.ip_address = meta.ip;
@@ -289,6 +299,7 @@ export class AuthService {
     return {
       access_token: newAccessToken,
       refresh_token: newRefreshToken,
+      remember_me: rememberMe,
       user: UserResponseDto.fromEntity(user)!,
     };
   }
@@ -333,14 +344,14 @@ export class AuthService {
 
     // Se 2FA estiver ativado na conta, emite desafio
     if (user.is_two_factor_enabled) {
-      const tempToken = this.sign2faChallengeToken(user);
+      const tempToken = this.sign2faChallengeToken(user, true);
       return {
         require_2fa: true,
         temp_token: tempToken,
       };
     }
 
-    return this.createSessionAndTokens(user, meta);
+    return this.createSessionAndTokens(user, meta, true);
   }
 
   // --- Segundo Fator de Autenticação (2FA) ---
@@ -458,7 +469,7 @@ export class AuthService {
       throw new UnauthorizedException('Código de autenticação ou recuperação inválido.');
     }
 
-    return this.createSessionAndTokens(user, meta);
+    return this.createSessionAndTokens(user, meta, Boolean(payload.rememberMe));
   }
 
   // --- Gerenciamento de Sessões ---
@@ -590,6 +601,17 @@ export class AuthService {
     return { deleted: true };
   }
 
+  async getRecoveryCodes(userId: string): Promise<{ recovery_codes: string[] }> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user || !user.is_two_factor_enabled || !user.recovery_codes) {
+      throw new BadRequestException('2FA não está ativo ou não há códigos de recuperação disponíveis.');
+    }
+    const decryptedCodes = user.recovery_codes.map((c) =>
+      this.encryptionService.decrypt(c),
+    );
+    return { recovery_codes: decryptedCodes };
+  }
+
   async getProfile(userId: string): Promise<UserResponseDto> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -598,5 +620,48 @@ export class AuthService {
       throw new NotFoundException('Usuário não encontrado.');
     }
     return UserResponseDto.fromEntity(user)!;
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UserResponseDto> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado.');
+    }
+
+    if (dto.email) {
+      const emailNormalized = dto.email.trim().toLowerCase();
+      if (emailNormalized !== user.email) {
+        const existing = await this.userRepository.findOne({
+          where: { email: emailNormalized },
+        });
+        if (existing && existing.id !== userId) {
+          throw new ConflictException('Já existe um usuário cadastrado com este e-mail.');
+        }
+        user.email = emailNormalized;
+      }
+    }
+
+    if (dto.name) {
+      user.name = dto.name.trim();
+    }
+
+    const saved = await this.userRepository.save(user);
+    return UserResponseDto.fromEntity(saved)!;
+  }
+
+  async unlinkGoogle(userId: string): Promise<UserResponseDto> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado.');
+    }
+    if (!user.password_hash) {
+      throw new BadRequestException(
+        'Cadastre uma senha local na aba Segurança antes de desvincular sua conta Google.',
+      );
+    }
+    user.google_id = null;
+    user.auth_provider = AuthProvider.LOCAL;
+    const saved = await this.userRepository.save(user);
+    return UserResponseDto.fromEntity(saved)!;
   }
 }
