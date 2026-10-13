@@ -1,14 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Repository } from 'typeorm';
 import { Queue } from 'bullmq';
+import * as fs from 'fs';
+import * as path from 'path';
 import { VideoJob } from './entities/video-job.entity';
 import { VideoJobResponseDto } from './dto/response/video-job-response.dto';
 import { CreateVideoJobDto } from './dto/request/create-video-job.dto';
 import { DownloadBatchDto } from './dto/request/download-batch.dto';
 import { VideoJobStatus } from './enums/video-job-status.enum';
 import { VideoPlatform } from './enums/video-platform.enum';
+import { DownloadService } from './services/download.service';
+import { FFmpegService } from './services/ffmpeg.service';
 import {
   MEDIA_DOWNLOAD_QUEUE,
   DownloadJobPayload,
@@ -21,7 +25,77 @@ export class MediaService {
     private readonly videoJobRepository: Repository<VideoJob>,
     @InjectQueue(MEDIA_DOWNLOAD_QUEUE)
     private readonly downloadQueue: Queue<DownloadJobPayload>,
+    private readonly downloadService: DownloadService,
+    private readonly ffmpegService: FFmpegService,
   ) {}
+
+  /**
+   * Baixa o vídeo selecionado na varredura para visualização em tempo real no Studio
+   * e retorna metadados reais (duração, dimensões e URL de stream).
+   */
+  async prepareStudioPreview(sourceUrl: string): Promise<{
+    previewId: string;
+    streamUrl: string;
+    durationSeconds: number;
+    width: number;
+    height: number;
+  }> {
+    const { previewId, filePath } = await this.downloadService.ensurePreviewDownloaded(
+      sourceUrl,
+    );
+    const metadata = await this.ffmpegService.probeMetadata(filePath);
+
+    return {
+      previewId,
+      streamUrl: `/api/v1/media/preview/${previewId}/stream`,
+      durationSeconds: metadata.durationSeconds,
+      width: metadata.width,
+      height: metadata.height,
+    };
+  }
+
+  getPreviewFilePath(previewId: string): string {
+    return this.downloadService.getPreviewFilePath(previewId);
+  }
+
+  /**
+   * Resolve o arquivo MP4 final renderizado para download no computador do usuário.
+   */
+  async getCompletedJobFile(
+    id: string,
+    userId: string,
+  ): Promise<{ filePath: string; fileName: string }> {
+    const job = await this.videoJobRepository.findOne({
+      where: { id, user_id: userId },
+    });
+
+    if (!job) {
+      throw new NotFoundException('Job de vídeo não encontrado.');
+    }
+
+    if (job.status !== VideoJobStatus.COMPLETED || !job.final_video_path) {
+      throw new BadRequestException('O vídeo ainda não finalizou o processamento.');
+    }
+
+    const resolvedPath = path.isAbsolute(job.final_video_path)
+      ? job.final_video_path
+      : path.resolve(process.cwd(), job.final_video_path);
+
+    if (!fs.existsSync(resolvedPath)) {
+      throw new NotFoundException('Arquivo de vídeo processado não encontrado no servidor.');
+    }
+
+    const safeTitle = (job.original_title || `video_${job.id.substring(0, 8)}`)
+      .replace(/[^a-zA-Z0-9_\-\u00C0-\u017F\s]/g, '')
+      .trim()
+      .replace(/\s+/g, '_')
+      .substring(0, 80);
+
+    return {
+      filePath: resolvedPath,
+      fileName: `${safeTitle || 'video_appframe'}.mp4`,
+    };
+  }
 
   /**
    * Cria registro no PostgreSQL com status PENDING e dispara job assíncrono para o BullMQ.

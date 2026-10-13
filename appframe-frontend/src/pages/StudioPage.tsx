@@ -13,6 +13,7 @@ import {
   mediaService,
   type CreateVideoJobPayload,
   type GeminiSubtitleSegment,
+  type StudioVideoQueueItem,
 } from '../services/media.service';
 import { toast } from 'sonner';
 
@@ -34,6 +35,52 @@ export const StudioPage: React.FC = () => {
   const { navigate, params } = useNavigation();
   const { user, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
+
+  // Fila de vídeos selecionados na Varredura (aguardando em lista caso mais de um seja selecionado)
+  const [videoQueue] = useState<StudioVideoQueueItem[]>(() => {
+    try {
+      const savedQueue = sessionStorage.getItem('appframe_studio_queue');
+      if (savedQueue) {
+        const parsed = JSON.parse(savedQueue);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // Ignora erro de parse do sessionStorage
+    }
+
+    const fallbackUrl =
+      params.videoUrl ||
+      params.sourceUrl ||
+      (params.selectedVideos
+        ? params.selectedVideos.startsWith('http')
+          ? params.selectedVideos
+          : `https://www.youtube.com/watch?v=${params.selectedVideos}`
+        : '');
+
+    if (fallbackUrl) {
+      return [
+        {
+          id: params.selectedVideos || 'selected-1',
+          url: fallbackUrl,
+          title: params.videoTitle || 'Vídeo Selecionado na Varredura',
+        },
+      ];
+    }
+
+    return [];
+  });
+
+  const [activeQueueIndex, setActiveQueueIndex] = useState<number>(0);
+  const [completedVideoIds, setCompletedVideoIds] = useState<string[]>([]);
+  const currentVideo = videoQueue[activeQueueIndex] || null;
+
+  // Estados do download e stream real do vídeo no Studio
+  const [isPreparingPreview, setIsPreparingPreview] = useState<boolean>(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewStreamUrl, setPreviewStreamUrl] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Consulta real de marcas d'água cadastradas
   const { data: userWatermarks = [], isLoading: isLoadingWatermarks } = useQuery({
@@ -66,18 +113,23 @@ export const StudioPage: React.FC = () => {
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0.0);
-  const totalDuration = 60.0; // 01:00 total
+  const [totalDuration, setTotalDuration] = useState<number>(60.0);
 
   // Timeline & Cortes de Precisão (In e Out)
   const [trimIn, setTrimIn] = useState<number>(0.0);
   const [trimOut, setTrimOut] = useState<number>(45.0);
   const [activeTab, setActiveTab] = useState<'legendas' | 'marca-dagua'>('legendas');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [renderProgress, setRenderProgress] = useState<number>(0);
 
   // Configurações da Aba Legendas (sem dados mockados)
   const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>('static');
-  const [staticText, setStaticText] = useState<string>(params.videoTitle || '');
-  const [geminiPrompt, setGeminiPrompt] = useState<string>(params.videoTitle || '');
+  const [staticText, setStaticText] = useState<string>(
+    currentVideo?.title || params.videoTitle || ''
+  );
+  const [geminiPrompt, setGeminiPrompt] = useState<string>(
+    currentVideo?.title || params.videoTitle || ''
+  );
   const [fontFamily, setFontFamily] = useState<FontFamily>('Plus Jakarta Sans');
   const [textColor, setTextColor] = useState<string>('#FFFFFF');
   const [bgColor, setBgColor] = useState<string>('#10131A');
@@ -416,36 +468,95 @@ export const StudioPage: React.FC = () => {
     currentTime,
   ]);
 
-  // Atualização do canvas e timer em tempo real
+  // Sincroniza seek de tempo no estado e no elemento <video> real
+  const seekVideoTo = useCallback(
+    (targetTime: number) => {
+      const clamped = Math.max(0, Math.min(totalDuration, targetTime));
+      setCurrentTime(clamped);
+      if (videoRef.current && Number.isFinite(videoRef.current.duration)) {
+        try {
+          videoRef.current.currentTime = clamped;
+        } catch {
+          // Ignora caso o metadata ainda não esteja pronto
+        }
+      }
+    },
+    [totalDuration]
+  );
+
+  // Baixa o vídeo selecionado na Varredura para visualização e edição em tempo real no Studio
+  const loadVideoPreview = useCallback(async (videoItem: StudioVideoQueueItem) => {
+    setIsPlaying(false);
+    setIsPreparingPreview(true);
+    setPreviewError(null);
+    setPreviewStreamUrl(null);
+    setCurrentTime(0);
+    setStaticText(videoItem.title || '');
+    setGeminiPrompt(videoItem.title || '');
+    setDynamicSegments([]);
+
+    try {
+      const preview = await mediaService.prepareStudioPreview(videoItem.url);
+      const streamUrl = `${API_BASE_URL}/media/preview/${preview.previewId}/stream`;
+      const realDuration =
+        preview.durationSeconds && preview.durationSeconds > 0
+          ? Number(preview.durationSeconds.toFixed(2))
+          : 60.0;
+
+      setPreviewStreamUrl(streamUrl);
+      setTotalDuration(realDuration);
+      setTrimIn(0.0);
+      setTrimOut(realDuration);
+      setCurrentTime(0.0);
+
+      if (
+        videoItem.isShort ||
+        (preview.height && preview.width && preview.height > preview.width)
+      ) {
+        setAspectRatio('9:16');
+      } else if (preview.width && preview.height && preview.width >= preview.height) {
+        setAspectRatio('16:9');
+      }
+    } catch (err: any) {
+      console.error('Erro ao baixar vídeo para preview no Studio:', err);
+      const msg =
+        err?.response?.data?.message ||
+        'Não foi possível baixar o vídeo selecionado para visualização em tempo real.';
+      setPreviewError(Array.isArray(msg) ? msg[0] : msg);
+      toast.error(Array.isArray(msg) ? msg[0] : msg);
+    } finally {
+      setIsPreparingPreview(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentVideo?.url) {
+      loadVideoPreview(currentVideo);
+    }
+  }, [currentVideo?.id, currentVideo?.url, loadVideoPreview]);
+
+  // Atualização do canvas em tempo real
   useEffect(() => {
     drawCanvasOverlay();
   }, [drawCanvasOverlay]);
 
-  // Loop de reprodução do player
+  // Sincroniza Play / Pause com o elemento <video> real
   useEffect(() => {
-    let animId: number;
-    let lastTimestamp = performance.now();
+    const videoEl = videoRef.current;
+    if (!videoEl || !previewStreamUrl) return;
 
-    const loop = (now: number) => {
-      const delta = (now - lastTimestamp) / 1000;
-      lastTimestamp = now;
-
-      if (isPlaying) {
-        setCurrentTime((prev) => {
-          const next = prev + delta;
-          if (next >= trimOut) {
-            setIsPlaying(false);
-            return trimIn;
-          }
-          return next;
-        });
+    if (isPlaying) {
+      if (videoEl.currentTime < trimIn || videoEl.currentTime >= trimOut) {
+        videoEl.currentTime = trimIn;
+        setCurrentTime(trimIn);
       }
-      animId = requestAnimationFrame(loop);
-    };
-
-    animId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animId);
-  }, [isPlaying, trimIn, trimOut]);
+      videoEl.play().catch(() => {
+        setIsPlaying(false);
+      });
+    } else {
+      videoEl.pause();
+    }
+  }, [isPlaying, previewStreamUrl, trimIn, trimOut]);
 
   // Interatividade de arraste da timeline
   const handleTimelineMouseDown = (
@@ -464,11 +575,19 @@ export const StudioPage: React.FC = () => {
       const newTime = percentage * totalDuration;
 
       if (draggingHandleRef.current === 'in') {
-        setTrimIn(Math.min(newTime, trimOut - 0.5));
+        const nextIn = Math.min(newTime, trimOut - 0.5);
+        setTrimIn(nextIn);
+        if (currentTime < nextIn) {
+          seekVideoTo(nextIn);
+        }
       } else if (draggingHandleRef.current === 'out') {
-        setTrimOut(Math.max(newTime, trimIn + 0.5));
+        const nextOut = Math.max(newTime, trimIn + 0.5);
+        setTrimOut(nextOut);
+        if (currentTime > nextOut) {
+          seekVideoTo(nextOut);
+        }
       } else if (draggingHandleRef.current === 'playhead') {
-        setCurrentTime(newTime);
+        seekVideoTo(newTime);
       }
     };
 
@@ -488,12 +607,12 @@ export const StudioPage: React.FC = () => {
     const relativeX = e.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, relativeX / rect.width));
     const newTime = percentage * totalDuration;
-    setCurrentTime(newTime);
+    seekVideoTo(newTime);
   };
 
-  // Ação de Conclusão: "Gerar Vídeo" via NestJS real
+  // Ação de Conclusão: "Gerar Vídeo", salvar no Histórico e baixar para o computador com mensagem no Sonner
   const handleGenerateVideo = async () => {
-    let rawSourceUrl = params.videoUrl || params.sourceUrl;
+    let rawSourceUrl = currentVideo?.url || params.videoUrl || params.sourceUrl;
     if (!rawSourceUrl && params.selectedVideos) {
       rawSourceUrl = params.selectedVideos.startsWith('http')
         ? params.selectedVideos
@@ -511,13 +630,16 @@ export const StudioPage: React.FC = () => {
       return;
     }
 
+    setIsPlaying(false);
     setIsGenerating(true);
+    setRenderProgress(5);
 
     try {
       const isUuid = (val?: string) =>
         Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
 
       const originalTitle =
+        currentVideo?.title ||
         params.videoTitle ||
         selectedMediaFile?.name ||
         (params.selectedVideos ? `Vídeo ${params.selectedVideos}` : 'Corte de Vídeo AppFrame');
@@ -548,22 +670,83 @@ export const StudioPage: React.FC = () => {
         },
       };
 
-      const job = await mediaService.render(payload);
-      toast.success('Vídeo enviado para renderização na fila!');
+      const createdJob = await mediaService.render(payload);
+      setRenderProgress(15);
 
-      navigate('historico', {
-        jobCreated: 'true',
-        jobId: job.id,
-        title: job.original_title || originalTitle,
-      });
+      // Aguarda a conclusão do processamento FFmpeg no backend para baixar o vídeo no computador e registrar no Histórico
+      let currentJob = createdJob;
+      const maxAttempts = 180; // até ~4.5 minutos
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (currentJob.status === 'COMPLETED' || currentJob.status === 'FAILED') {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        currentJob = await mediaService.getJobById(createdJob.id);
+        if (typeof currentJob.progress === 'number') {
+          setRenderProgress(Math.max(15, currentJob.progress));
+        }
+      }
+
+      if (currentJob.status === 'FAILED') {
+        throw new Error(
+          currentJob.error_log || 'Falha durante a renderização do vídeo pelo FFmpeg.'
+        );
+      }
+
+      if (currentJob.status !== 'COMPLETED') {
+        throw new Error('O tempo limite de renderização foi atingido. Verifique o Histórico.');
+      }
+
+      setRenderProgress(100);
+
+      // Atualiza o cache do Histórico imediatamente
+      await queryClient.invalidateQueries({ queryKey: ['video-jobs'] });
+
+      // Faz o download automático do vídeo gerado para o computador do usuário
+      await mediaService.downloadJobFile(
+        currentJob.id,
+        currentJob.original_title || originalTitle
+      );
+
+      toast.success(
+        'Vídeo gerado com sucesso, salvo no histórico e baixado para o seu computador!'
+      );
+
+      // Marca o vídeo atual como concluído na fila de espera
+      const finishedId = currentVideo?.id || '';
+      const updatedCompleted = finishedId
+        ? Array.from(new Set([...completedVideoIds, finishedId]))
+        : completedVideoIds;
+      setCompletedVideoIds(updatedCompleted);
+
+      // Verifica se há mais vídeos aguardando na lista selecionada na Varredura
+      const nextWaitingIndex = videoQueue.findIndex(
+        (item, idx) => idx !== activeQueueIndex && !updatedCompleted.includes(item.id)
+      );
+
+      if (nextWaitingIndex !== -1) {
+        setActiveQueueIndex(nextWaitingIndex);
+        toast.info(
+          `Carregando próximo vídeo da fila (${nextWaitingIndex + 1} de ${videoQueue.length}): "${videoQueue[nextWaitingIndex].title}"`
+        );
+      } else {
+        sessionStorage.removeItem('appframe_studio_queue');
+        navigate('historico', {
+          jobCreated: 'true',
+          jobId: currentJob.id,
+          title: currentJob.original_title || originalTitle,
+        });
+      }
     } catch (err: any) {
-      console.error('Falha ao submeter render job:', err);
+      console.error('Falha ao gerar e baixar vídeo:', err);
       const msg =
         err?.response?.data?.message ||
-        'Falha ao enviar vídeo para a fila de renderização.';
+        err?.message ||
+        'Falha ao gerar o vídeo. Verifique os parâmetros e tente novamente.';
       toast.error(Array.isArray(msg) ? msg[0] : msg);
     } finally {
       setIsGenerating(false);
+      setRenderProgress(0);
     }
   };
 
@@ -581,9 +764,10 @@ export const StudioPage: React.FC = () => {
   ];
 
   const studioProjectTitle =
+    currentVideo?.title ||
     params.videoTitle ||
     selectedMediaFile?.name ||
-    (params.selectedVideos ? `Vídeo Selecionado (${params.selectedVideos})` : 'Projeto de Edição no Studio');
+    'Nenhum vídeo selecionado na Varredura';
 
   return (
     <AppShell
@@ -598,7 +782,7 @@ export const StudioPage: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => navigate('scraper')}
+              onClick={() => navigate('varredura')}
               className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer border border-outline/10"
               title="Voltar para Varredura"
             >
@@ -613,6 +797,11 @@ export const StudioPage: React.FC = () => {
                 <Badge variant={aspectRatio === '9:16' ? 'short' : 'long'}>
                   {aspectRatio === '9:16' ? '9:16 Shorts' : '16:9 Widescreen'}
                 </Badge>
+                {videoQueue.length > 1 && (
+                  <Badge variant="neutral">
+                    Fila: {activeQueueIndex + 1} de {videoQueue.length}
+                  </Badge>
+                )}
               </div>
               <span className="text-label-sm font-label-sm text-outline">
                 Canvas 1080p • FFmpeg Hardware Acceleration Ativo
@@ -658,6 +847,7 @@ export const StudioPage: React.FC = () => {
               variant="primary"
               size="md"
               isLoading={isGenerating}
+              disabled={!currentVideo || isPreparingPreview || isGenerating}
               onClick={handleGenerateVideo}
               leftIcon={
                 <span className="material-symbols-outlined text-[20px]">
@@ -666,10 +856,84 @@ export const StudioPage: React.FC = () => {
               }
               className="px-5 font-bold shadow-[0_0_15px_rgba(212,163,70,0.3)]"
             >
-              <span>Gerar Vídeo</span>
+              <span>
+                {isGenerating
+                  ? `Gerando (${renderProgress}%)...`
+                  : 'Gerar Vídeo'}
+              </span>
             </Button>
           </div>
         </header>
+
+        {/* ================= FILA DE ESPERA DE VÍDEOS SELECIONADOS NA VARREDURA ================= */}
+        {videoQueue.length > 1 && (
+          <Card className="mb-space-md p-3.5 bg-surface-container-low border border-surface-container-high/90 shadow-md">
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-primary">
+                  queue_play_next
+                </span>
+                <span className="font-title-sm text-title-sm font-bold text-on-surface">
+                  Lista de Espera do Studio ({completedVideoIds.length}/{videoQueue.length} concluídos)
+                </span>
+              </div>
+              <span className="text-label-sm text-on-surface-variant">
+                Selecione um vídeo da lista ou gere o atual para avançar automaticamente
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5 overflow-x-auto pb-1">
+              {videoQueue.map((item, idx) => {
+                const isCurrent = idx === activeQueueIndex;
+                const isDone = completedVideoIds.includes(item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    disabled={isGenerating || isPreparingPreview}
+                    onClick={() => setActiveQueueIndex(idx)}
+                    className={cn(
+                      'flex items-center gap-2.5 p-2 rounded-xl border text-left min-w-[240px] max-w-[290px] transition-all shrink-0 cursor-pointer',
+                      isCurrent
+                        ? 'bg-primary/15 border-primary text-on-surface shadow-sm'
+                        : isDone
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-on-surface-variant'
+                          : 'bg-surface-container border-surface-container-highest text-on-surface-variant hover:text-on-surface'
+                    )}
+                  >
+                    {item.thumbnailUrl ? (
+                      <img
+                        src={item.thumbnailUrl}
+                        alt={item.title}
+                        className="w-12 h-8 rounded-lg object-cover shrink-0 bg-black"
+                      />
+                    ) : (
+                      <div className="w-12 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-[16px] text-primary">
+                          movie
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-label-sm font-bold truncate">
+                        {idx + 1}. {item.title}
+                      </span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider">
+                        {isDone ? (
+                          <span className="text-emerald-400">Concluído e Baixado</span>
+                        ) : isCurrent ? (
+                          <span className="text-primary">Em edição agora</span>
+                        ) : (
+                          <span className="text-outline">Aguardando na lista</span>
+                        )}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        )}
 
         {/* ================= ÁREA DE TRABALHO: PREVIEW + PAINEL LATERAL ================= */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-md items-start">
@@ -679,7 +943,7 @@ export const StudioPage: React.FC = () => {
               {/* Halos Luminosos Sutis no Player */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
-              {/* Moldura do Vídeo com Aspect Ratio Dinâmico */}
+              {/* Moldura do Vídeo com Aspect Ratio Dinâmico (Sem imagem mockada) */}
               <div
                 className={cn(
                   'relative overflow-hidden rounded-2xl bg-black border border-surface-container-highest transition-all duration-300 shadow-[0_12px_40px_rgba(0,0,0,0.8)] flex items-center justify-center',
@@ -688,12 +952,99 @@ export const StudioPage: React.FC = () => {
                     : 'w-full max-w-[620px] aspect-video'
                 )}
               >
-                {/* Imagem de Fundo de Alta Fidelidade do Vídeo */}
-                <img
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRhGGes8HDYerT5nUKAHgYB1mPBrAE_vE-Mn5Huw7i95jaD5UYN5KFAzFlffnPfL_hrZnVC3cuSPDAluXN8EPQulKmycpMpDdxfhxF4ZkDwvWpwFPJIsrRh4rnO1ljPOx4ZE1-yO4lvouKH6v_sKBKJLeGgLO8-t-X1k6Eu-8iBBjvMxCP5uizewBNoaiexDf8yLIAQY5QjmNIgGNpewGe8Nyc_AZOu9nBz64kRJI-"
-                  alt="Preview Frame"
-                  className="w-full h-full object-cover select-none pointer-events-none filter brightness-90"
-                />
+                {!currentVideo ? (
+                  <div className="flex flex-col items-center justify-center text-center p-6 gap-3 z-30">
+                    <span className="material-symbols-outlined text-[42px] text-primary/70">
+                      video_library
+                    </span>
+                    <p className="font-title-sm text-title-sm font-bold text-on-surface">
+                      Nenhum vídeo selecionado
+                    </p>
+                    <p className="text-body-sm text-on-surface-variant max-w-xs">
+                      Selecione um ou mais vídeos na tela de Varredura para carregá-los e editá-los em tempo real no Studio.
+                    </p>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => navigate('varredura')}
+                      leftIcon={
+                        <span className="material-symbols-outlined text-[16px]">
+                          travel_explore
+                        </span>
+                      }
+                    >
+                      Ir para Varredura
+                    </Button>
+                  </div>
+                ) : isPreparingPreview ? (
+                  <div className="flex flex-col items-center justify-center text-center p-6 gap-3 z-30">
+                    <span className="material-symbols-outlined text-[40px] text-primary animate-spin">
+                      progress_activity
+                    </span>
+                    <p className="font-title-sm text-title-sm font-bold text-on-surface">
+                      Baixando vídeo para visualização em tempo real...
+                    </p>
+                    <p className="text-label-sm text-on-surface-variant max-w-xs line-clamp-2">
+                      {currentVideo.title}
+                    </p>
+                  </div>
+                ) : previewError ? (
+                  <div className="flex flex-col items-center justify-center text-center p-6 gap-3 z-30">
+                    <span className="material-symbols-outlined text-[40px] text-error">
+                      error
+                    </span>
+                    <p className="font-title-sm text-title-sm font-bold text-on-surface">
+                      Falha ao carregar o vídeo
+                    </p>
+                    <p className="text-label-sm text-on-surface-variant max-w-xs">
+                      {previewError}
+                    </p>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => loadVideoPreview(currentVideo)}
+                      leftIcon={
+                        <span className="material-symbols-outlined text-[16px]">
+                          refresh
+                        </span>
+                      }
+                    >
+                      Tentar Novamente
+                    </Button>
+                  </div>
+                ) : previewStreamUrl ? (
+                  <video
+                    ref={videoRef}
+                    src={previewStreamUrl}
+                    playsInline
+                    preload="auto"
+                    onLoadedMetadata={(e) => {
+                      const vid = e.currentTarget;
+                      if (Number.isFinite(vid.duration) && vid.duration > 0) {
+                        const dur = Number(vid.duration.toFixed(2));
+                        setTotalDuration(dur);
+                        setTrimOut((prev) => (prev > dur || prev === 45 ? dur : prev));
+                      }
+                    }}
+                    onTimeUpdate={(e) => {
+                      const vid = e.currentTarget;
+                      const now = vid.currentTime;
+                      if (now >= trimOut) {
+                        vid.pause();
+                        vid.currentTime = trimIn;
+                        setIsPlaying(false);
+                        setCurrentTime(trimIn);
+                      } else {
+                        setCurrentTime(now);
+                      }
+                    }}
+                    onEnded={() => {
+                      setIsPlaying(false);
+                      seekVideoTo(trimIn);
+                    }}
+                    className="w-full h-full object-contain select-none pointer-events-none"
+                  />
+                ) : null}
 
                 {/* Camada de Canvas Sobreposta ao Vídeo */}
                 <canvas
@@ -710,8 +1061,8 @@ export const StudioPage: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Botão Central de Play no Hover (quando pausado) */}
-                {!isPlaying && (
+                {/* Botão Central de Play no Hover (quando pausado e vídeo pronto) */}
+                {!isPlaying && Boolean(previewStreamUrl) && !isPreparingPreview && (
                   <button
                     type="button"
                     onClick={() => setIsPlaying(true)}
@@ -729,8 +1080,9 @@ export const StudioPage: React.FC = () => {
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
+                    disabled={!previewStreamUrl || isPreparingPreview}
                     onClick={() => setIsPlaying(!isPlaying)}
-                    className="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 cursor-pointer shadow-sm"
+                    className="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 cursor-pointer shadow-sm disabled:opacity-40"
                   >
                     <span className="material-symbols-outlined text-[20px]">
                       {isPlaying ? 'pause' : 'play_arrow'}
@@ -739,18 +1091,20 @@ export const StudioPage: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => setCurrentTime((t) => Math.max(trimIn, t - 5))}
+                    disabled={!previewStreamUrl || isPreparingPreview}
+                    onClick={() => seekVideoTo(Math.max(trimIn, currentTime - 5))}
                     title="Retroceder 5 segundos"
-                    className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
                   >
                     <span className="material-symbols-outlined text-[18px]">replay_5</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setCurrentTime((t) => Math.min(trimOut, t + 5))}
+                    disabled={!previewStreamUrl || isPreparingPreview}
+                    onClick={() => seekVideoTo(Math.min(trimOut, currentTime + 5))}
                     title="Avançar 5 segundos"
-                    className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
                   >
                     <span className="material-symbols-outlined text-[18px]">forward_5</span>
                   </button>
@@ -770,17 +1124,19 @@ export const StudioPage: React.FC = () => {
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setCurrentTime(trimIn)}
+                    disabled={!previewStreamUrl || isPreparingPreview}
+                    onClick={() => seekVideoTo(trimIn)}
                     title="Ir para Marcador In"
-                    className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-surface-container hover:bg-surface-container-high text-primary font-bold cursor-pointer"
+                    className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-surface-container hover:bg-surface-container-high text-primary font-bold cursor-pointer disabled:opacity-40"
                   >
                     Ir ao In
                   </button>
                   <button
                     type="button"
-                    onClick={() => setCurrentTime(trimOut)}
+                    disabled={!previewStreamUrl || isPreparingPreview}
+                    onClick={() => seekVideoTo(trimOut)}
                     title="Ir para Marcador Out"
-                    className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-surface-container hover:bg-surface-container-high text-primary font-bold cursor-pointer"
+                    className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-surface-container hover:bg-surface-container-high text-primary font-bold cursor-pointer disabled:opacity-40"
                   >
                     Ir ao Out
                   </button>
@@ -818,15 +1174,11 @@ export const StudioPage: React.FC = () => {
 
               {/* Contêiner Interativo da Timeline */}
               <div className="relative flex flex-col select-none pt-4 pb-2">
-                {/* Régua de Tempo com Ticks a cada 5s */}
+                {/* Régua de Tempo Dinâmica conforme a duração real do vídeo */}
                 <div className="w-full flex justify-between text-[10px] text-outline font-mono mb-1.5 px-1">
-                  <span>00:00</span>
-                  <span>00:10</span>
-                  <span>00:20</span>
-                  <span>00:30</span>
-                  <span>00:40</span>
-                  <span>00:50</span>
-                  <span>01:00</span>
+                  {[0, 0.166, 0.333, 0.5, 0.666, 0.833, 1].map((ratio, idx) => (
+                    <span key={idx}>{formatTime(totalDuration * ratio)}</span>
+                  ))}
                 </div>
 
                 {/* Pista da Onda Sonora e Região de Corte */}

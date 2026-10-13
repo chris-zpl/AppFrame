@@ -59,6 +59,24 @@ export interface GeminiSubtitlesResponse {
   segments: GeminiSubtitleSegment[];
 }
 
+export interface StudioVideoQueueItem {
+  id: string;
+  url: string;
+  title: string;
+  thumbnailUrl?: string;
+  durationSeconds?: number;
+  durationFormatted?: string;
+  isShort?: boolean;
+}
+
+export interface StudioPreviewResponse {
+  previewId: string;
+  streamUrl: string;
+  durationSeconds: number;
+  width: number;
+  height: number;
+}
+
 export const mediaService = {
   async listJobs(): Promise<VideoJobItem[]> {
     const res = await api.get<VideoJobItem[]>('/jobs');
@@ -83,6 +101,33 @@ export const mediaService = {
   async downloadBatch(videos: Array<{ url: string; title?: string }>): Promise<VideoJobItem[]> {
     const res = await api.post<VideoJobItem[]>('/media/download-batch', { videos });
     return res.data;
+  },
+
+  async prepareStudioPreview(sourceUrl: string): Promise<StudioPreviewResponse> {
+    const res = await api.post<any>('/media/preview', { source_url: sourceUrl });
+    return res.data?.data || res.data;
+  },
+
+  async downloadJobFile(jobId: string, title?: string | null): Promise<void> {
+    const res = await api.get(`/media/jobs/${jobId}/download`, {
+      responseType: 'blob',
+    });
+
+    const blob = new Blob([res.data], { type: 'video/mp4' });
+    const objectUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const safeTitle = (title || `video_${jobId.substring(0, 8)}`)
+      .replace(/[^a-zA-Z0-9_\-\u00C0-\u017F\s]/g, '')
+      .trim()
+      .replace(/\s+/g, '_')
+      .substring(0, 80);
+
+    link.href = objectUrl;
+    link.setAttribute('download', `${safeTitle || 'video_appframe'}.mp4`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(objectUrl);
   },
 
   async getGeminiStatus(): Promise<{ connected: boolean }> {

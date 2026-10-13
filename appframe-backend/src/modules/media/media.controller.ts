@@ -4,11 +4,15 @@ import {
   Get,
   Body,
   Param,
+  Req,
+  Res,
   UseGuards,
   ParseUUIDPipe,
   UseInterceptors,
   ClassSerializerInterceptor,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
+import * as fs from 'fs';
 import { MediaService } from './media.service';
 import { CreateVideoJobDto } from './dto/request/create-video-job.dto';
 import { DownloadBatchDto } from './dto/request/download-batch.dto';
@@ -20,6 +24,76 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 @UseInterceptors(ClassSerializerInterceptor)
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
+
+  @Post('preview')
+  @UseGuards(JwtAuthGuard)
+  async preparePreview(
+    @Body() body: { source_url: string },
+  ): Promise<{
+    previewId: string;
+    streamUrl: string;
+    durationSeconds: number;
+    width: number;
+    height: number;
+  }> {
+    return this.mediaService.prepareStudioPreview(body?.source_url);
+  }
+
+  @Get('preview/:previewId/stream')
+  async streamPreview(
+    @Param('previewId') previewId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const filePath = this.mediaService.getPreviewFilePath(previewId);
+    const stat = fs.statSync(filePath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunkSize = end - start + 1;
+      const file = fs.createReadStream(filePath, { start, end });
+
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunkSize,
+        'Content-Type': 'video/mp4',
+      });
+      file.pipe(res);
+    } else {
+      res.writeHead(200, {
+        'Content-Length': fileSize,
+        'Accept-Ranges': 'bytes',
+        'Content-Type': 'video/mp4',
+      });
+      fs.createReadStream(filePath).pipe(res);
+    }
+  }
+
+  @Get('jobs/:id/download')
+  @UseGuards(JwtAuthGuard)
+  async downloadCompletedJob(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser('userId') userId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { filePath, fileName } = await this.mediaService.getCompletedJobFile(
+      id,
+      userId,
+    );
+    const stat = fs.statSync(filePath);
+
+    res.writeHead(200, {
+      'Content-Type': 'video/mp4',
+      'Content-Length': stat.size,
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
+    });
+    fs.createReadStream(filePath).pipe(res);
+  }
 
   @Get('jobs')
   @UseGuards(JwtAuthGuard)

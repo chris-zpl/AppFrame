@@ -246,15 +246,33 @@ export const ScraperPage: React.FC = () => {
   };
 
   const handleOpenStudio = () => {
-    const selected = videos.find((v) => selectedIds.has(v.id)) || videos[0];
-    if (!selected) {
-      toast.error('Selecione pelo menos um vídeo para abrir no Studio.');
+    const selectedList = videos.filter((v) => selectedIds.has(v.id));
+    if (selectedList.length === 0) {
+      toast.error('Selecione pelo menos um vídeo na varredura para abrir no Studio.');
       return;
     }
 
+    try {
+      sessionStorage.setItem(
+        'appframe_studio_queue',
+        JSON.stringify(
+          selectedList.map((v) => ({
+            id: v.id,
+            url: v.url,
+            title: v.title,
+            thumbnailUrl: v.thumbnailUrl,
+            durationSeconds: v.durationSeconds,
+            durationFormatted: v.durationFormatted,
+            isShort: v.isShort,
+          })),
+        ),
+      );
+    } catch {}
+
+    const first = selectedList[0];
     navigate('studio', {
-      sourceUrl: selected.url,
-      title: selected.title,
+      sourceUrl: first.url,
+      videoTitle: first.title,
     });
   };
 

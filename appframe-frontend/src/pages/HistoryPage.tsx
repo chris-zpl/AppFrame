@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { useNavigation } from '../contexts/NavigationContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
@@ -41,11 +42,15 @@ export const HistoryPage: React.FC = () => {
     return true;
   });
 
-  const handleDownloadVideo = (job: VideoJobItem) => {
-    if (job.final_video_path) {
-      window.open(job.final_video_path, '_blank');
-    } else {
-      alert(`Vídeo final: ${job.original_title || job.id}. O download será iniciado.`);
+  const handleDownloadVideo = async (job: VideoJobItem) => {
+    try {
+      await mediaService.downloadJobFile(job.id, job.original_title);
+      toast.success('Vídeo baixado para o seu computador com sucesso!');
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        'Não foi possível baixar o arquivo de vídeo processado.';
+      toast.error(Array.isArray(msg) ? msg[0] : msg);
     }
   };
 
