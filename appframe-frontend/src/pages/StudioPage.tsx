@@ -6,6 +6,7 @@ import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { cn } from '../lib/utils';
 import { API_BASE_URL } from '../services/api';
 import { watermarksService } from '../services/watermarks.service';
@@ -2338,75 +2339,28 @@ export const StudioPage: React.FC = () => {
       )}
 
       {/* Modal de Confirmação de Exclusão do Studio */}
-      {isDeleteStudioModalOpen && currentVideo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-          <Card className="w-full max-w-md p-6 bg-surface-container border border-surface-container-high shadow-2xl flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-surface-container-highest pb-3">
-              <div className="flex items-center gap-2 text-red-500 font-bold">
-                <span className="material-symbols-outlined text-[24px]">delete_forever</span>
-                <span className="font-title-sm text-title-sm text-on-surface">Excluir do Studio</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsDeleteStudioModalOpen(false)}
-                className="text-outline hover:text-on-surface cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <p className="text-body-sm text-on-surface">
-                Tem certeza de que deseja remover este vídeo do Studio?
-              </p>
-              <div className="p-3 rounded-xl bg-surface-container-lowest flex flex-col gap-1 border border-surface-container-high">
-                <span className="font-semibold text-body-sm text-on-surface line-clamp-2">
-                  {currentVideo.title || 'Vídeo Selecionado'}
-                </span>
-                <span className="text-label-sm font-mono text-outline line-clamp-1">
-                  {currentVideo.url}
-                </span>
-              </div>
-              <p className="text-[12px] text-on-surface-variant">
-                O arquivo de vídeo temporário baixado no servidor e suas configurações de corte/legendas salvas serão excluídos.
-              </p>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-surface-container-highest">
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={isDeletingFromStudio}
-                onClick={() => setIsDeleteStudioModalOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                isLoading={isDeletingFromStudio}
-                onClick={async () => {
-                  setIsDeletingFromStudio(true);
-                  try {
-                    await handleDeleteFromStudio();
-                    setIsDeleteStudioModalOpen(false);
-                  } finally {
-                    setIsDeletingFromStudio(false);
-                  }
-                }}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer"
-                leftIcon={
-                  <span className="material-symbols-outlined text-[16px]">
-                    delete
-                  </span>
-                }
-              >
-                Confirmar Exclusão
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={isDeleteStudioModalOpen && Boolean(currentVideo)}
+        onClose={() => setIsDeleteStudioModalOpen(false)}
+        onConfirm={async () => {
+          setIsDeletingFromStudio(true);
+          try {
+            await handleDeleteFromStudio();
+            setIsDeleteStudioModalOpen(false);
+          } finally {
+            setIsDeletingFromStudio(false);
+          }
+        }}
+        title="Excluir do Studio"
+        icon="delete_forever"
+        message="Tem certeza de que deseja remover este vídeo do Studio?"
+        itemTitle={currentVideo?.title || 'Vídeo Selecionado'}
+        itemSubtitle={currentVideo?.url}
+        warningText="O arquivo de vídeo temporário baixado no servidor e suas configurações de corte/legendas salvas serão excluídos."
+        confirmText="Confirmar Exclusão"
+        isLoading={isDeletingFromStudio}
+        variant="danger"
+      />
     </AppShell>
   );
 };
