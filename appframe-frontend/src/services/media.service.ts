@@ -20,7 +20,7 @@ export interface SubtitleConfigPayload {
 
 export interface CreateVideoJobPayload {
   source_url: string;
-  platform?: 'youtube' | 'youtube_shorts' | 'tiktok' | 'instagram_reels' | 'other';
+  platform?: 'youtube' | 'tiktok' | 'instagram' | 'other';
   original_title?: string;
   aspect_ratio?: '9:16' | '16:9';
   trim_start?: number;

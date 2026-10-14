@@ -8,6 +8,7 @@ import {
   IsNumber,
   Min,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { VideoPlatform } from '../../enums/video-platform.enum';
 import { SubtitleConfig } from '../../interfaces/subtitle-config.interface';
 
@@ -17,6 +18,14 @@ export class CreateVideoJobDto {
   source_url: string;
 
   @IsOptional()
+  @Transform(({ value }) => {
+    if (!value) return VideoPlatform.YOUTUBE;
+    const str = String(value).toLowerCase().trim();
+    if (str.includes('short') || str.includes('youtube')) return VideoPlatform.YOUTUBE;
+    if (str.includes('tiktok')) return VideoPlatform.TIKTOK;
+    if (str.includes('reel') || str.includes('instagram')) return VideoPlatform.INSTAGRAM;
+    return value;
+  })
   @IsEnum(VideoPlatform, { message: 'Plataforma não suportada.' })
   platform?: VideoPlatform;
 
