@@ -7,6 +7,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { YouTubeAuthModal } from '../components/common/YouTubeAuthModal';
 import { cn } from '../lib/utils';
 import { API_BASE_URL } from '../services/api';
 import { watermarksService } from '../services/watermarks.service';
@@ -83,7 +84,19 @@ export const StudioPage: React.FC = () => {
   const [isPreparingPreview, setIsPreparingPreview] = useState<boolean>(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewStreamUrl, setPreviewStreamUrl] = useState<string | null>(null);
+  const [isYouTubeAuthModalOpen, setIsYouTubeAuthModalOpen] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Identifica se o erro é decorrente de restrição de idade ou necessidade de autenticação/cookies do YouTube
+  const isAuthError = Boolean(
+    previewError &&
+      (previewError.toLowerCase().includes('sign in') ||
+        previewError.toLowerCase().includes('confirm your age') ||
+        previewError.toLowerCase().includes('cookies') ||
+        previewError.toLowerCase().includes("not a bot") ||
+        previewError.toLowerCase().includes('authentication') ||
+        previewError.toLowerCase().includes('login')),
+  );
 
   // Consulta real de marcas d'água cadastradas
   const { data: userWatermarks = [], isLoading: isLoadingWatermarks } = useQuery({
@@ -1205,6 +1218,21 @@ export const StudioPage: React.FC = () => {
               <Button
                 variant="ghost"
                 size="md"
+                onClick={() => setIsYouTubeAuthModalOpen(true)}
+                title="Configurar login e cookies do YouTube para vídeos com restrição de idade"
+                leftIcon={
+                  <span className="material-symbols-outlined text-[18px]">
+                    smart_display
+                  </span>
+                }
+                className="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer"
+              >
+                <span>Login YouTube</span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="md"
                 disabled={!currentVideo || isPreparingPreview || isGenerating}
                 onClick={handleResetStudio}
                 title="Restaurar configurações para o padrão de fábrica"
@@ -1384,28 +1412,46 @@ export const StudioPage: React.FC = () => {
                     </p>
                   </div>
                 ) : previewError ? (
-                  <div className="flex flex-col items-center justify-center text-center p-6 gap-3 z-30">
-                    <span className="material-symbols-outlined text-[40px] text-error">
-                      error
+                  <div className="flex flex-col items-center justify-center text-center p-6 gap-3 z-30 max-w-sm mx-auto">
+                    <span className="material-symbols-outlined text-[42px] text-error">
+                      {isAuthError ? 'lock_person' : 'error'}
                     </span>
                     <p className="font-title-sm text-title-sm font-bold text-on-surface">
-                      Falha ao carregar o vídeo
+                      {isAuthError ? 'Autenticação Necessária no YouTube' : 'Falha ao carregar o vídeo'}
                     </p>
-                    <p className="text-label-sm text-on-surface-variant max-w-xs">
-                      {previewError}
+                    <p className="text-body-sm text-on-surface-variant line-clamp-4">
+                      {isAuthError
+                        ? 'Este vídeo possui restrição de idade (+18) ou verificação do YouTube. Conecte sua conta para fazer o bypass do download.'
+                        : previewError}
                     </p>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => loadVideoPreview(currentVideo)}
-                      leftIcon={
-                        <span className="material-symbols-outlined text-[16px]">
-                          refresh
-                        </span>
-                      }
-                    >
-                      Tentar Novamente
-                    </Button>
+                    <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                      {isAuthError && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => setIsYouTubeAuthModalOpen(true)}
+                          leftIcon={
+                            <span className="material-symbols-outlined text-[16px]">
+                              login
+                            </span>
+                          }
+                        >
+                          Fazer Login no YouTube
+                        </Button>
+                      )}
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => loadVideoPreview(currentVideo)}
+                        leftIcon={
+                          <span className="material-symbols-outlined text-[16px]">
+                            refresh
+                          </span>
+                        }
+                      >
+                        Tentar Novamente
+                      </Button>
+                    </div>
                   </div>
                 ) : previewStreamUrl ? (
                   <video
@@ -2567,6 +2613,17 @@ export const StudioPage: React.FC = () => {
         confirmText="Confirmar Exclusão"
         isLoading={isDeletingFromStudio}
         variant="danger"
+      />
+
+      {/* Modal de Autenticação / Login no YouTube */}
+      <YouTubeAuthModal
+        isOpen={isYouTubeAuthModalOpen}
+        onClose={() => setIsYouTubeAuthModalOpen(false)}
+        onSuccess={() => {
+          if (currentVideo) {
+            loadVideoPreview(currentVideo);
+          }
+        }}
       />
     </AppShell>
   );

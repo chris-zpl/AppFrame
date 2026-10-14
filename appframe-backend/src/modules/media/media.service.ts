@@ -68,6 +68,18 @@ export class MediaService {
     return { success: true };
   }
 
+  getYouTubeCookiesStatus() {
+    return this.downloadService.getCookiesStatus();
+  }
+
+  saveYouTubeCookies(cookies: string) {
+    return this.downloadService.saveCookies(cookies);
+  }
+
+  deleteYouTubeCookies() {
+    return this.downloadService.deleteCookies();
+  }
+
   /**
    * Resolve o arquivo MP4 final renderizado para download no computador do usuário.
    */

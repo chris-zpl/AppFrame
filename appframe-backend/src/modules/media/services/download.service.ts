@@ -195,12 +195,122 @@ export class DownloadService {
           `Tentativa yt-dlp com (${extractorArgs || 'default'}) falhou: ${lastError}`,
         );
         await this.cleanupFile(destinationPath);
+
+        // Se o erro for de restrição de idade ou necessidade estrita de autenticação/cookies,
+        // interrompe tentativas repetidas com outros clients para responder imediatamente ao usuário.
+        if (
+          lastError.includes('Sign in to confirm your age') ||
+          lastError.includes("confirm you're not a bot") ||
+          lastError.includes('--cookies')
+        ) {
+          break;
+        }
       }
     }
 
     throw new BadRequestException(
       `Não foi possível baixar o vídeo selecionado (${lastError}).`,
     );
+  }
+
+  getCookiesStatus(): {
+    configured: boolean;
+    path: string | null;
+    updatedAt: string | null;
+  } {
+    const cookiesPath = this.getCookiesPath();
+    if (!cookiesPath || !fs.existsSync(cookiesPath)) {
+      return { configured: false, path: null, updatedAt: null };
+    }
+    const stat = fs.statSync(cookiesPath);
+    return {
+      configured: true,
+      path: cookiesPath,
+      updatedAt: stat.mtime.toISOString(),
+    };
+  }
+
+  saveCookies(rawContent: string): { success: boolean; message: string } {
+    if (!rawContent || !rawContent.trim()) {
+      throw new BadRequestException('O conteúdo dos cookies não pode estar vazio.');
+    }
+
+    let netscapeContent = rawContent.trim();
+
+    // Se o usuário colou um JSON de cookies (ex: exportado por extensões populares como EditThisCookie)
+    if (netscapeContent.startsWith('[') || netscapeContent.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(netscapeContent);
+        const cookieArray = Array.isArray(parsed) ? parsed : [parsed];
+        const lines: string[] = [
+          '# Netscape HTTP Cookie File',
+          '# https://curl.haxx.se/rfc/cookie_spec.html',
+          '# This is a generated file! Do not edit.',
+          '',
+        ];
+
+        for (const c of cookieArray) {
+          if (!c.name || c.value === undefined) continue;
+          const domain = c.domain || '.youtube.com';
+          const flag = domain.startsWith('.') ? 'TRUE' : 'FALSE';
+          const cookiePath = c.path || '/';
+          const secure = c.secure ? 'TRUE' : 'FALSE';
+          const expiration = c.expirationDate
+            ? Math.floor(c.expirationDate)
+            : Math.floor(Date.now() / 1000) + 31536000;
+          lines.push(
+            `${domain}\t${flag}\t${cookiePath}\t${secure}\t${expiration}\t${c.name}\t${c.value}`,
+          );
+        }
+
+        netscapeContent = lines.join('\n');
+      } catch (err: any) {
+        this.logger.warn(
+          `Falha ao converter JSON de cookies para Netscape: ${err.message}`,
+        );
+      }
+    }
+
+    // Se não tiver cabeçalho Netscape, adiciona
+    if (
+      !netscapeContent.startsWith('# Netscape') &&
+      !netscapeContent.startsWith('# HTTP Cookie File')
+    ) {
+      netscapeContent = `# Netscape HTTP Cookie File\n${netscapeContent}\n`;
+    }
+
+    const storageDir = path.resolve(process.cwd(), 'storage');
+    if (!fs.existsSync(storageDir)) {
+      fs.mkdirSync(storageDir, { recursive: true });
+    }
+
+    const targetFile = path.resolve(storageDir, 'cookies.txt');
+    fs.writeFileSync(targetFile, netscapeContent, {
+      encoding: 'utf-8',
+      mode: 0o600,
+    });
+
+    this.logger.log(`Cookies do YouTube salvos com sucesso em ${targetFile}`);
+    return {
+      success: true,
+      message: 'Cookies do YouTube salvos com sucesso!',
+    };
+  }
+
+  deleteCookies(): { success: boolean; message: string } {
+    const cookiesPath = this.getCookiesPath();
+    if (cookiesPath && fs.existsSync(cookiesPath)) {
+      try {
+        fs.unlinkSync(cookiesPath);
+        this.logger.log(`Arquivo de cookies removido: ${cookiesPath}`);
+      } catch (e: any) {
+        this.logger.warn(`Erro ao remover cookies: ${e.message}`);
+      }
+    }
+    return {
+      success: true,
+      message: 'Cookies removidos com sucesso.',
+    };
   }
 
   private getCookiesPath(): string | null {

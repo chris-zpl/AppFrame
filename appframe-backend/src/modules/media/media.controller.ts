@@ -26,6 +26,30 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
+  @Get('youtube-cookies')
+  @UseGuards(JwtAuthGuard)
+  async getYouTubeCookiesStatus(): Promise<{
+    configured: boolean;
+    path: string | null;
+    updatedAt: string | null;
+  }> {
+    return this.mediaService.getYouTubeCookiesStatus();
+  }
+
+  @Post('youtube-cookies')
+  @UseGuards(JwtAuthGuard)
+  async saveYouTubeCookies(
+    @Body() body: { cookies: string },
+  ): Promise<{ success: boolean; message: string }> {
+    return this.mediaService.saveYouTubeCookies(body?.cookies);
+  }
+
+  @Delete('youtube-cookies')
+  @UseGuards(JwtAuthGuard)
+  async deleteYouTubeCookies(): Promise<{ success: boolean; message: string }> {
+    return this.mediaService.deleteYouTubeCookies();
+  }
+
   @Post('preview')
   @UseGuards(JwtAuthGuard)
   async preparePreview(
