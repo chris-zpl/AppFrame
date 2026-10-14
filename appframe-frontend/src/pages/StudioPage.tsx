@@ -37,7 +37,7 @@ export const StudioPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Fila de vídeos selecionados na Varredura (aguardando em lista caso mais de um seja selecionado)
-  const [videoQueue] = useState<StudioVideoQueueItem[]>(() => {
+  const [videoQueue, setVideoQueue] = useState<StudioVideoQueueItem[]>(() => {
     try {
       const savedQueue = sessionStorage.getItem('appframe_studio_queue');
       if (savedQueue) {
@@ -553,9 +553,36 @@ export const StudioPage: React.FC = () => {
     setTrimIn(0.0);
     setTrimOut(0.0);
     setCurrentTime(0.0);
-    setStaticText(videoItem.title || '');
-    setGeminiPrompt(videoItem.title || '');
-    setDynamicSegments([]);
+
+    const storageKey = videoItem ? `appframe_studio_state_${videoItem.id || videoItem.url}` : null;
+    let saved: any = null;
+    if (storageKey) {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) saved = JSON.parse(raw);
+      } catch {}
+    }
+
+    if (saved?.staticText !== undefined) setStaticText(saved.staticText);
+    else setStaticText(videoItem.title || '');
+
+    if (saved?.geminiPrompt !== undefined) setGeminiPrompt(saved.geminiPrompt);
+    else setGeminiPrompt(videoItem.title || '');
+
+    if (Array.isArray(saved?.dynamicSegments)) setDynamicSegments(saved.dynamicSegments);
+    else setDynamicSegments([]);
+
+    if (saved?.subtitleMode) setSubtitleMode(saved.subtitleMode);
+    if (saved?.fontFamily) setFontFamily(saved.fontFamily);
+    if (saved?.textColor) setTextColor(saved.textColor);
+    if (saved?.bgColor) setBgColor(saved.bgColor);
+    if (saved?.strokeColor) setStrokeColor(saved.strokeColor);
+    if (typeof saved?.fontSize === 'number') setFontSize(saved.fontSize);
+    if (typeof saved?.useBackgroundBox === 'boolean') setUseBackgroundBox(saved.useBackgroundBox);
+    if (saved?.selectedWatermarkId) setSelectedWatermarkId(saved.selectedWatermarkId);
+    if (saved?.watermarkPosition) setWatermarkPosition(saved.watermarkPosition);
+    if (typeof saved?.watermarkOpacity === 'number') setWatermarkOpacity(saved.watermarkOpacity);
+    if (typeof saved?.watermarkScale === 'number') setWatermarkScale(saved.watermarkScale);
 
     try {
       const preview = await mediaService.prepareStudioPreview(videoItem.url);
@@ -569,18 +596,26 @@ export const StudioPage: React.FC = () => {
           ? Number(preview.durationSeconds.toFixed(2))
           : 0.0;
 
+      const restoredTrimIn = typeof saved?.trimIn === 'number' ? saved.trimIn : 0.0;
+      const restoredTrimOut =
+        typeof saved?.trimOut === 'number' && saved.trimOut > 0
+          ? Math.min(saved.trimOut, realDuration > 0 ? realDuration : saved.trimOut)
+          : realDuration;
+
       setPreviewStreamUrl(streamUrl);
       setTotalDuration(realDuration);
-      setTrimIn(0.0);
-      setTrimOut(realDuration);
-      setCurrentTime(0.0);
+      setTrimIn(restoredTrimIn);
+      setTrimOut(restoredTrimOut);
+      setCurrentTime(restoredTrimIn);
       setWaveformPeaks(
         Array.isArray(preview.waveformPeaks) && preview.waveformPeaks.length > 0
           ? preview.waveformPeaks
           : []
       );
 
-      if (
+      if (saved?.aspectRatio) {
+        setAspectRatio(saved.aspectRatio);
+      } else if (
         videoItem.isShort ||
         (preview.height && preview.width && preview.height > preview.width)
       ) {
@@ -605,6 +640,136 @@ export const StudioPage: React.FC = () => {
       loadVideoPreview(currentVideo);
     }
   }, [currentVideo?.id, currentVideo?.url, loadVideoPreview]);
+
+  // Persiste automaticamente as configurações do Studio no localStorage para o vídeo atual
+  useEffect(() => {
+    if (!currentVideo || isPreparingPreview || totalDuration <= 0) return;
+    const storageKey = `appframe_studio_state_${currentVideo.id || currentVideo.url}`;
+
+    const stateToSave = {
+      trimIn,
+      trimOut,
+      aspectRatio,
+      subtitleMode,
+      staticText,
+      geminiPrompt,
+      fontFamily,
+      textColor,
+      bgColor,
+      strokeColor,
+      fontSize,
+      useBackgroundBox,
+      selectedWatermarkId,
+      watermarkPosition,
+      watermarkOpacity,
+      watermarkScale,
+      dynamicSegments,
+    };
+
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(stateToSave));
+    } catch {}
+  }, [
+    currentVideo,
+    isPreparingPreview,
+    totalDuration,
+    trimIn,
+    trimOut,
+    aspectRatio,
+    subtitleMode,
+    staticText,
+    geminiPrompt,
+    fontFamily,
+    textColor,
+    bgColor,
+    strokeColor,
+    fontSize,
+    useBackgroundBox,
+    selectedWatermarkId,
+    watermarkPosition,
+    watermarkOpacity,
+    watermarkScale,
+    dynamicSegments,
+  ]);
+
+  // Restaura todas as configurações do Studio para o padrão de fábrica
+  const handleResetStudio = () => {
+    if (!currentVideo) return;
+    const storageKey = `appframe_studio_state_${currentVideo.id || currentVideo.url}`;
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {}
+
+    setTrimIn(0.0);
+    setTrimOut(totalDuration > 0 ? totalDuration : 0.0);
+    setAspectRatio(currentVideo.isShort ? '9:16' : '16:9');
+    setSubtitleMode('static');
+    setStaticText(currentVideo.title || '');
+    setGeminiPrompt(currentVideo.title || '');
+    setDynamicSegments([]);
+    setFontFamily('Plus Jakarta Sans');
+    setTextColor('#FFFFFF');
+    setBgColor('#10131A');
+    setStrokeColor('#000000');
+    setFontSize(28);
+    setUseBackgroundBox(true);
+    setSelectedWatermarkId(userWatermarks[0]?.id || 'none');
+    setWatermarkPosition('top-right');
+    setWatermarkOpacity(85);
+    setWatermarkScale(100);
+    seekVideoTo(0.0);
+
+    toast.success('Configurações do Studio restauradas para o padrão de fábrica.');
+  };
+
+  // Remove o vídeo atual do Studio, limpa o arquivo temporário no backend e carrega o próximo vídeo (se houver)
+  const handleDeleteFromStudio = async () => {
+    if (!currentVideo) return;
+
+    const confirmed = window.confirm(
+      `Deseja realmente remover o vídeo "${currentVideo.title || 'atual'}" do Studio? O arquivo temporário será excluído.`
+    );
+    if (!confirmed) return;
+
+    const storageKey = `appframe_studio_state_${currentVideo.id || currentVideo.url}`;
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {}
+
+    // Se houver preview baixado, solicita exclusão do arquivo temporário no backend
+    try {
+      if (previewStreamUrl) {
+        const previewIdMatch = previewStreamUrl.match(/preview\/([a-f0-9]{24})\/stream/);
+        if (previewIdMatch && previewIdMatch[1]) {
+          await mediaService.deleteStudioPreview(previewIdMatch[1]);
+        }
+      }
+    } catch {
+      // Ignora erro caso o preview já não exista mais
+    }
+
+    // Atualiza a fila de vídeos
+    const newQueue = videoQueue.filter((_, idx) => idx !== activeQueueIndex);
+    setVideoQueue(newQueue);
+    sessionStorage.setItem('appframe_studio_queue', JSON.stringify(newQueue));
+
+    if (newQueue.length > 0) {
+      const nextIndex = Math.min(activeQueueIndex, newQueue.length - 1);
+      setActiveQueueIndex(nextIndex);
+      toast.success('Vídeo removido do Studio. Carregando próximo vídeo da fila...');
+    } else {
+      setPreviewStreamUrl(null);
+      setWaveformPeaks([]);
+      setTotalDuration(0.0);
+      setTrimIn(0.0);
+      setTrimOut(0.0);
+      setCurrentTime(0.0);
+      setStaticText('');
+      setGeminiPrompt('');
+      setDynamicSegments([]);
+      toast.success('Vídeo temporário removido do Studio.');
+    }
+  };
 
   // Atualização do canvas em tempo real
   useEffect(() => {
@@ -730,7 +895,8 @@ export const StudioPage: React.FC = () => {
       let currentJob = createdJob;
       const maxAttempts = 180; // até ~4.5 minutos
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        if (currentJob.status === 'COMPLETED' || currentJob.status === 'FAILED') {
+        const st = String(currentJob.status || '').toUpperCase();
+        if (st === 'COMPLETED' || st === 'FAILED') {
           break;
         }
         await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -740,20 +906,21 @@ export const StudioPage: React.FC = () => {
         }
       }
 
-      if (currentJob.status === 'FAILED') {
+      const finalStatus = String(currentJob.status || '').toUpperCase();
+      if (finalStatus === 'FAILED') {
         throw new Error(
           currentJob.error_log || 'Falha durante a renderização do vídeo pelo FFmpeg.'
         );
       }
 
-      if (currentJob.status !== 'COMPLETED') {
+      if (finalStatus !== 'COMPLETED') {
         throw new Error('O tempo limite de renderização foi atingido. Verifique o Histórico.');
       }
 
       setRenderProgress(100);
 
       // Atualiza o cache do Histórico imediatamente
-      await queryClient.invalidateQueries({ queryKey: ['video-jobs'] });
+      await queryClient.invalidateQueries({ queryKey: ['jobs'] });
 
       // Faz o download automático do vídeo gerado para o computador do usuário
       await mediaService.downloadJobFile(
@@ -895,26 +1062,61 @@ export const StudioPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Botão de Ação Primária: "Gerar Vídeo" */}
-            <Button
-              variant="primary"
-              size="md"
-              isLoading={isGenerating}
-              disabled={!currentVideo || isPreparingPreview || isGenerating}
-              onClick={handleGenerateVideo}
-              leftIcon={
-                <span className="material-symbols-outlined text-[20px]">
-                  movie_edit
+            {/* Botões de Ação do Studio */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="md"
+                disabled={!currentVideo || isPreparingPreview || isGenerating}
+                onClick={handleResetStudio}
+                title="Restaurar configurações para o padrão de fábrica"
+                leftIcon={
+                  <span className="material-symbols-outlined text-[18px]">
+                    restart_alt
+                  </span>
+                }
+                className="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer"
+              >
+                <span>Resetar</span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="md"
+                disabled={!currentVideo || isPreparingPreview || isGenerating}
+                onClick={handleDeleteFromStudio}
+                title="Remover vídeo e excluir arquivo temporário do Studio"
+                leftIcon={
+                  <span className="material-symbols-outlined text-[18px]">
+                    delete_outline
+                  </span>
+                }
+                className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+              >
+                <span>Excluir do Studio</span>
+              </Button>
+
+              {/* Botão de Ação Primária: "Gerar Vídeo" */}
+              <Button
+                variant="primary"
+                size="md"
+                isLoading={isGenerating}
+                disabled={!currentVideo || isPreparingPreview || isGenerating}
+                onClick={handleGenerateVideo}
+                leftIcon={
+                  <span className="material-symbols-outlined text-[20px]">
+                    movie_edit
+                  </span>
+                }
+                className="px-5 font-bold shadow-[0_0_15px_rgba(212,163,70,0.3)] cursor-pointer"
+              >
+                <span>
+                  {isGenerating
+                    ? `Gerando (${renderProgress}%)...`
+                    : 'Gerar Vídeo'}
                 </span>
-              }
-              className="px-5 font-bold shadow-[0_0_15px_rgba(212,163,70,0.3)]"
-            >
-              <span>
-                {isGenerating
-                  ? `Gerando (${renderProgress}%)...`
-                  : 'Gerar Vídeo'}
-              </span>
-            </Button>
+              </Button>
+            </div>
           </div>
         </header>
 

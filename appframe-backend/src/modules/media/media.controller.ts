@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
   Param,
   Req,
@@ -131,6 +132,23 @@ export class MediaController {
     @CurrentUser('userId') userId: string,
   ): Promise<VideoJobResponseDto> {
     return this.mediaService.getJobById(id, userId);
+  }
+
+  @Delete('jobs/:id')
+  @UseGuards(JwtAuthGuard)
+  async deleteJobDirect(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser('userId') userId: string,
+  ): Promise<{ success: boolean }> {
+    return this.mediaService.deleteJob(id, userId);
+  }
+
+  @Delete('preview/:previewId')
+  @UseGuards(JwtAuthGuard)
+  async deletePreview(
+    @Param('previewId') previewId: string,
+  ): Promise<{ success: boolean }> {
+    return this.mediaService.deleteStudioPreview(previewId);
   }
 
   @Post('jobs')

@@ -56,6 +56,27 @@ export class DownloadService {
   }
 
   /**
+   * Remove o arquivo temporário de preview do disco caso exista.
+   */
+  async deletePreviewFile(previewId: string): Promise<boolean> {
+    if (!previewId || !/^[a-f0-9]{24}$/i.test(previewId)) {
+      return false;
+    }
+    const filePath = path.join(this.previewDir, `${previewId}.mp4`);
+    if (fs.existsSync(filePath)) {
+      try {
+        await fsPromises.unlink(filePath);
+        this.logger.log(`Arquivo temporário de preview ${previewId}.mp4 removido com sucesso.`);
+        return true;
+      } catch (err: any) {
+        this.logger.warn(`Falha ao remover arquivo de preview ${previewId}: ${err?.message}`);
+        return false;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Garante que o vídeo de origem esteja baixado localmente em formato MP4
    * para visualização em tempo real no Studio e/ou renderização posterior.
    */

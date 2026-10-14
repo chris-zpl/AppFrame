@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   UseGuards,
@@ -44,5 +45,14 @@ export class JobsController {
     @Body() dto: CreateVideoJobDto,
   ): Promise<VideoJobResponseDto> {
     return this.mediaService.createJob(userId, dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  async deleteJob(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser('userId') userId: string,
+  ): Promise<{ success: boolean }> {
+    return this.mediaService.deleteJob(id, userId);
   }
 }

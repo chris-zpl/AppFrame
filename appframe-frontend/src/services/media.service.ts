@@ -78,35 +78,55 @@ export interface StudioPreviewResponse {
   waveformPeaks?: number[];
 }
 
+const normalizeJob = (job: any): VideoJobItem => {
+  if (!job) return job;
+  return {
+    ...job,
+    status: (String(job.status || '').toUpperCase()) as VideoJobStatus,
+  };
+};
+
 export const mediaService = {
   async listJobs(): Promise<VideoJobItem[]> {
-    const res = await api.get<VideoJobItem[]>('/jobs');
-    return res.data;
+    const res = await api.get<any[]>('/jobs');
+    const items = Array.isArray(res.data) ? res.data : [];
+    return items.map(normalizeJob);
   },
 
   async getJobById(id: string): Promise<VideoJobItem> {
-    const res = await api.get<VideoJobItem>(`/jobs/${id}`);
-    return res.data;
+    const res = await api.get<any>(`/jobs/${id}`);
+    return normalizeJob(res.data);
   },
 
   async createJob(payload: CreateVideoJobPayload): Promise<VideoJobItem> {
-    const res = await api.post<VideoJobItem>('/media/jobs', payload);
-    return res.data;
+    const res = await api.post<any>('/media/jobs', payload);
+    return normalizeJob(res.data);
   },
 
   async render(payload: CreateVideoJobPayload): Promise<VideoJobItem> {
-    const res = await api.post<VideoJobItem>('/media/render', payload);
-    return res.data;
+    const res = await api.post<any>('/media/render', payload);
+    return normalizeJob(res.data);
   },
 
   async downloadBatch(videos: Array<{ url: string; title?: string }>): Promise<VideoJobItem[]> {
-    const res = await api.post<VideoJobItem[]>('/media/download-batch', { videos });
+    const res = await api.post<any[]>('/media/download-batch', { videos });
+    const items = Array.isArray(res.data) ? res.data : [];
+    return items.map(normalizeJob);
+  },
+
+  async deleteJob(id: string): Promise<{ success: boolean }> {
+    const res = await api.delete<{ success: boolean }>(`/jobs/${id}`);
     return res.data;
   },
 
   async prepareStudioPreview(sourceUrl: string): Promise<StudioPreviewResponse> {
     const res = await api.post<any>('/media/preview', { source_url: sourceUrl });
     return res.data?.data || res.data;
+  },
+
+  async deleteStudioPreview(previewId: string): Promise<{ success: boolean }> {
+    const res = await api.delete<{ success: boolean }>(`/media/preview/${previewId}`);
+    return res.data;
   },
 
   async downloadJobFile(jobId: string, title?: string | null): Promise<void> {
@@ -128,7 +148,9 @@ export const mediaService = {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    window.URL.revokeObjectURL(objectUrl);
+    setTimeout(() => {
+      window.URL.revokeObjectURL(objectUrl);
+    }, 10000);
   },
 
   async getGeminiStatus(): Promise<{ connected: boolean }> {

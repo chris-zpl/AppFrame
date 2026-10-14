@@ -63,6 +63,11 @@ export class MediaService {
     return this.downloadService.getPreviewFilePath(previewId);
   }
 
+  async deleteStudioPreview(previewId: string): Promise<{ success: boolean }> {
+    await this.downloadService.deletePreviewFile(previewId);
+    return { success: true };
+  }
+
   /**
    * Resolve o arquivo MP4 final renderizado para download no computador do usuário.
    */
@@ -180,6 +185,30 @@ export class MediaService {
     });
 
     return VideoJobResponseDto.fromEntities(jobs);
+  }
+
+  async deleteJob(id: string, userId: string): Promise<{ success: boolean }> {
+    const job = await this.videoJobRepository.findOne({
+      where: { id, user_id: userId },
+    });
+
+    if (!job) {
+      throw new NotFoundException('Job de vídeo não encontrado.');
+    }
+
+    if (job.final_video_path) {
+      const resolved = path.isAbsolute(job.final_video_path)
+        ? job.final_video_path
+        : path.resolve(process.cwd(), job.final_video_path);
+      if (fs.existsSync(resolved)) {
+        try {
+          fs.unlinkSync(resolved);
+        } catch {}
+      }
+    }
+
+    await this.videoJobRepository.delete({ id, user_id: userId });
+    return { success: true };
   }
 
   /**

@@ -14,6 +14,7 @@ export const HistoryPage: React.FC = () => {
   const { navigate, params } = useNavigation();
   const [filter, setFilter] = useState<'all' | 'processing' | 'completed' | 'failed'>('all');
   const [errorDrawerJob, setErrorDrawerJob] = useState<VideoJobItem | null>(null);
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
 
   // Consulta real periódica via TanStack Query (pooling a cada 3 segundos)
   const {
@@ -26,19 +27,41 @@ export const HistoryPage: React.FC = () => {
     refetchInterval: 3000,
   });
 
-  const formatDuration = (seconds?: number | null): string => {
-    if (!seconds) return '00:30';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const formatDuration = (job: VideoJobItem): string => {
+    let secs = job.duration_seconds;
+    if (
+      (!secs || secs <= 0) &&
+      job.trim_start !== null &&
+      job.trim_end !== null &&
+      Number(job.trim_end) > Number(job.trim_start)
+    ) {
+      secs = Math.round(Number(job.trim_end) - Number(job.trim_start));
+    }
+    if (!secs || secs <= 0) return '--:--';
+    const mins = Math.floor(secs / 60);
+    const remainingSecs = Math.floor(secs % 60);
+    return `${mins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
+  };
+
+  const getThumbnailUrl = (job: VideoJobItem): string | null => {
+    const url = job.source_url;
+    if (!url) return null;
+    const match = url.match(
+      /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/))([a-zA-Z0-9_-]{11})/
+    );
+    if (match && match[1]) {
+      return `https://img.youtube.com/vi/${match[1]}/mqdefault.jpg`;
+    }
+    return null;
   };
 
   const filteredJobs = jobs.filter((j) => {
+    const st = String(j.status || '').toUpperCase();
     if (filter === 'processing') {
-      return j.status === 'RENDERING' || j.status === 'DOWNLOADING' || j.status === 'PENDING';
+      return st === 'RENDERING' || st === 'DOWNLOADING' || st === 'PENDING';
     }
-    if (filter === 'completed') return j.status === 'COMPLETED';
-    if (filter === 'failed') return j.status === 'FAILED';
+    if (filter === 'completed') return st === 'COMPLETED';
+    if (filter === 'failed') return st === 'FAILED';
     return true;
   });
 
@@ -51,6 +74,24 @@ export const HistoryPage: React.FC = () => {
         err?.response?.data?.message ||
         'Não foi possível baixar o arquivo de vídeo processado.';
       toast.error(Array.isArray(msg) ? msg[0] : msg);
+    }
+  };
+
+  const handleDeleteJob = async (job: VideoJobItem) => {
+    const title = job.original_title || `Job ${job.id.substring(0, 8)}`;
+    if (!window.confirm(`Deseja realmente excluir "${title}" do histórico de renderizações?`)) {
+      return;
+    }
+    setDeletingJobId(job.id);
+    try {
+      await mediaService.deleteJob(job.id);
+      toast.success('Job excluído do histórico com sucesso.');
+      refetch();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Falha ao excluir job do histórico.';
+      toast.error(Array.isArray(msg) ? msg[0] : msg);
+    } finally {
+      setDeletingJobId(null);
     }
   };
 
@@ -159,7 +200,7 @@ export const HistoryPage: React.FC = () => {
               >
                 <span>Em Andamento</span>
                 <span className="px-1.5 py-0.2 rounded-full bg-primary/20 text-primary text-label-sm font-label-sm">
-                  {jobs.filter((j) => j.status === 'RENDERING' || j.status === 'DOWNLOADING' || j.status === 'PENDING').length}
+                  {jobs.filter((j) => ['RENDERING', 'DOWNLOADING', 'PENDING'].includes(String(j.status || '').toUpperCase())).length}
                 </span>
               </button>
 
@@ -175,7 +216,7 @@ export const HistoryPage: React.FC = () => {
               >
                 <span>Concluídos</span>
                 <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-label-sm font-label-sm">
-                  {jobs.filter((j) => j.status === 'COMPLETED').length}
+                  {jobs.filter((j) => String(j.status || '').toUpperCase() === 'COMPLETED').length}
                 </span>
               </button>
 
@@ -191,7 +232,7 @@ export const HistoryPage: React.FC = () => {
               >
                 <span>Falhas</span>
                 <span className="px-1.5 py-0.2 rounded-full bg-red-500/20 text-red-600 dark:text-red-400 text-label-sm font-label-sm">
-                  {jobs.filter((j) => j.status === 'FAILED').length}
+                  {jobs.filter((j) => String(j.status || '').toUpperCase() === 'FAILED').length}
                 </span>
               </button>
             </div>
@@ -207,14 +248,16 @@ export const HistoryPage: React.FC = () => {
         ) : filteredJobs.length > 0 ? (
           <div className="flex flex-col gap-3">
             {filteredJobs.map((job) => {
-              const isRendering = job.status === 'RENDERING';
-              const isDownloading = job.status === 'DOWNLOADING';
-              const isPending = job.status === 'PENDING';
-              const isCompleted = job.status === 'COMPLETED';
-              const isFailed = job.status === 'FAILED';
+              const st = String(job.status || '').toUpperCase();
+              const isRendering = st === 'RENDERING';
+              const isDownloading = st === 'DOWNLOADING';
+              const isPending = st === 'PENDING';
+              const isCompleted = st === 'COMPLETED';
+              const isFailed = st === 'FAILED';
 
               const title = job.original_title || job.source_url || `Job ${job.id.substring(0, 8)}`;
               const queueLabel = isDownloading || isPending ? 'media-download' : 'media-render';
+              const thumbUrl = getThumbnailUrl(job);
 
               return (
                 <Card
@@ -226,24 +269,43 @@ export const HistoryPage: React.FC = () => {
                     isFailed && 'border-red-400/40 bg-red-500/5'
                   )}
                 >
-                  {/* Informações Primárias do Vídeo */}
+                  {/* Informações Primárias do Vídeo com Thumbnail Real */}
                   <div className="flex items-start sm:items-center gap-4 flex-1 w-full">
-                    <div
-                      className={cn(
-                        'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border',
-                        isCompleted && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-                        (isRendering || isDownloading) && 'bg-primary/15 text-primary border-primary/30',
-                        isPending && 'bg-neutral-100 dark:bg-surface-container-highest text-neutral-500 border-neutral-300 dark:border-outline/20',
-                        isFailed && 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30'
+                    <div className="relative w-20 h-14 sm:w-24 sm:h-16 rounded-xl overflow-hidden bg-neutral-900 border border-neutral-200 dark:border-surface-container-highest shrink-0 flex items-center justify-center shadow-xs">
+                      {thumbUrl ? (
+                        <img
+                          src={thumbUrl}
+                          alt={title}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div
+                          className={cn(
+                            'w-full h-full flex items-center justify-center',
+                            isCompleted && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+                            (isRendering || isDownloading) && 'bg-primary/15 text-primary',
+                            isPending && 'bg-neutral-100 dark:bg-surface-container-highest text-neutral-500',
+                            isFailed && 'bg-red-500/20 text-red-600 dark:text-red-400'
+                          )}
+                        >
+                          <span className="material-symbols-outlined text-[24px]">
+                            {isCompleted && 'check_circle'}
+                            {isRendering && 'movie_filter'}
+                            {isDownloading && 'cloud_download'}
+                            {isPending && 'hourglass_empty'}
+                            {isFailed && 'error'}
+                          </span>
+                        </div>
                       )}
-                    >
-                      <span className="material-symbols-outlined text-[26px]">
-                        {isCompleted && 'check_circle'}
-                        {isRendering && 'movie_filter'}
-                        {isDownloading && 'cloud_download'}
-                        {isPending && 'hourglass_empty'}
-                        {isFailed && 'error'}
-                      </span>
+
+                      {/* Duração sobreposta na thumb */}
+                      <div className="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-black/75 backdrop-blur-xs font-mono text-[9px] text-white tabular-nums">
+                        {formatDuration(job)}
+                      </div>
                     </div>
 
                     <div className="flex flex-col gap-1.5 flex-1 min-w-0">
@@ -258,7 +320,7 @@ export const HistoryPage: React.FC = () => {
 
                       {/* Metadados e Fila */}
                       <div className="flex items-center gap-2 text-body-sm text-body-sm text-on-surface-variant flex-wrap font-mono tabular-nums">
-                        <span>Duração: <strong className="text-on-surface">{formatDuration(job.duration_seconds)}</strong></span>
+                        <span>Duração: <strong className="text-on-surface">{formatDuration(job)}</strong></span>
                         <span className="text-outline">•</span>
                         <span className="text-primary font-semibold font-sans">{queueLabel}</span>
                         <span className="text-outline">•</span>
@@ -355,6 +417,19 @@ export const HistoryPage: React.FC = () => {
                           Ver Log
                         </Button>
                       )}
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={deletingJobId === job.id}
+                        onClick={() => handleDeleteJob(job)}
+                        title="Excluir do histórico"
+                        className="text-red-600 dark:text-red-400 hover:bg-red-500/10 px-2 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">
+                          delete
+                        </span>
+                      </Button>
                     </div>
                   </div>
                 </Card>
