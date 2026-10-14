@@ -90,7 +90,7 @@ services:
 
       # Gemini AI
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
 
       # Processamento de Mídia & FFmpeg
       FFMPEG_PATH: ffmpeg

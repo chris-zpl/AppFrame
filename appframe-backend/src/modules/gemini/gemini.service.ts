@@ -36,7 +36,7 @@ export class GeminiService {
     private readonly userRepository: Repository<User>,
     private readonly encryptionService: EncryptionService,
   ) {
-    this.modelName = this.configService.get<string>('GEMINI_MODEL', 'gemini-3.8-flash');
+    this.modelName = this.configService.get<string>('GEMINI_MODEL', 'gemini-3.5-flash-lite');
     this.ensureDirs();
   }
 
@@ -50,7 +50,7 @@ export class GeminiService {
 
   /**
    * Executa a chamada generateContent com fallback automático de modelos caso o modelo
-   * configurado esteja indisponível ou depreciado pelo Google (ex.: gemini-2.5-flash migrado para gemini-3.8-flash).
+   * configurado esteja indisponível, depreciado pelo Google ou sob alta demanda temporária (503).
    */
   async generateContentWithFallback(
     ai: GoogleGenAI,
@@ -64,15 +64,22 @@ export class GeminiService {
     const defaultCandidates = isAudio
       ? [
           params.model || this.modelName,
+          'gemini-3.5-flash-lite',
+          'gemini-3-flash-preview',
           'gemini-3.8-flash',
           'gemini-3.8-flash-tts',
           'gemini-flash-latest',
         ]
       : [
           params.model || this.modelName,
+          'gemini-3.5-flash-lite',
+          'gemini-3-flash-preview',
+          'gemini-3.1-flash-lite',
           'gemini-3.8-flash',
+          'gemini-3.5-flash',
           'gemini-flash-latest',
           'gemini-2.5-flash',
+          'gemini-2.5-flash-lite',
         ];
 
     const candidateModels = Array.from(new Set(defaultCandidates)).filter(Boolean);
@@ -87,21 +94,31 @@ export class GeminiService {
       } catch (err: any) {
         lastError = err;
         const msg = err?.message || String(err);
-        const isModelUnavailable =
+        const status = Number(err?.status || err?.code || 0);
+
+        const isTransientOrModelError =
           msg.includes('is no longer available') ||
           msg.includes('NOT_FOUND') ||
           msg.includes('not found') ||
-          err?.status === 404 ||
-          err?.code === 404;
+          msg.includes('high demand') ||
+          msg.includes('UNAVAILABLE') ||
+          msg.includes('exceeded your current quota') ||
+          msg.includes('Resource has been exhausted') ||
+          status === 404 ||
+          status === 503 ||
+          status === 429 ||
+          status === 500 ||
+          status === 502 ||
+          status === 504;
 
-        if (isModelUnavailable) {
+        if (isTransientOrModelError) {
           this.logger.warn(
-            `Modelo ${model} indisponível no Google Gemini (${msg}). Tentando próximo modelo candidato...`,
+            `Modelo ${model} indisponível ou sobrecarregado no Google Gemini (${msg}). Tentando próximo modelo candidato...`,
           );
           continue;
         }
 
-        // Erros de autenticação, cotas ou parâmetros inválidos devem ser repassados
+        // Erros de autenticação (chave inválida) devem ser repassados de imediato
         throw err;
       }
     }
