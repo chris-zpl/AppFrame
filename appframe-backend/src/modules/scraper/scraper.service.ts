@@ -67,11 +67,19 @@ export class ScraperService {
       const match = url.match(/(?:watch\?v=|shorts\/|youtu\.be\/)([\w-]{11})/);
       if (match && match[1]) {
         const id = match[1];
+        let durationSeconds = 60;
+        try {
+          const realDuration = await this.youtubeProvider.fetchVideoRealDuration(id);
+          if (realDuration > 0) {
+            durationSeconds = realDuration;
+          }
+        } catch {}
+
         return {
           url,
           platform,
           title: `Vídeo do YouTube (${id})`,
-          durationSeconds: 60,
+          durationSeconds,
           thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
         };
       }

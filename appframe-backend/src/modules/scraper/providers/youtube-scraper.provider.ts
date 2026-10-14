@@ -137,6 +137,9 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         );
       }
 
+      // Enriquece os Shorts com os metadados de tempo/duração reais
+      await this.enrichShortsRealDurations(results);
+
       this.logger.log(
         `Canal escaneado com sucesso. ${results.length} itens extraídos (${results.filter((i) => i.isShort).length} Shorts).`,
       );
@@ -621,5 +624,93 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
 
     traverse(data);
     return results;
+  }
+
+  /**
+   * Obtém a duração real de Shorts consultando os metadados reais da página do vídeo.
+   * Executa em lotes paralelos (concorrência controlada) para garantir rapidez sem sobrecarga.
+   */
+  async enrichShortsRealDurations(items: ScrapedMediaItem[]): Promise<void> {
+    const shortsToEnrich = items.filter(
+      (item) => item.isShort || item.is_short,
+    );
+
+    if (shortsToEnrich.length === 0) return;
+
+    this.logger.log(
+      `Consultando metadados de tempo real para ${shortsToEnrich.length} Shorts...`,
+    );
+
+    const concurrency = 6;
+    for (let i = 0; i < shortsToEnrich.length; i += concurrency) {
+      const chunk = shortsToEnrich.slice(i, i + concurrency);
+      await Promise.all(
+        chunk.map(async (item) => {
+          try {
+            const realDuration = await this.fetchVideoRealDuration(item.id);
+            if (realDuration > 0) {
+              item.durationSeconds = realDuration;
+              item.duration_seconds = realDuration;
+              item.durationFormatted = this.formatDuration(realDuration);
+              item.timestamp_formatted = this.formatTimestamp(realDuration);
+            }
+          } catch {
+            // Mantém valor existente caso haja falha de rede individual
+          }
+        }),
+      );
+    }
+  }
+
+  /**
+   * Busca os metadados reais de tempo/duração de um vídeo/Short específico no YouTube.
+   */
+  async fetchVideoRealDuration(videoId: string): Promise<number> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        },
+      });
+      clearTimeout(timeout);
+
+      if (!res.ok) return 0;
+
+      const html = await res.text();
+
+      // 1. Tenta "lengthSeconds":"XX"
+      const lengthMatch = html.match(/"lengthSeconds":"(\d+)"/);
+      if (lengthMatch && lengthMatch[1]) {
+        const secs = parseInt(lengthMatch[1], 10);
+        if (secs > 0) return secs;
+      }
+
+      // 2. Tenta "approxDurationMs":"XXXXX"
+      const approxMatch = html.match(/"approxDurationMs":"(\d+)"/);
+      if (approxMatch && approxMatch[1]) {
+        const ms = parseInt(approxMatch[1], 10);
+        if (ms > 0) return Math.round(ms / 1000);
+      }
+
+      // 3. Tenta itemprop="duration" content="PT...S"
+      const metaMatch = html.match(
+        /itemprop="duration"\s+content="PT(?:(\d+)M)?(?:(\d+)S)?"/,
+      );
+      if (metaMatch) {
+        const mins = parseInt(metaMatch[1] || '0', 10);
+        const secs = parseInt(metaMatch[2] || '0', 10);
+        const total = mins * 60 + secs;
+        if (total > 0) return total;
+      }
+
+      return 0;
+    } catch {
+      return 0;
+    }
   }
 }

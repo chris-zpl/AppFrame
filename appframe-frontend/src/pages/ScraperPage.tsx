@@ -147,8 +147,13 @@ export const ScraperPage: React.FC = () => {
         const mappedVideos: ScrapedVideoCardData[] = items.map((it) => {
           const isShort = Boolean(it.isShort ?? it.is_short);
           const durationSeconds = it.durationSeconds ?? it.duration_seconds ?? it.duration ?? 0;
-          const durationFormatted =
+          let durationFormatted =
             it.durationFormatted || it.timestamp_formatted || '00:00';
+          if (durationSeconds > 0 && (!durationFormatted || durationFormatted === '00:00' || (durationFormatted === '01:00' && durationSeconds !== 60))) {
+            const mins = Math.floor(durationSeconds / 60);
+            const secs = durationSeconds % 60;
+            durationFormatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+          }
           const thumbnailUrl =
             it.thumbnailUrl || it.thumbnail_url || `https://i.ytimg.com/vi/${it.id}/hqdefault.jpg`;
           const url =
