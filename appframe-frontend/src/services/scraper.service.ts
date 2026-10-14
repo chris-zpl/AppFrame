@@ -16,6 +16,11 @@ export interface ScrapedMediaItem {
   timestamp_formatted?: string;
   is_short?: boolean;
   viewCount?: string;
+  isTargetVideo?: boolean;
+  selected?: boolean;
+  channelTitle?: string;
+  channelAvatarUrl?: string;
+  channelUrl?: string;
 }
 
 export interface ScrapedVideoMetadata {

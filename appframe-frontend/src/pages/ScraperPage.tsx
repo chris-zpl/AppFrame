@@ -172,25 +172,41 @@ export const ScraperPage: React.FC = () => {
             isShort,
             publishedText: it.publishedAt || 'Recente',
             viewsText: it.viewCount,
+            isTargetVideo: Boolean(it.isTargetVideo || it.selected),
           };
         });
 
         const shortsCount = mappedVideos.filter((v) => v.isShort).length;
         const longCount = mappedVideos.filter((v) => !v.isShort).length;
 
-        // Extrai o nome do canal do handle ou URL
-        let channelName = cleanUrl
-          .replace(/https?:\/\/(www\.)?youtube\.com\//, '')
-          .replace(/\/$/, '')
-          .replace(/\/(videos|shorts)$/, '');
-        if (!channelName.startsWith('@') && !channelName.startsWith('channel/')) {
-          channelName = `@${channelName}`;
+        // Extrai o nome do canal a partir dos metadados ou do handle/URL
+        let channelName = items[0]?.channelTitle;
+        if (!channelName) {
+          channelName = cleanUrl
+            .replace(/https?:\/\/(www\.)?youtube\.com\//, '')
+            .replace(/\/$/, '')
+            .replace(/\/(videos|shorts)$/, '');
+          if (!channelName.startsWith('@') && !channelName.startsWith('channel/')) {
+            channelName = `@${channelName}`;
+          }
         }
+
+        const avatarUrl = items[0]?.channelAvatarUrl || mappedVideos[0]?.thumbnailUrl;
+
+        // Detecta se a URL inserida é de um vídeo específico
+        const videoMatch = cleanUrl.match(
+          /(?:(?:v|vi)=|\/(?:v|vi|shorts|embed)\/|youtu\.be\/|\/watch\?v=)([\w-]{11})/i,
+        );
+        const targetVideoId = videoMatch ? videoMatch[1] : null;
+
+        const targetVideo = mappedVideos.find(
+          (v) => v.isTargetVideo || (targetVideoId && v.id === targetVideoId),
+        );
 
         setVideos(mappedVideos);
         setChannelMeta({
           name: channelName,
-          avatarUrl: mappedVideos[0]?.thumbnailUrl,
+          avatarUrl,
           totalIndexed: mappedVideos.length,
           shortsCount,
           longCount,
@@ -198,10 +214,18 @@ export const ScraperPage: React.FC = () => {
         setFilter('all');
         setCurrentPage(1);
         setHasScanned(true);
-        setSelectedIds(new Set());
-        toast.success(
-          `${mappedVideos.length} mídias encontradas (${shortsCount} Shorts, ${longCount} vídeos)!`,
-        );
+
+        if (targetVideo) {
+          setSelectedIds(new Set([targetVideo.id]));
+          toast.success(
+            `${mappedVideos.length} mídias encontradas! Vídeo "${targetVideo.title.slice(0, 32)}..." pré-selecionado.`,
+          );
+        } else {
+          setSelectedIds(new Set());
+          toast.success(
+            `${mappedVideos.length} mídias encontradas (${shortsCount} Shorts, ${longCount} vídeos)!`,
+          );
+        }
       } else {
         setVideos([]);
         setHasScanned(false);
@@ -303,7 +327,7 @@ export const ScraperPage: React.FC = () => {
                 </Badge>
               </div>
               <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl">
-                Insira o canal ou @handle para indexar vídeos reais, filtrar Shorts e enviar diretamente para corte dinâmico no Studio ou download em lote.
+                Insira a URL de um vídeo, canal ou @handle para indexar vídeos reais, filtrar Shorts e enviar diretamente para corte dinâmico no Studio ou download em lote.
               </p>
             </div>
           </div>
@@ -325,7 +349,7 @@ export const ScraperPage: React.FC = () => {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') executeScan(channelUrl);
                   }}
-                  placeholder="Cole a URL do canal do YouTube ou @handle..."
+                  placeholder="Cole a URL de um vídeo (ex: watch?v=...), canal ou @handle..."
                   className="w-full bg-transparent border-0 outline-none text-on-surface placeholder:text-outline font-body-md text-body-md h-10 tracking-tight disabled:opacity-50"
                 />
                 {channelUrl && !isScanning && (

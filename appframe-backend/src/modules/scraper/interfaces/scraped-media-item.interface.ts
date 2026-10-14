@@ -13,4 +13,9 @@ export interface ScrapedMediaItem {
   publishedAt?: string;
   published_text?: string;
   view_count_text?: string;
+  isTargetVideo?: boolean;
+  selected?: boolean;
+  channelTitle?: string;
+  channelAvatarUrl?: string;
+  channelUrl?: string;
 }

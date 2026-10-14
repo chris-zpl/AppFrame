@@ -12,6 +12,7 @@ export interface VideoCardData {
   isShort?: boolean;
   publishedText?: string;
   viewsText?: string;
+  isTargetVideo?: boolean;
 }
 
 export interface VideoCardProps {
@@ -74,8 +75,13 @@ export const VideoCard: React.FC<VideoCardProps> = ({
           />
         </div>
 
-        {/* Tag Shorts / Vídeo no Topo Direito */}
-        <div className="absolute top-3 right-3 z-10">
+        {/* Tag Shorts / Vídeo / Alvo no Topo Direito */}
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+          {video.isTargetVideo && (
+            <Badge variant="status-live" className="text-[11px] py-0.5 px-2 bg-surface-container-lowest/90 backdrop-blur-md border border-primary/50 text-primary">
+              Alvo
+            </Badge>
+          )}
           {video.isShort ? (
             <Badge variant="short">Shorts</Badge>
           ) : (
