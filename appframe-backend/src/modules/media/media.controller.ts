@@ -54,23 +54,44 @@ export class MediaController {
       const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
       const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+      if (isNaN(start) || start >= fileSize || (parts[1] && end < start)) {
+        res
+          .status(416)
+          .set({
+            'Content-Range': `bytes */${fileSize}`,
+            'Accept-Ranges': 'bytes',
+          })
+          .end();
+        return;
+      }
+
       const chunkSize = end - start + 1;
       const file = fs.createReadStream(filePath, { start, end });
 
-      res.writeHead(206, {
+      res.status(206).set({
         'Content-Range': `bytes ${start}-${end}/${fileSize}`,
         'Accept-Ranges': 'bytes',
-        'Content-Length': chunkSize,
+        'Content-Length': chunkSize.toString(),
         'Content-Type': 'video/mp4',
       });
+
+      req.on('close', () => {
+        file.destroy();
+      });
+
       file.pipe(res);
     } else {
-      res.writeHead(200, {
-        'Content-Length': fileSize,
+      res.status(200).set({
+        'Content-Length': fileSize.toString(),
         'Accept-Ranges': 'bytes',
         'Content-Type': 'video/mp4',
       });
-      fs.createReadStream(filePath).pipe(res);
+      const file = fs.createReadStream(filePath);
+      req.on('close', () => {
+        file.destroy();
+      });
+      file.pipe(res);
     }
   }
 

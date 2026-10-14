@@ -7,7 +7,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { cn } from '../lib/utils';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL } from '../services/api';
 import { watermarksService } from '../services/watermarks.service';
 import {
   mediaService,
@@ -112,6 +112,7 @@ export const StudioPage: React.FC = () => {
   // Configurações Globais do Player e Formato (sem valores mockados)
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0.0);
   const [totalDuration, setTotalDuration] = useState<number>(0.0);
 
@@ -469,7 +470,12 @@ export const StudioPage: React.FC = () => {
   // Sincroniza seek de tempo no estado e no elemento <video> real
   const seekVideoTo = useCallback(
     (targetTime: number) => {
-      const clamped = Math.max(0, Math.min(totalDuration, targetTime));
+      const maxDuration =
+        totalDuration > 0 ? totalDuration : videoRef.current?.duration || 0;
+      const clamped =
+        maxDuration > 0
+          ? Math.max(0, Math.min(maxDuration, targetTime))
+          : Math.max(0, targetTime);
       setCurrentTime(clamped);
       if (videoRef.current && Number.isFinite(videoRef.current.duration)) {
         try {
@@ -481,6 +487,60 @@ export const StudioPage: React.FC = () => {
     },
     [totalDuration]
   );
+
+  // Controle síncrono e direto de Play / Pause a partir do clique do usuário
+  const handleTogglePlay = useCallback(async () => {
+    const videoEl = videoRef.current;
+    if (!videoEl || !previewStreamUrl) return;
+
+    if (videoEl.paused) {
+      // Se estiver no fim do corte ou fora dos limites, reposiciona no início
+      if (
+        trimOut > trimIn &&
+        (videoEl.currentTime < trimIn || videoEl.currentTime >= trimOut - 0.15)
+      ) {
+        videoEl.currentTime = trimIn;
+        setCurrentTime(trimIn);
+      }
+      try {
+        await videoEl.play();
+        setIsPlaying(true);
+      } catch (err: any) {
+        console.warn('Falha na reprodução com áudio ativo. Tentando com mudo...', err);
+        try {
+          videoEl.muted = true;
+          setIsMuted(true);
+          await videoEl.play();
+          setIsPlaying(true);
+        } catch (muteErr) {
+          console.error('Falha ao reproduzir elemento de vídeo:', muteErr);
+          setIsPlaying(false);
+          toast.error('O navegador bloqueou a reprodução automática. Clique novamente para iniciar.');
+        }
+      }
+    } else {
+      videoEl.pause();
+      setIsPlaying(false);
+    }
+  }, [previewStreamUrl, trimIn, trimOut]);
+
+  // Atalho de teclado: Barra de espaço para Play / Pause
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handleTogglePlay();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleTogglePlay]);
 
   // Baixa o vídeo selecionado na Varredura para visualização e edição em tempo real no Studio
   const loadVideoPreview = useCallback(async (videoItem: StudioVideoQueueItem) => {
@@ -499,7 +559,11 @@ export const StudioPage: React.FC = () => {
 
     try {
       const preview = await mediaService.prepareStudioPreview(videoItem.url);
-      const streamUrl = `${API_BASE_URL}/media/preview/${preview.previewId}/stream`;
+      const streamUrl = preview.streamUrl
+        ? (preview.streamUrl.startsWith('http')
+            ? preview.streamUrl
+            : `${API_BASE_URL.replace(/\/api\/v1$/, '')}${preview.streamUrl.startsWith('/') ? '' : '/'}${preview.streamUrl}`)
+        : `${API_BASE_URL}/media/preview/${preview.previewId}/stream`;
       const realDuration =
         preview.durationSeconds && preview.durationSeconds > 0
           ? Number(preview.durationSeconds.toFixed(2))
@@ -546,24 +610,6 @@ export const StudioPage: React.FC = () => {
   useEffect(() => {
     drawCanvasOverlay();
   }, [drawCanvasOverlay]);
-
-  // Sincroniza Play / Pause com o elemento <video> real
-  useEffect(() => {
-    const videoEl = videoRef.current;
-    if (!videoEl || !previewStreamUrl) return;
-
-    if (isPlaying) {
-      if (videoEl.currentTime < trimIn || videoEl.currentTime >= trimOut) {
-        videoEl.currentTime = trimIn;
-        setCurrentTime(trimIn);
-      }
-      videoEl.play().catch(() => {
-        setIsPlaying(false);
-      });
-    } else {
-      videoEl.pause();
-    }
-  }, [isPlaying, previewStreamUrl, trimIn, trimOut]);
 
   // Interatividade de arraste da timeline
   const handleTimelineMouseDown = (
@@ -952,8 +998,10 @@ export const StudioPage: React.FC = () => {
 
               {/* Moldura do Vídeo com Aspect Ratio Dinâmico (Sem imagem mockada) */}
               <div
+                onClick={previewStreamUrl && !isPreparingPreview ? handleTogglePlay : undefined}
                 className={cn(
                   'relative overflow-hidden rounded-2xl bg-black border border-surface-container-highest transition-all duration-300 shadow-[0_12px_40px_rgba(0,0,0,0.8)] flex items-center justify-center',
+                  previewStreamUrl && !isPreparingPreview ? 'cursor-pointer' : '',
                   aspectRatio === '9:16'
                     ? 'w-[290px] h-[515px] sm:w-[320px] sm:h-[568px]'
                     : 'w-full max-w-[620px] aspect-video'
@@ -1025,31 +1073,38 @@ export const StudioPage: React.FC = () => {
                     src={previewStreamUrl}
                     playsInline
                     preload="auto"
+                    muted={isMuted}
                     onLoadedMetadata={(e) => {
                       const vid = e.currentTarget;
                       if (Number.isFinite(vid.duration) && vid.duration > 0) {
                         const dur = Number(vid.duration.toFixed(2));
-                        setTotalDuration(dur);
-                        setTrimOut((prev) => (prev > dur || prev <= 0 ? dur : prev));
+                        setTotalDuration((prev) => (prev <= 0 ? dur : prev));
+                        setTrimOut((prev) => (prev <= 0 ? dur : prev));
                       }
                     }}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
                     onTimeUpdate={(e) => {
                       const vid = e.currentTarget;
                       const now = vid.currentTime;
-                      if (now >= trimOut) {
+                      setCurrentTime(now);
+                      if (trimOut > trimIn && now >= trimOut) {
                         vid.pause();
                         vid.currentTime = trimIn;
                         setIsPlaying(false);
                         setCurrentTime(trimIn);
-                      } else {
-                        setCurrentTime(now);
                       }
                     }}
                     onEnded={() => {
                       setIsPlaying(false);
                       seekVideoTo(trimIn);
                     }}
-                    className="w-full h-full object-contain select-none pointer-events-none"
+                    onError={(e) => {
+                      const err = e.currentTarget.error;
+                      console.error('Erro no elemento de vídeo:', err?.code, err?.message);
+                      toast.error('Erro ao decodificar stream do vídeo no navegador.');
+                    }}
+                    className="w-full h-full object-contain select-none"
                   />
                 ) : null}
 
@@ -1076,7 +1131,10 @@ export const StudioPage: React.FC = () => {
                 {!isPlaying && Boolean(previewStreamUrl) && !isPreparingPreview && (
                   <button
                     type="button"
-                    onClick={() => setIsPlaying(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTogglePlay();
+                    }}
                     className="absolute z-30 w-16 h-16 rounded-full bg-primary/90 text-on-primary flex items-center justify-center shadow-[0_0_24px_rgba(242,190,94,0.4)] transition-transform hover:scale-110 cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[36px] ml-1">
@@ -1092,7 +1150,7 @@ export const StudioPage: React.FC = () => {
                   <button
                     type="button"
                     disabled={!previewStreamUrl || isPreparingPreview}
-                    onClick={() => setIsPlaying(!isPlaying)}
+                    onClick={handleTogglePlay}
                     className="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 cursor-pointer shadow-sm disabled:opacity-40"
                   >
                     <span className="material-symbols-outlined text-[20px]">
@@ -1118,6 +1176,24 @@ export const StudioPage: React.FC = () => {
                     className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
                   >
                     <span className="material-symbols-outlined text-[18px]">forward_5</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={!previewStreamUrl || isPreparingPreview}
+                    onClick={() => {
+                      const next = !isMuted;
+                      setIsMuted(next);
+                      if (videoRef.current) {
+                        videoRef.current.muted = next;
+                      }
+                    }}
+                    title={isMuted ? 'Ativar som' : 'Silenciar áudio'}
+                    className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {isMuted ? 'volume_off' : 'volume_up'}
+                    </span>
                   </button>
                 </div>
 
