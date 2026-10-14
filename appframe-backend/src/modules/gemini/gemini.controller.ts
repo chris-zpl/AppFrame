@@ -74,6 +74,10 @@ export class GeminiController {
       language?: string;
       audioBase64?: string;
       mimeType?: string;
+      previewId?: string;
+      sourceUrl?: string;
+      trimStart?: number | string;
+      trimEnd?: number | string;
     },
   ): Promise<TranscriptionResult> {
     const buffer = file?.buffer
@@ -84,6 +88,10 @@ export class GeminiController {
 
     return this.geminiService.generateSubtitles(userId, {
       audioBuffer: buffer,
+      previewId: body?.previewId,
+      sourceUrl: body?.sourceUrl,
+      trimStart: body?.trimStart !== undefined ? Number(body.trimStart) : undefined,
+      trimEnd: body?.trimEnd !== undefined ? Number(body.trimEnd) : undefined,
       mimeType: file?.mimetype || body?.mimeType,
       title: body?.title,
       context: body?.context,

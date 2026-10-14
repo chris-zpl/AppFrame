@@ -110,8 +110,11 @@ export const StudioPage: React.FC = () => {
 
   // Estados reais do Gerador de Legendas Gemini
   const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState<boolean>(false);
+  const [isTranscribingAudio, setIsTranscribingAudio] = useState<boolean>(false);
+  const [showAdvancedGeminiOptions, setShowAdvancedGeminiOptions] = useState<boolean>(false);
   const [dynamicSegments, setDynamicSegments] = useState<GeminiSubtitleSegment[]>([]);
   const [selectedMediaFile, setSelectedMediaFile] = useState<File | null>(null);
+  const [currentPreviewId, setCurrentPreviewId] = useState<string | null>(null);
   const mediaFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Configurações Globais do Player e Formato (sem valores mockados)
@@ -239,6 +242,52 @@ export const StudioPage: React.FC = () => {
       toast.error(Array.isArray(msg) ? msg[0] : msg);
     } finally {
       setIsGeneratingSubtitles(false);
+    }
+  };
+
+  // Ação real: Transcrever áudio do vídeo atual via Gemini (reconhecimento de fala real STT)
+  const handleTranscribeCurrentVideo = async () => {
+    if (!isGeminiConnected) {
+      setIsGeminiModalOpen(true);
+      return;
+    }
+
+    const videoUrl = currentVideo?.url || params.videoUrl || params.sourceUrl;
+    if (!videoUrl && !selectedMediaFile && !currentPreviewId) {
+      toast.error('Nenhum vídeo carregado no Studio para transcrição.');
+      return;
+    }
+
+    setIsTranscribingAudio(true);
+    try {
+      const result = await mediaService.generateGeminiSubtitles({
+        file: selectedMediaFile,
+        previewId: currentPreviewId || undefined,
+        sourceUrl: videoUrl || undefined,
+        trimStart: trimIn > 0 ? trimIn : undefined,
+        trimEnd: trimOut > 0 && trimOut < totalDuration ? trimOut : undefined,
+        language: 'pt-BR',
+      });
+
+      if (result.segments && result.segments.length > 0) {
+        setDynamicSegments(result.segments);
+        setSubtitleMode('dynamic');
+        setCurrentTime(result.segments[0].start);
+        toast.success(
+          `Transcrição concluída! ${result.segments.length} blocos de fala sincronizados com o áudio do vídeo.`
+        );
+      } else {
+        toast.info(
+          'Nenhuma fala foi detectada no áudio do vídeo. Caso o vídeo não possua narração, você pode gerar legendas por roteiro nas outras opções.'
+        );
+      }
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        'Falha ao transcrever áudio do vídeo pelo Google Gemini. Verifique sua conexão e tente novamente.';
+      toast.error(Array.isArray(msg) ? msg[0] : msg);
+    } finally {
+      setIsTranscribingAudio(false);
     }
   };
 
@@ -636,6 +685,7 @@ export const StudioPage: React.FC = () => {
           : realDuration;
 
       setPreviewStreamUrl(streamUrl);
+      setCurrentPreviewId(preview.previewId);
       setTotalDuration(realDuration);
       setTrimIn(restoredTrimIn);
       setTrimOut(restoredTrimOut);
@@ -1891,102 +1941,169 @@ export const StudioPage: React.FC = () => {
                     </div>
                   ) : (
                     <div className="flex flex-col gap-3">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between">
-                          <label className="text-label-sm font-label-sm text-outline font-semibold">
-                            Roteiro / Contexto ou Áudio para o Gemini
-                          </label>
-                          <span className="text-[10px] text-primary font-semibold">
-                            Conta Pessoal Vinculada
-                          </span>
+                      {/* Card Principal de Destaque: Transcrever Áudio do Vídeo (Reconhecimento de Fala Real) */}
+                      <div className="p-3.5 rounded-xl bg-surface-container-lowest border border-primary/40 flex flex-col gap-2.5 shadow-[0_0_15px_rgba(212,163,70,0.08)]">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2 rounded-xl bg-primary/15 text-primary shrink-0">
+                            <span className="material-symbols-outlined text-[20px] block">
+                              record_voice_over
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-label-md font-bold text-on-surface">
+                              Transcrever Áudio do Vídeo
+                            </span>
+                            <span className="text-[11px] text-outline leading-tight">
+                              Ouve a fala real do vídeo e sincroniza cada bloco com precisão
+                            </span>
+                          </div>
                         </div>
-                        <textarea
-                          value={geminiPrompt}
-                          onChange={(e) => setGeminiPrompt(e.target.value)}
-                          rows={3}
-                          disabled={!isGeminiConnected}
-                          placeholder="Informe o tema/roteiro do vídeo ou anexe um arquivo de áudio/vídeo abaixo para transcrição..."
-                          className="w-full bg-surface-container-lowest border border-surface-container-highest rounded-xl p-3 text-body-md text-on-surface outline-none focus:border-primary/80 transition-all resize-none disabled:opacity-50"
-                        />
+
+                        <Button
+                          variant="primary"
+                          size="md"
+                          disabled={
+                            !isGeminiConnected ||
+                            isTranscribingAudio ||
+                            isGeneratingSubtitles ||
+                            !currentVideo
+                          }
+                          isLoading={isTranscribingAudio}
+                          onClick={handleTranscribeCurrentVideo}
+                          leftIcon={
+                            <span className="material-symbols-outlined text-[18px]">
+                              {isGeminiConnected ? 'mic' : 'lock'}
+                            </span>
+                          }
+                          className="w-full font-bold shadow-md"
+                        >
+                          {!isGeminiConnected
+                            ? 'Conectar Gemini para Transcrever'
+                            : isTranscribingAudio
+                              ? 'Ouvindo e Transcrevendo Fala...'
+                              : 'Transcrever Fala do Vídeo com Gemini'}
+                        </Button>
+
+                        {trimIn > 0 || (trimOut > 0 && trimOut < totalDuration) ? (
+                          <span className="text-[10px] text-primary/80 flex items-center gap-1 font-medium">
+                            <span className="material-symbols-outlined text-[12px]">content_cut</span>
+                            Transcrevendo trecho ativo da timeline ({trimIn.toFixed(1)}s a {trimOut.toFixed(1)}s)
+                          </span>
+                        ) : null}
+
+                        {!isGeminiConnected && (
+                          <p className="text-[11px] text-outline text-center">
+                            Conecte sua conta do Google AI Studio acima para habilitar a transcrição.
+                          </p>
+                        )}
                       </div>
 
-                      {/* Upload opcional de arquivo de áudio/vídeo para transcrição STT real */}
-                      <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-container-lowest border border-surface-container-highest">
-                        <input
-                          ref={mediaFileInputRef}
-                          type="file"
-                          accept="audio/*,video/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0] || null;
-                            setSelectedMediaFile(f);
-                          }}
-                        />
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="material-symbols-outlined text-[18px] text-primary shrink-0">
-                            audio_file
+                      {/* Opções Alternativas: Roteiro por IA ou Upload de Arquivo Próprio */}
+                      <div className="rounded-xl border border-surface-container-highest bg-surface-container-lowest overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setShowAdvancedGeminiOptions((v) => !v)}
+                          className="w-full flex items-center justify-between p-2.5 text-[12px] font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors cursor-pointer"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[16px] text-outline">tune</span>
+                            <span>Outras opções: Gerar por roteiro de IA ou arquivo externo</span>
                           </span>
-                          <span className="text-body-xs text-on-surface-variant truncate">
-                            {selectedMediaFile
-                              ? selectedMediaFile.name
-                              : 'Áudio/Vídeo opcional para transcrição direta'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          {selectedMediaFile && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedMediaFile(null);
-                                if (mediaFileInputRef.current) {
-                                  mediaFileInputRef.current.value = '';
-                                }
-                              }}
-                              className="p-1 rounded-lg text-outline hover:text-error cursor-pointer"
-                              title="Remover arquivo"
-                            >
-                              <span className="material-symbols-outlined text-[16px]">close</span>
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            disabled={!isGeminiConnected}
-                            onClick={() => mediaFileInputRef.current?.click()}
-                            className="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-[11px] font-semibold text-on-surface transition-colors cursor-pointer disabled:opacity-50"
+                          <span
+                            className={cn(
+                              'material-symbols-outlined text-[16px] transition-transform duration-200',
+                              showAdvancedGeminiOptions && 'rotate-180'
+                            )}
                           >
-                            Escolher Arquivo
-                          </button>
-                        </div>
+                            expand_more
+                          </span>
+                        </button>
+
+                        {showAdvancedGeminiOptions && (
+                          <div className="p-3 border-t border-surface-container-highest flex flex-col gap-3">
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-label-sm font-label-sm text-outline font-semibold">
+                                Roteiro / Contexto para o Gemini
+                              </label>
+                              <textarea
+                                value={geminiPrompt}
+                                onChange={(e) => setGeminiPrompt(e.target.value)}
+                                rows={3}
+                                disabled={!isGeminiConnected}
+                                placeholder="Informe o tema/roteiro do vídeo caso queira que a IA invente legendas dinâmicas a partir de um texto..."
+                                className="w-full bg-surface-container-lowest border border-surface-container-highest rounded-xl p-3 text-body-md text-on-surface outline-none focus:border-primary/80 transition-all resize-none disabled:opacity-50"
+                              />
+                            </div>
+
+                            {/* Upload opcional de arquivo externo */}
+                            <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-container border border-surface-container-highest">
+                              <input
+                                ref={mediaFileInputRef}
+                                type="file"
+                                accept="audio/*,video/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0] || null;
+                                  setSelectedMediaFile(f);
+                                }}
+                              />
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="material-symbols-outlined text-[18px] text-primary shrink-0">
+                                  audio_file
+                                </span>
+                                <span className="text-body-xs text-on-surface-variant truncate">
+                                  {selectedMediaFile
+                                    ? selectedMediaFile.name
+                                    : 'Arquivo avulso (opcional)'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {selectedMediaFile && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedMediaFile(null);
+                                      if (mediaFileInputRef.current) {
+                                        mediaFileInputRef.current.value = '';
+                                      }
+                                    }}
+                                    className="p-1 rounded-lg text-outline hover:text-error cursor-pointer"
+                                    title="Remover arquivo"
+                                  >
+                                    <span className="material-symbols-outlined text-[16px]">close</span>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  disabled={!isGeminiConnected}
+                                  onClick={() => mediaFileInputRef.current?.click()}
+                                  className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-[11px] font-semibold text-on-surface transition-colors cursor-pointer disabled:opacity-50"
+                                >
+                                  Escolher Arquivo
+                                </button>
+                              </div>
+                            </div>
+
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              disabled={!isGeminiConnected || isGeneratingSubtitles || isTranscribingAudio}
+                              isLoading={isGeneratingSubtitles}
+                              onClick={handleGenerateGeminiSubtitles}
+                              leftIcon={
+                                <span className="material-symbols-outlined text-[16px]">
+                                  auto_awesome
+                                </span>
+                              }
+                              className="w-full font-bold"
+                            >
+                              Gerar Legendas por Roteiro / Arquivo
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
-
-                  {/* Botão de Gerar Legendas pelo Gemini (bloqueado até conectar a conta) */}
-                  <div className="flex flex-col gap-1.5">
-                    <Button
-                      variant={isGeminiConnected ? 'primary' : 'secondary'}
-                      size="md"
-                      disabled={!isGeminiConnected || isGeneratingSubtitles}
-                      isLoading={isGeneratingSubtitles}
-                      onClick={handleGenerateGeminiSubtitles}
-                      leftIcon={
-                        <span className="material-symbols-outlined text-[18px]">
-                          {isGeminiConnected ? 'auto_awesome' : 'lock'}
-                        </span>
-                      }
-                      className="w-full font-bold"
-                    >
-                      {isGeminiConnected
-                        ? 'Gerar Legendas pelo Gemini'
-                        : 'Gerador Gemini Bloqueado (Conecte sua Conta)'}
-                    </Button>
-
-                    {!isGeminiConnected && (
-                      <p className="text-[11px] text-outline text-center">
-                        Conecte sua conta do Google AI Studio acima para habilitar a geração de legendas.
-                      </p>
-                    )}
-                  </div>
 
                   {/* Lista Real de Segmentos Gerados pelo Gemini */}
                   {dynamicSegments.length > 0 && (

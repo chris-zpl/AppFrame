@@ -4,6 +4,9 @@ import {
   BadRequestException,
   ForbiddenException,
   InternalServerErrorException,
+  Inject,
+  Optional,
+  forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,6 +18,8 @@ import * as path from 'path';
 
 import { User } from '../users/entities/user.entity';
 import { EncryptionService } from '../../core/security/encryption.service';
+import { DownloadService } from '../media/services/download.service';
+import { FFmpegService } from '../media/services/ffmpeg.service';
 import {
   AudioTimestampSegment,
   TranscriptionResult,
@@ -35,6 +40,12 @@ export class GeminiService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly encryptionService: EncryptionService,
+    @Optional()
+    @Inject(forwardRef(() => DownloadService))
+    private readonly downloadService?: DownloadService,
+    @Optional()
+    @Inject(forwardRef(() => FFmpegService))
+    private readonly ffmpegService?: FFmpegService,
   ) {
     this.modelName = this.configService.get<string>('GEMINI_MODEL', 'gemini-3.5-flash-lite');
     this.ensureDirs();
@@ -216,13 +227,20 @@ export class GeminiService {
 
   /**
    * Gera legendas dinâmicas sincronizadas via Gemini utilizando a conta conectada do usuário.
-   * Aceita arquivo de áudio/vídeo real (STT multimodal) ou contexto/roteiro do vídeo carregado.
+   * Suporta:
+   * 1. Áudio do vídeo atual no Studio via previewId ou sourceUrl (extração automática via FFmpeg);
+   * 2. Arquivo de áudio/vídeo enviado diretamente pelo usuário (STT multimodal);
+   * 3. Tema/Roteiro do vídeo para geração criativa via Gemini.
    */
   async generateSubtitles(
     userId: string,
     params: {
       audioBuffer?: Buffer;
       audioPath?: string;
+      previewId?: string;
+      sourceUrl?: string;
+      trimStart?: number;
+      trimEnd?: number;
       mimeType?: string;
       title?: string;
       context?: string;
@@ -230,6 +248,7 @@ export class GeminiService {
       language?: string;
     },
   ): Promise<TranscriptionResult> {
+    // 1. Áudio ou arquivo já fornecido diretamente
     if (params.audioBuffer || params.audioPath) {
       return this.transcribeAudio(userId, {
         audioBuffer: params.audioBuffer,
@@ -239,11 +258,52 @@ export class GeminiService {
       });
     }
 
+    // 2. Extração automática do áudio do vídeo atual carregado no Studio via previewId ou sourceUrl
+    if ((params.previewId || params.sourceUrl) && this.downloadService && this.ffmpegService) {
+      try {
+        let videoFilePath: string | null = null;
+        if (params.previewId) {
+          const candidate = this.downloadService.getPreviewFilePath(params.previewId);
+          if (fs.existsSync(candidate)) {
+            videoFilePath = candidate;
+          }
+        }
+
+        if (!videoFilePath && params.sourceUrl) {
+          const dl = await this.downloadService.ensurePreviewDownloaded(params.sourceUrl);
+          videoFilePath = dl.filePath;
+        }
+
+        if (videoFilePath && fs.existsSync(videoFilePath)) {
+          this.logger.log(`Extraindo áudio do vídeo no Studio para transcrição STT: ${videoFilePath}`);
+          const { audioBuffer, mimeType } =
+            await this.ffmpegService.extractAudioForTranscription(videoFilePath, {
+              trimStart: params.trimStart,
+              trimEnd: params.trimEnd,
+            });
+
+          return await this.transcribeAudio(userId, {
+            audioBuffer,
+            mimeType,
+            language: params.language,
+          });
+        }
+      } catch (extractErr: any) {
+        this.logger.warn(`Falha na extração de áudio do preview: ${extractErr.message}`);
+        // Se a extração falhar mas o usuário tiver informado contexto, tenta geração por contexto
+        if (!params.context && !params.title) {
+          throw new BadRequestException(
+            `Não foi possível extrair o áudio do vídeo para transcrição: ${extractErr.message}`,
+          );
+        }
+      }
+    }
+
     const ai = await this.getClientForUser(userId);
     const topicText = (params.context || params.title || '').trim();
     if (!topicText) {
       throw new BadRequestException(
-        'Envie um arquivo de vídeo/áudio ou informe o tema/roteiro para gerar as legendas pelo Gemini.',
+        'Nenhum áudio encontrado e nenhum tema/roteiro foi informado para o Gemini.',
       );
     }
 

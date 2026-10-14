@@ -103,6 +103,67 @@ export class FFmpegService {
   }
 
   /**
+   * Extrai o áudio de um vídeo/mídia em formato MP3 mono leve (16kHz / 64k)
+   * otimizado especificamente para reconhecimento de fala e transcrição STT no Gemini.
+   */
+  async extractAudioForTranscription(
+    filePath: string,
+    options?: { trimStart?: number; trimEnd?: number },
+  ): Promise<{ audioBuffer: Buffer; mimeType: string }> {
+    return new Promise((resolve, reject) => {
+      const args: string[] = ['-v', 'error'];
+      if (typeof options?.trimStart === 'number' && options.trimStart > 0) {
+        args.push('-ss', String(options.trimStart));
+      }
+      args.push('-i', filePath);
+      if (typeof options?.trimEnd === 'number' && options.trimEnd > 0) {
+        const duration = options.trimEnd - (options?.trimStart || 0);
+        if (duration > 0) {
+          args.push('-t', String(duration));
+        }
+      }
+      args.push(
+        '-vn',
+        '-acodec',
+        'libmp3lame',
+        '-ac',
+        '1',
+        '-ar',
+        '16000',
+        '-b:a',
+        '64k',
+        '-f',
+        'mp3',
+        'pipe:1',
+      );
+
+      const proc = spawn(this.ffmpegPath, args);
+      const chunks: Buffer[] = [];
+      let errOutput = '';
+
+      proc.stdout.on('data', (c: Buffer) => chunks.push(c));
+      proc.stderr.on('data', (c) => (errOutput += c.toString()));
+
+      proc.on('close', (code) => {
+        if (code === 0 && chunks.length > 0) {
+          resolve({
+            audioBuffer: Buffer.concat(chunks),
+            mimeType: 'audio/mp3',
+          });
+        } else {
+          reject(
+            new Error(
+              `Falha ao extrair áudio com FFmpeg (código ${code}): ${errOutput || 'buffer vazio'}`,
+            ),
+          );
+        }
+      });
+
+      proc.on('error', (err) => reject(err));
+    });
+  }
+
+  /**
    * Extrai a onda sonora real (Audio Waveform) do arquivo de vídeo/áudio via FFmpeg (PCM 16-bit mono),
    * dividindo o sinal real em buckets normalizados [0.08 .. 1.0] para exibição fiel na timeline do Studio.
    */

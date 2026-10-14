@@ -192,6 +192,10 @@ export const mediaService = {
 
   async generateGeminiSubtitles(params: {
     file?: File | null;
+    previewId?: string;
+    sourceUrl?: string;
+    trimStart?: number;
+    trimEnd?: number;
     title?: string;
     context?: string;
     durationSeconds?: number;
@@ -204,6 +208,10 @@ export const mediaService = {
       if (params.context) formData.append('context', params.context);
       if (params.durationSeconds) formData.append('durationSeconds', String(params.durationSeconds));
       if (params.language) formData.append('language', params.language);
+      if (params.previewId) formData.append('previewId', params.previewId);
+      if (params.sourceUrl) formData.append('sourceUrl', params.sourceUrl);
+      if (typeof params.trimStart === 'number') formData.append('trimStart', String(params.trimStart));
+      if (typeof params.trimEnd === 'number') formData.append('trimEnd', String(params.trimEnd));
 
       const res = await api.post<any>('/gemini/subtitles', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -216,6 +224,10 @@ export const mediaService = {
       context: params.context,
       durationSeconds: params.durationSeconds,
       language: params.language,
+      previewId: params.previewId,
+      sourceUrl: params.sourceUrl,
+      trimStart: params.trimStart,
+      trimEnd: params.trimEnd,
     });
     return res.data?.data || res.data;
   },
