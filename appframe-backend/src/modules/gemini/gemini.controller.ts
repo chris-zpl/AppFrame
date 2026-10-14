@@ -31,6 +31,14 @@ export class GeminiController {
     return this.geminiService.getStatus(userId);
   }
 
+  @Get('connect')
+  @HttpCode(HttpStatus.OK)
+  async getConnectStatus(
+    @CurrentUser('userId') userId: string,
+  ): Promise<{ connected: boolean }> {
+    return this.geminiService.getStatus(userId);
+  }
+
   @Post('connect')
   @HttpCode(HttpStatus.OK)
   async connectAccount(

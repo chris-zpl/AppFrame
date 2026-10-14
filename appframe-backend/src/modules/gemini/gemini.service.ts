@@ -36,7 +36,7 @@ export class GeminiService {
     private readonly userRepository: Repository<User>,
     private readonly encryptionService: EncryptionService,
   ) {
-    this.modelName = this.configService.get<string>('GEMINI_MODEL', 'gemini-2.5-flash');
+    this.modelName = this.configService.get<string>('GEMINI_MODEL', 'gemini-3.8-flash');
     this.ensureDirs();
   }
 
@@ -46,6 +46,67 @@ export class GeminiService {
     } catch (err: any) {
       this.logger.error(`Falha ao criar pasta TTS: ${err.message}`);
     }
+  }
+
+  /**
+   * Executa a chamada generateContent com fallback automático de modelos caso o modelo
+   * configurado esteja indisponível ou depreciado pelo Google (ex.: gemini-2.5-flash migrado para gemini-3.8-flash).
+   */
+  async generateContentWithFallback(
+    ai: GoogleGenAI,
+    params: {
+      model?: string;
+      contents: any;
+      config?: any;
+    },
+  ): Promise<any> {
+    const isAudio = params.config?.responseModalities?.includes('AUDIO');
+    const defaultCandidates = isAudio
+      ? [
+          params.model || this.modelName,
+          'gemini-3.8-flash',
+          'gemini-3.8-flash-tts',
+          'gemini-flash-latest',
+        ]
+      : [
+          params.model || this.modelName,
+          'gemini-3.8-flash',
+          'gemini-flash-latest',
+          'gemini-2.5-flash',
+        ];
+
+    const candidateModels = Array.from(new Set(defaultCandidates)).filter(Boolean);
+
+    let lastError: any = null;
+    for (const model of candidateModels) {
+      try {
+        return await ai.models.generateContent({
+          ...params,
+          model,
+        });
+      } catch (err: any) {
+        lastError = err;
+        const msg = err?.message || String(err);
+        const isModelUnavailable =
+          msg.includes('is no longer available') ||
+          msg.includes('NOT_FOUND') ||
+          msg.includes('not found') ||
+          err?.status === 404 ||
+          err?.code === 404;
+
+        if (isModelUnavailable) {
+          this.logger.warn(
+            `Modelo ${model} indisponível no Google Gemini (${msg}). Tentando próximo modelo candidato...`,
+          );
+          continue;
+        }
+
+        // Erros de autenticação, cotas ou parâmetros inválidos devem ser repassados
+        throw err;
+      }
+    }
+
+    throw lastError;
   }
 
   /**
@@ -77,8 +138,7 @@ export class GeminiService {
 
     try {
       const testClient = new GoogleGenAI({ apiKey: cleanKey });
-      await testClient.models.generateContent({
-        model: this.modelName,
+      await this.generateContentWithFallback(testClient, {
         contents: 'Responda apenas OK',
       });
     } catch (err: any) {
@@ -190,8 +250,7 @@ Retorne estritamente um JSON válido no seguinte formato:
   ]
 }`;
 
-      const response = await ai.models.generateContent({
-        model: this.modelName,
+      const response = await this.generateContentWithFallback(ai, {
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
@@ -273,8 +332,7 @@ Retorne estritamente um JSON no seguinte formato:
   ]
 }`;
 
-      const response = await ai.models.generateContent({
-        model: this.modelName,
+      const response = await this.generateContentWithFallback(ai, {
         contents: [
           {
             inlineData: {
@@ -337,8 +395,7 @@ Retorne estritamente um JSON no seguinte formato:
     try {
       this.logger.log(`Sintetizando fala via Gemini para o texto (${cleanText.length} chars) com voz: ${voiceName}`);
 
-      const response = await ai.models.generateContent({
-        model: this.modelName,
+      const response = await this.generateContentWithFallback(ai, {
         contents: cleanText,
         config: {
           responseModalities: ['AUDIO'],
