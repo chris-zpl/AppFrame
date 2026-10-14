@@ -154,8 +154,8 @@ export class DownloadService {
 
   /**
    * Faz download real de vídeo/Short do YouTube usando yt-dlp em MP4 (H.264/AAC) compatível com HTML5/FFmpeg.
-   * Utiliza clientes de player (web_embedded / tv / ios / android) com player_skip=webpage
-   * para evitar bloqueios 429 / "Sign in to confirm you're not a bot" na página web padrão.
+   * Utiliza clientes de player modernos (visão inteligente do yt-dlp com visionos / android / web)
+   * e suporte opcional a cookies para evitar bloqueios 429 / "Sign in to confirm you're not a bot".
    */
   private async downloadWithYtDlp(
     sourceUrl: string,
@@ -164,7 +164,10 @@ export class DownloadService {
   ): Promise<void> {
     this.logger.log(`Baixando vídeo do YouTube via yt-dlp: ${sourceUrl}`);
 
-    const clientStrategies = [
+    const clientStrategies: (string | null)[] = [
+      null, // Padrão inteligente do yt-dlp (seleção automática moderna incluindo visionos/web)
+      'youtube:player_client=visionos,android,web',
+      'youtube:player_client=ios,android,mweb',
       'youtube:player_client=web_embedded;player_skip=webpage',
       'youtube:player_client=tv,web_embedded,mweb,ios,android;player_skip=webpage',
     ];
@@ -189,7 +192,7 @@ export class DownloadService {
         }
         lastError = err?.message || 'erro no download';
         this.logger.warn(
-          `Tentativa yt-dlp com (${extractorArgs}) falhou: ${lastError}`,
+          `Tentativa yt-dlp com (${extractorArgs || 'default'}) falhou: ${lastError}`,
         );
         await this.cleanupFile(destinationPath);
       }
@@ -200,26 +203,52 @@ export class DownloadService {
     );
   }
 
+  private getCookiesPath(): string | null {
+    const envCookies = this.configService.get<string>('YTDLP_COOKIES_PATH');
+    if (envCookies && fs.existsSync(envCookies)) {
+      return envCookies;
+    }
+    const defaultCookies = path.resolve(process.cwd(), 'storage/cookies.txt');
+    if (fs.existsSync(defaultCookies)) {
+      return defaultCookies;
+    }
+    const rootCookies = path.resolve(process.cwd(), 'cookies.txt');
+    if (fs.existsSync(rootCookies)) {
+      return rootCookies;
+    }
+    return null;
+  }
+
   private runYtDlpProcess(
     sourceUrl: string,
     destinationPath: string,
-    extractorArgs: string,
+    extractorArgs: string | null,
     onProgress?: (progressPercent: number) => Promise<void> | void,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
-      const args = [
-        '--extractor-args',
-        extractorArgs,
+      const args: string[] = [];
+
+      if (extractorArgs) {
+        args.push('--extractor-args', extractorArgs);
+      }
+
+      const cookiesPath = this.getCookiesPath();
+      if (cookiesPath) {
+        args.push('--cookies', cookiesPath);
+      }
+
+      args.push(
         '-f',
         'bestvideo[height<=1080][vcodec^=avc1]+bestaudio[ext=m4a]/bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[height<=1080]/best',
         '--merge-output-format',
         'mp4',
         '--no-playlist',
         '--newline',
+        '--geo-bypass',
         '-o',
         destinationPath,
         sourceUrl,
-      ];
+      );
 
       const proc = spawn(this.ytdlpPath, args);
       let stderrBuffer = '';
