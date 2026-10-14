@@ -43,12 +43,10 @@ export class FFmpegService {
   private readonly logger = new Logger(FFmpegService.name);
   private readonly ffmpegPath: string;
   private readonly ffprobePath: string;
-  private readonly fontsDir: string;
 
   constructor(private readonly configService: ConfigService) {
     this.ffmpegPath = this.configService.get<string>('FFMPEG_PATH', 'ffmpeg');
     this.ffprobePath = this.configService.get<string>('FFPROBE_PATH', 'ffprobe');
-    this.fontsDir = this.configService.get<string>('FONTS_DIR', '');
   }
 
   /**

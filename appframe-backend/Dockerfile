@@ -51,7 +51,6 @@ ENV FFMPEG_PATH=ffmpeg
 ENV FFPROBE_PATH=ffprobe
 ENV YTDLP_PATH=yt-dlp
 ENV TEMP_DIR=storage/temp
-ENV FONTS_DIR=/usr/share/fonts
 
 # Cria diretórios de armazenamento e temporários com permissões
 RUN mkdir -p storage/temp storage/temp/previews storage/temp/downloads storage/watermarks storage/renders storage/final && chown -R node:node /app

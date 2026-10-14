@@ -96,7 +96,6 @@ services:
       FFMPEG_PATH: ffmpeg
       FFPROBE_PATH: ffprobe
       TEMP_DIR: storage/temp
-      FONTS_DIR: /usr/share/fonts
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     volumes:
