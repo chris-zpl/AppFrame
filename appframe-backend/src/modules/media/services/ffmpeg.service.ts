@@ -397,8 +397,9 @@ export class FFmpegService {
       `storage/temp/sub_${Date.now()}_${Math.random().toString(36).substring(7)}.ass`,
     );
 
-    const userFont = (config?.font_family || 'Plus Jakarta Sans').trim();
-    const fontFamily = `${userFont}, Plus Jakarta Sans, Montserrat, DejaVu Sans, Noto Sans, sans-serif`;
+    const userFont = (config?.font_family || 'Plus Jakarta Sans').split(',')[0].trim();
+    const validFonts = ['Plus Jakarta Sans', 'Montserrat', 'Bebas Neue', 'Anton'];
+    const fontFamily = validFonts.includes(userFont) ? userFont : (userFont || 'Plus Jakarta Sans');
 
     const canvasScale = 3.0;
     const rawFontSize = config?.font_size || 28;
@@ -512,6 +513,7 @@ PlayResX: ${width}
 PlayResY: ${height}
 WrapStyle: 0
 ScaledBorderAndShadow: yes
+; Font fallback: Noto Color Emoji, DejaVu Sans, Noto Sans
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
