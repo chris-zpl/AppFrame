@@ -22,6 +22,10 @@ export class CreateVideoJobDto {
 
   @IsOptional()
   @IsString()
+  aspect_ratio?: string;
+
+  @IsOptional()
+  @IsString()
   original_title?: string;
 
   @IsOptional()

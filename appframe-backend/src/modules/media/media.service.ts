@@ -114,10 +114,14 @@ export class MediaService {
     userId: string,
     dto: CreateVideoJobDto,
   ): Promise<VideoJobResponseDto> {
+    const isShorts = dto.aspect_ratio === '9:16';
+    const defaultPlatform = VideoPlatform.YOUTUBE;
+
     const job = this.videoJobRepository.create({
       user_id: userId,
       source_url: dto.source_url,
-      platform: dto.platform || VideoPlatform.OTHER,
+      platform: dto.platform || defaultPlatform,
+      aspect_ratio: dto.aspect_ratio || (isShorts ? '9:16' : '16:9'),
       original_title: dto.original_title || null,
       trim_start: dto.trim_start !== undefined ? dto.trim_start : null,
       trim_end: dto.trim_end !== undefined ? dto.trim_end : null,

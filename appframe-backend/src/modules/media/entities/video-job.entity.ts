@@ -39,6 +39,9 @@ export class VideoJob {
   })
   platform: VideoPlatform;
 
+  @Column({ type: 'varchar', length: 20, default: '9:16' })
+  aspect_ratio: string;
+
   @Column({ type: 'varchar', length: 255, nullable: true })
   original_title: string | null;
 

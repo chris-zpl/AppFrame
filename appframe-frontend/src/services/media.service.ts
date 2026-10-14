@@ -22,6 +22,7 @@ export interface CreateVideoJobPayload {
   source_url: string;
   platform?: 'youtube' | 'youtube_shorts' | 'tiktok' | 'instagram_reels' | 'other';
   original_title?: string;
+  aspect_ratio?: '9:16' | '16:9';
   trim_start?: number;
   trim_end?: number;
   watermark_id?: string;
@@ -33,6 +34,7 @@ export interface VideoJobItem {
   user_id: string;
   source_url: string;
   platform: string;
+  aspect_ratio?: string | null;
   original_title?: string | null;
   status: VideoJobStatus;
   progress: number;

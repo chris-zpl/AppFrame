@@ -26,6 +26,7 @@ export type WatermarkPosition =
 export interface RenderOptions {
   inputPath: string;
   outputPath: string;
+  aspectRatio?: string | null;
   trimStart?: number | null;
   trimEnd?: number | null;
   watermarkPath?: string | null;
@@ -289,6 +290,7 @@ export class FFmpegService {
     width: number,
     height: number,
     config?: SubtitleConfig | null,
+    isVertical = false,
   ): Promise<string> {
     const tempAssPath = path.resolve(
       process.cwd(),
@@ -296,7 +298,9 @@ export class FFmpegService {
     );
 
     const fontFamily = config?.font_family || 'Noto Sans, Arial, Noto Color Emoji';
-    const fontSize = Math.round(height * 0.05); // 5% da altura da tela
+    const fontSize = Math.round(height * (isVertical ? 0.038 : 0.05)); // Proporcional ao viewport vertical vs horizontal
+    const marginV = isVertical ? 380 : 90; // Em 9:16 eleva a legenda para a Safe Zone (acima dos botões e legendas do Shorts/TikTok)
+    const marginH = isVertical ? 60 : 30;
 
     const primaryColor = this.formatAssColor(config?.text_color || '#FFFFFF');
     const outlineColor = this.formatAssColor(config?.background_color || '#000000');
@@ -311,7 +315,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontFamily},${fontSize},${primaryColor},&H000000FF,${outlineColor},&H80000000,1,0,0,0,100,100,0,0,1,3,1,2,30,30,40,1
+Style: Default,${fontFamily},${fontSize},${primaryColor},&H000000FF,${outlineColor},&H80000000,1,0,0,0,100,100,0,0,1,3,1,2,${marginH},${marginH},${marginV},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -358,6 +362,7 @@ Dialogue: 0,0:00:00.00,0:59:59.00,Default,,0,0,0,,${text.replace(/\n/g, '\\N')}
     const {
       inputPath,
       outputPath,
+      aspectRatio,
       trimStart,
       trimEnd,
       watermarkPath,
@@ -407,38 +412,54 @@ Dialogue: 0,0:00:00.00,0:59:59.00,Default,,0,0,0,,${text.replace(/\n/g, '\\N')}
       hasWatermark = true;
     }
 
-    // 3. Construção do complex_filter
+    // 3. Determina dimensões da resolução alvo de acordo com o Aspect Ratio escolhido
+    // 9:16 = 1080x1920 (Vertical Shorts/Reels/TikTok) | 16:9 = 1920x1080 (Horizontal Widescreen)
+    const isVertical =
+      aspectRatio === '9:16' ||
+      (!aspectRatio && metadata.height > metadata.width);
+    const targetWidth = isVertical ? 1080 : 1920;
+    const targetHeight = isVertical ? 1920 : 1080;
+
+    // 4. Construção do complex_filter
     const filterParts: string[] = [];
     let currentVideoLabel = '0:v';
 
-    // Marca d'água com preservação do canal alfa (RGBA)
+    // 4.1. Adaptação do vídeo à proporção escolhida (scale proporcional + pad centralizado em preto + SAR 1:1)
+    filterParts.push(
+      `[${currentVideoLabel}]scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:black,setsar=1[v_formatted]`,
+    );
+    currentVideoLabel = 'v_formatted';
+
+    // 4.2. Marca d'água com preservação do canal alfa (RGBA) e limite proporcional
     if (hasWatermark) {
       const coords = this.resolveWatermarkCoordinates(
         watermarkPosition,
         watermarkPadding,
       );
-      // format=auto preserva canal alfa transparente da PNG
+      const maxWmWidth = Math.round(targetWidth * (isVertical ? 0.28 : 0.18));
       filterParts.push(
-        `[${currentVideoLabel}][1:v]overlay=${coords}:format=auto[v_watermarked]`,
+        `[1:v]scale='min(iw,${maxWmWidth})':-1[wm_scaled]`,
+        `[${currentVideoLabel}][wm_scaled]overlay=${coords}:format=auto[v_watermarked]`,
       );
       currentVideoLabel = 'v_watermarked';
     }
 
-    // Filtro de Legendas
+    // 4.3. Filtro de Legendas na resolução e safe zone adequadas
     let tempAssFile: string | null = null;
     if (subtitleConfig?.text) {
       const wrappedText = this.calculateDeterministicTextWrapping(
         subtitleConfig.text,
-        metadata.width,
-        Math.round(metadata.height * 0.05),
+        targetWidth,
+        Math.round(targetHeight * (isVertical ? 0.038 : 0.05)),
       );
 
-      // Gera arquivo de legendas .ass com fontes e emojis
+      // Gera arquivo de legendas .ass com fontes, emojis e posicionamento seguro
       tempAssFile = await this.generateAssSubtitleFile(
         wrappedText,
-        metadata.width,
-        metadata.height,
+        targetWidth,
+        targetHeight,
         subtitleConfig,
+        isVertical,
       );
 
       // Escapa o caminho para o filtro subtitles do FFmpeg

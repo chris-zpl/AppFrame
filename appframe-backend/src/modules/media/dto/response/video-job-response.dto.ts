@@ -19,6 +19,9 @@ export class VideoJobResponseDto {
   platform: VideoPlatform;
 
   @Expose()
+  aspect_ratio: string;
+
+  @Expose()
   original_title: string | null;
 
   @Expose()

@@ -55,6 +55,7 @@ export class DownloadProcessor extends WorkerHost {
           jobId,
           userId,
           localSourcePath,
+          aspectRatio: currentJob?.aspect_ratio || '9:16',
           trimStart: currentJob?.trim_start ? Number(currentJob.trim_start) : null,
           trimEnd: currentJob?.trim_end ? Number(currentJob.trim_end) : null,
           watermarkId: currentJob?.watermark_id || null,

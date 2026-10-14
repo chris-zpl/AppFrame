@@ -311,8 +311,14 @@ export const HistoryPage: React.FC = () => {
                         <h3 className="font-title-md text-title-md font-bold text-on-surface truncate max-w-xl" title={title}>
                           {title}
                         </h3>
-                        <Badge variant={job.platform?.includes('shorts') ? 'short' : 'long'}>
-                          {job.platform || 'Vídeo'}
+                        <Badge variant={job.aspect_ratio === '9:16' || job.platform?.includes('shorts') ? 'short' : 'long'}>
+                          {job.aspect_ratio
+                            ? job.aspect_ratio === '9:16'
+                              ? '9:16 Shorts'
+                              : '16:9 Widescreen'
+                            : job.platform?.includes('shorts')
+                              ? '9:16 Shorts'
+                              : '16:9 Widescreen'}
                         </Badge>
                       </div>
 

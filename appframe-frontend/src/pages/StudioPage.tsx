@@ -869,8 +869,9 @@ export const StudioPage: React.FC = () => {
 
       const payload: CreateVideoJobPayload = {
         source_url: rawSourceUrl,
-        platform: 'youtube',
+        platform: aspectRatio === '9:16' ? 'youtube_shorts' : 'youtube',
         original_title: originalTitle,
+        aspect_ratio: aspectRatio,
         trim_start: Number(trimIn.toFixed(2)),
         trim_end: Number(trimOut.toFixed(2)),
         watermark_id: isUuid(selectedWatermarkId) ? selectedWatermarkId : undefined,

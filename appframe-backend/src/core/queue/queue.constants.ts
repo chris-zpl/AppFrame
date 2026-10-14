@@ -13,6 +13,7 @@ export interface RenderJobPayload {
   jobId: string;
   userId: string;
   localSourcePath: string;
+  aspectRatio?: string | null;
   trimStart?: number | null;
   trimEnd?: number | null;
   watermarkId?: string | null;

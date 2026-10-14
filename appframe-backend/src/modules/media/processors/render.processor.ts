@@ -30,13 +30,14 @@ export class RenderProcessor extends WorkerHost {
       jobId,
       userId,
       localSourcePath,
+      aspectRatio,
       trimStart,
       trimEnd,
       watermarkId,
       subtitleConfig,
     } = job.data;
 
-    this.logger.log(`[Job ${jobId}] Iniciando renderização na fila isolada ${MEDIA_RENDER_QUEUE}`);
+    this.logger.log(`[Job ${jobId}] Iniciando renderização na fila isolada ${MEDIA_RENDER_QUEUE} (aspect_ratio: ${aspectRatio || 'default'})`);
 
     try {
       // 1. Atualiza status no PostgreSQL para rendering
@@ -70,6 +71,7 @@ export class RenderProcessor extends WorkerHost {
       await this.ffmpegService.renderVideo({
         inputPath: localSourcePath,
         outputPath: finalVideoPath,
+        aspectRatio,
         trimStart,
         trimEnd,
         watermarkPath,
