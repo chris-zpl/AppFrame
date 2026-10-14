@@ -248,12 +248,33 @@ export const StudioPage: React.FC = () => {
   const [watermarkOpacity, setWatermarkOpacity] = useState<number>(85);
   const [watermarkScale, setWatermarkScale] = useState<number>(100);
 
-  // Seleciona automaticamente a primeira marca d'água do usuário caso exista
+  const hasAutoSelectedWatermarkRef = useRef<boolean>(false);
+
+  // Seleciona automaticamente a primeira marca d'água na carga inicial apenas se não houver preferência salva
   useEffect(() => {
-    if (userWatermarks.length > 0 && selectedWatermarkId === 'none') {
+    if (hasAutoSelectedWatermarkRef.current) return;
+    if (userWatermarks.length === 0) return;
+
+    // Só auto-seleciona se o vídeo atual NÃO possuir nenhuma preferência salva no localStorage
+    const storageKey = currentVideo ? `appframe_studio_state_${currentVideo.id || currentVideo.url}` : null;
+    let hasSavedWatermark = false;
+    if (storageKey) {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.selectedWatermarkId !== undefined) {
+            hasSavedWatermark = true;
+          }
+        }
+      } catch {}
+    }
+
+    if (!hasSavedWatermark) {
       setSelectedWatermarkId(userWatermarks[0].id);
     }
-  }, [userWatermarks, selectedWatermarkId]);
+    hasAutoSelectedWatermarkRef.current = true;
+  }, [userWatermarks, currentVideo]);
 
   const selectedLogo = useMemo(() => {
     if (!selectedWatermarkId || selectedWatermarkId === 'none') return null;
@@ -584,7 +605,14 @@ export const StudioPage: React.FC = () => {
     if (saved?.strokeColor) setStrokeColor(saved.strokeColor);
     if (typeof saved?.fontSize === 'number') setFontSize(saved.fontSize);
     if (typeof saved?.useBackgroundBox === 'boolean') setUseBackgroundBox(saved.useBackgroundBox);
-    if (saved?.selectedWatermarkId) setSelectedWatermarkId(saved.selectedWatermarkId);
+    if (saved?.selectedWatermarkId !== undefined) {
+      setSelectedWatermarkId(saved.selectedWatermarkId);
+    } else if (userWatermarks.length > 0) {
+      setSelectedWatermarkId(userWatermarks[0].id);
+    } else {
+      setSelectedWatermarkId('none');
+    }
+    hasAutoSelectedWatermarkRef.current = true;
     if (saved?.watermarkPosition) setWatermarkPosition(saved.watermarkPosition);
     if (typeof saved?.watermarkOpacity === 'number') setWatermarkOpacity(saved.watermarkOpacity);
     if (typeof saved?.watermarkScale === 'number') setWatermarkScale(saved.watermarkScale);
@@ -718,6 +746,7 @@ export const StudioPage: React.FC = () => {
     setStrokeColor('#000000');
     setFontSize(28);
     setUseBackgroundBox(true);
+    hasAutoSelectedWatermarkRef.current = true;
     setSelectedWatermarkId(userWatermarks[0]?.id || 'none');
     setWatermarkPosition('top-right');
     setWatermarkOpacity(85);
