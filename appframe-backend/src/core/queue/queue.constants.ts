@@ -17,5 +17,8 @@ export interface RenderJobPayload {
   trimStart?: number | null;
   trimEnd?: number | null;
   watermarkId?: string | null;
+  watermarkPosition?: string | null;
+  watermarkScale?: number | null;
+  watermarkOpacity?: number | null;
   subtitleConfig?: SubtitleConfig | null;
 }

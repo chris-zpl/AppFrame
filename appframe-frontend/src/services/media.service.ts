@@ -26,6 +26,9 @@ export interface CreateVideoJobPayload {
   trim_start?: number;
   trim_end?: number;
   watermark_id?: string;
+  watermark_position?: string;
+  watermark_scale?: number;
+  watermark_opacity?: number;
   subtitle_config?: SubtitleConfigPayload;
 }
 
@@ -41,6 +44,9 @@ export interface VideoJobItem {
   trim_start?: number | null;
   trim_end?: number | null;
   watermark_id?: string | null;
+  watermark_position?: string | null;
+  watermark_scale?: number | null;
+  watermark_opacity?: number | null;
   subtitle_config?: SubtitleConfigPayload | null;
   final_video_path?: string | null;
   error_log?: string | null;

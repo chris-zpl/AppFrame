@@ -52,5 +52,17 @@ export class CreateVideoJobDto {
   watermark_id?: string;
 
   @IsOptional()
+  @IsString()
+  watermark_position?: string;
+
+  @IsOptional()
+  @IsNumber()
+  watermark_scale?: number;
+
+  @IsOptional()
+  @IsNumber()
+  watermark_opacity?: number;
+
+  @IsOptional()
   subtitle_config?: SubtitleConfig;
 }

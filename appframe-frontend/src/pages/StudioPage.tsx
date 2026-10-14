@@ -875,6 +875,9 @@ export const StudioPage: React.FC = () => {
         trim_start: Number(trimIn.toFixed(2)),
         trim_end: Number(trimOut.toFixed(2)),
         watermark_id: isUuid(selectedWatermarkId) ? selectedWatermarkId : undefined,
+        watermark_position: isUuid(selectedWatermarkId) ? watermarkPosition : undefined,
+        watermark_scale: isUuid(selectedWatermarkId) ? watermarkScale : undefined,
+        watermark_opacity: isUuid(selectedWatermarkId) ? watermarkOpacity : undefined,
         subtitle_config: {
           mode: subtitleMode,
           text: resolvedSubtitleText,
@@ -2061,7 +2064,7 @@ export const StudioPage: React.FC = () => {
                       </label>
                       <button
                         type="button"
-                        onClick={() => navigate('marcas')}
+                        onClick={() => navigate('marcas-dagua')}
                         className="text-[11px] text-primary hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <span className="material-symbols-outlined text-[14px]">tune</span>

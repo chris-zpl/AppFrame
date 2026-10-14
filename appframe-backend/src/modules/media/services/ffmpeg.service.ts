@@ -31,6 +31,8 @@ export interface RenderOptions {
   trimEnd?: number | null;
   watermarkPath?: string | null;
   watermarkPosition?: WatermarkPosition;
+  watermarkScale?: number;
+  watermarkOpacity?: number;
   watermarkPadding?: number;
   subtitleConfig?: SubtitleConfig | null;
   onProgress?: (progress: number) => Promise<void> | void;
@@ -298,12 +300,25 @@ export class FFmpegService {
     );
 
     const fontFamily = config?.font_family || 'Noto Sans, Arial, Noto Color Emoji';
-    const fontSize = Math.round(height * (isVertical ? 0.038 : 0.05)); // Proporcional ao viewport vertical vs horizontal
-    const marginV = isVertical ? 380 : 90; // Em 9:16 eleva a legenda para a Safe Zone (acima dos botões e legendas do Shorts/TikTok)
-    const marginH = isVertical ? 60 : 30;
+    // No Studio, o canvas tem largura 360 (9:16) ou 640 (16:9).
+    // Fator de escala para renderização 1080p: 3.0x.
+    const canvasScale = 3.0;
+    const fontSize = config?.font_size
+      ? Math.round(config.font_size * canvasScale)
+      : Math.round(height * (isVertical ? 0.038 : 0.05));
+
+    // Posicionamento vertical: no Studio, startY = height * 0.72 (9:16) ou 0.78 (16:9).
+    // No ASS, marginV mede a distância da borda inferior: (1 - 0.72) = 28% em 9:16, 22% em 16:9.
+    const marginV = Math.round(height * (isVertical ? 0.28 : 0.22));
+    const marginH = isVertical ? 60 : 40;
 
     const primaryColor = this.formatAssColor(config?.text_color || '#FFFFFF');
-    const outlineColor = this.formatAssColor(config?.background_color || '#000000');
+    const outlineColor = this.formatAssColor(config?.stroke_color || '#000000');
+    const backColor = this.formatAssColor(config?.background_color || '#000000');
+
+    // Se caixa de fundo ativada: BorderStyle 3 (caixa opaca retangular); senão: BorderStyle 1 (contorno de texto)
+    const borderStyle = config?.use_background_box ? 3 : 1;
+    const outlineThickness = borderStyle === 3 ? 2 : 4;
 
     // Cabeçalho padronizado ASS com suporte a estilos modernos e emojis
     const assContent = `[Script Info]
@@ -315,7 +330,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontFamily},${fontSize},${primaryColor},&H000000FF,${outlineColor},&H80000000,1,0,0,0,100,100,0,0,1,3,1,2,${marginH},${marginH},${marginV},1
+Style: Default,${fontFamily},${fontSize},${primaryColor},&H000000FF,${outlineColor},${backColor},1,0,0,0,100,100,0,0,${borderStyle},${outlineThickness},1,2,${marginH},${marginH},${marginV},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -366,8 +381,10 @@ Dialogue: 0,0:00:00.00,0:59:59.00,Default,,0,0,0,,${text.replace(/\n/g, '\\N')}
       trimStart,
       trimEnd,
       watermarkPath,
-      watermarkPosition = 'bottom-right',
-      watermarkPadding = 24,
+      watermarkPosition = 'top-right',
+      watermarkScale = 100,
+      watermarkOpacity = 85,
+      watermarkPadding = 60,
       subtitleConfig,
       onProgress,
     } = options;
@@ -430,15 +447,25 @@ Dialogue: 0,0:00:00.00,0:59:59.00,Default,,0,0,0,,${text.replace(/\n/g, '\\N')}
     );
     currentVideoLabel = 'v_formatted';
 
-    // 4.2. Marca d'água com preservação do canal alfa (RGBA) e limite proporcional
+    // 4.2. Marca d'água com preservação do canal alfa (RGBA), escala fiel ao Studio e opacidade configurada
     if (hasWatermark) {
       const coords = this.resolveWatermarkCoordinates(
         watermarkPosition,
         watermarkPadding,
       );
-      const maxWmWidth = Math.round(targetWidth * (isVertical ? 0.28 : 0.18));
+
+      // No Studio: baseLogoWidth = Math.min(width * 0.35, 110 * scale) no canvas de 360 (9:16) ou 640 (16:9).
+      // Fator de proporção para resolução final 1080p: 3.0x.
+      // Portanto, a largura base em 1080p é 110 * 3 = 330px, multiplicada pelo slider watermarkScale.
+      const scaleMultiplier = Math.max(0.1, (watermarkScale || 100) / 100);
+      const desiredWmWidth = Math.min(
+        Math.round(targetWidth * 0.45),
+        Math.round(330 * scaleMultiplier),
+      );
+      const opacity = Math.max(0.05, Math.min(1, (watermarkOpacity ?? 85) / 100));
+
       filterParts.push(
-        `[1:v]scale='min(iw,${maxWmWidth})':-1[wm_scaled]`,
+        `[1:v]scale=${desiredWmWidth}:-1,format=rgba,colorchannelmixer=aa=${opacity.toFixed(2)}[wm_scaled]`,
         `[${currentVideoLabel}][wm_scaled]overlay=${coords}:format=auto[v_watermarked]`,
       );
       currentVideoLabel = 'v_watermarked';
@@ -447,10 +474,15 @@ Dialogue: 0,0:00:00.00,0:59:59.00,Default,,0,0,0,,${text.replace(/\n/g, '\\N')}
     // 4.3. Filtro de Legendas na resolução e safe zone adequadas
     let tempAssFile: string | null = null;
     if (subtitleConfig?.text) {
+      const canvasScale = 3.0;
+      const effectiveFontSize = subtitleConfig.font_size
+        ? Math.round(subtitleConfig.font_size * canvasScale)
+        : Math.round(targetHeight * (isVertical ? 0.038 : 0.05));
+
       const wrappedText = this.calculateDeterministicTextWrapping(
         subtitleConfig.text,
         targetWidth,
-        Math.round(targetHeight * (isVertical ? 0.038 : 0.05)),
+        effectiveFontSize,
       );
 
       // Gera arquivo de legendas .ass com fontes, emojis e posicionamento seguro

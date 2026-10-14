@@ -34,10 +34,15 @@ export class RenderProcessor extends WorkerHost {
       trimStart,
       trimEnd,
       watermarkId,
+      watermarkPosition,
+      watermarkScale,
+      watermarkOpacity,
       subtitleConfig,
     } = job.data;
 
-    this.logger.log(`[Job ${jobId}] Iniciando renderização na fila isolada ${MEDIA_RENDER_QUEUE} (aspect_ratio: ${aspectRatio || 'default'})`);
+    this.logger.log(
+      `[Job ${jobId}] Iniciando renderização na fila isolada ${MEDIA_RENDER_QUEUE} (aspect_ratio: ${aspectRatio || 'default'}, watermark_pos: ${watermarkPosition || 'none'})`,
+    );
 
     try {
       // 1. Atualiza status no PostgreSQL para rendering
@@ -75,8 +80,10 @@ export class RenderProcessor extends WorkerHost {
         trimStart,
         trimEnd,
         watermarkPath,
-        watermarkPosition: 'bottom-right',
-        watermarkPadding: 24,
+        watermarkPosition: (watermarkPosition as any) || 'top-right',
+        watermarkScale: watermarkScale !== undefined && watermarkScale !== null ? Number(watermarkScale) : 100,
+        watermarkOpacity: watermarkOpacity !== undefined && watermarkOpacity !== null ? Number(watermarkOpacity) : 85,
+        watermarkPadding: 60,
         subtitleConfig,
         onProgress: async (progressPercent) => {
           await job.updateProgress(progressPercent);

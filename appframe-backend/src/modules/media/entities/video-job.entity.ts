@@ -72,6 +72,15 @@ export class VideoJob {
   @Column({ type: 'uuid', nullable: true })
   watermark_id: string | null;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  watermark_position: string | null;
+
+  @Column({ type: 'integer', nullable: true, default: 100 })
+  watermark_scale: number | null;
+
+  @Column({ type: 'integer', nullable: true, default: 85 })
+  watermark_opacity: number | null;
+
   @ManyToOne(() => Watermark, (watermark) => watermark.video_jobs, {
     onDelete: 'SET NULL',
     nullable: true,

@@ -59,6 +59,9 @@ export class DownloadProcessor extends WorkerHost {
           trimStart: currentJob?.trim_start ? Number(currentJob.trim_start) : null,
           trimEnd: currentJob?.trim_end ? Number(currentJob.trim_end) : null,
           watermarkId: currentJob?.watermark_id || null,
+          watermarkPosition: currentJob?.watermark_position || 'top-right',
+          watermarkScale: currentJob?.watermark_scale !== undefined && currentJob?.watermark_scale !== null ? Number(currentJob.watermark_scale) : 100,
+          watermarkOpacity: currentJob?.watermark_opacity !== undefined && currentJob?.watermark_opacity !== null ? Number(currentJob.watermark_opacity) : 85,
           subtitleConfig: currentJob?.subtitle_config || null,
         },
         {

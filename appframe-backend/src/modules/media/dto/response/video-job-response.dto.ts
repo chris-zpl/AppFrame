@@ -46,6 +46,15 @@ export class VideoJobResponseDto {
   watermark_id: string | null;
 
   @Expose()
+  watermark_position: string | null;
+
+  @Expose()
+  watermark_scale: number | null;
+
+  @Expose()
+  watermark_opacity: number | null;
+
+  @Expose()
   final_video_path: string | null;
 
   @Expose()
