@@ -14,6 +14,7 @@ export const HistoryPage: React.FC = () => {
   const { navigate, params } = useNavigation();
   const [filter, setFilter] = useState<'all' | 'processing' | 'completed' | 'failed'>('all');
   const [errorDrawerJob, setErrorDrawerJob] = useState<VideoJobItem | null>(null);
+  const [jobToDelete, setJobToDelete] = useState<VideoJobItem | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
 
   // Consulta real periódica via TanStack Query (pooling a cada 3 segundos)
@@ -78,10 +79,6 @@ export const HistoryPage: React.FC = () => {
   };
 
   const handleDeleteJob = async (job: VideoJobItem) => {
-    const title = job.original_title || `Job ${job.id.substring(0, 8)}`;
-    if (!window.confirm(`Deseja realmente excluir "${title}" do histórico de renderizações?`)) {
-      return;
-    }
     setDeletingJobId(job.id);
     try {
       await mediaService.deleteJob(job.id);
@@ -422,7 +419,7 @@ export const HistoryPage: React.FC = () => {
                         variant="ghost"
                         size="sm"
                         disabled={deletingJobId === job.id}
-                        onClick={() => handleDeleteJob(job)}
+                        onClick={() => setJobToDelete(job)}
                         title="Excluir do histórico"
                         className="text-red-600 dark:text-red-400 hover:bg-red-500/10 px-2 cursor-pointer"
                       >
@@ -489,6 +486,72 @@ export const HistoryPage: React.FC = () => {
               <div className="flex justify-end pt-2">
                 <Button variant="primary" onClick={() => setErrorDrawerJob(null)}>
                   Fechar
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Modal de Confirmação de Exclusão do Histórico */}
+        {jobToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in">
+            <Card className="w-full max-w-md p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-high shadow-2xl flex flex-col gap-4">
+              <div className="flex items-center justify-between border-b border-neutral-200 dark:border-surface-container-highest pb-3">
+                <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold">
+                  <span className="material-symbols-outlined text-[24px]">delete_forever</span>
+                  <span className="font-title-sm text-title-sm">Excluir do Histórico</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setJobToDelete(null)}
+                  className="text-neutral-400 hover:text-on-surface cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <p className="text-body-sm text-on-surface">
+                  Tem certeza de que deseja excluir este vídeo do histórico?
+                </p>
+                <div className="p-3 rounded-xl bg-neutral-100 dark:bg-surface-container-lowest flex flex-col gap-1 border border-neutral-200 dark:border-surface-container-high">
+                  <span className="font-semibold text-body-sm text-on-surface line-clamp-2">
+                    {jobToDelete.original_title || jobToDelete.source_url}
+                  </span>
+                  <span className="text-label-sm font-mono text-outline">
+                    ID: {jobToDelete.id}
+                  </span>
+                </div>
+                <p className="text-[12px] text-on-surface-variant">
+                  Esta ação é irreversível. O arquivo gerado no servidor será removido.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-neutral-200 dark:border-surface-container-highest">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={Boolean(deletingJobId)}
+                  onClick={() => setJobToDelete(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  isLoading={Boolean(deletingJobId)}
+                  onClick={async () => {
+                    await handleDeleteJob(jobToDelete);
+                    setJobToDelete(null);
+                  }}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer"
+                  leftIcon={
+                    <span className="material-symbols-outlined text-[16px]">
+                      delete
+                    </span>
+                  }
+                >
+                  Confirmar Exclusão
                 </Button>
               </div>
             </Card>
