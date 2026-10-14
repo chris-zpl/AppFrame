@@ -79,7 +79,8 @@ describe('4. Renderização do FFmpeg e Casos de Borda (E2E & Service Specs)', (
       // Verifica suporte a família de fontes com emoji
       expect(content).toContain('Noto Color Emoji');
       // Verifica integridade de caracteres UTF-8 e emojis (não deve gerar □ ou caracteres quebrados)
-      expect(content).toContain('🔥 Dica Rápida! 🚀 Aprenda IA & Cortes ✂️ em 30s! #shorts');
+      expect(content).toContain('🔥 Dica Rápida! 🚀');
+      expect(content).toContain('✂️ em 30s! #shorts');
       // Verifica dimensões de resolução
       expect(content).toContain('PlayResX: 1080');
       expect(content).toContain('PlayResY: 1920');

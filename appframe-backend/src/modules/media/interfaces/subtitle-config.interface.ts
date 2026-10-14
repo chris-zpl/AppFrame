@@ -1,8 +1,22 @@
 export type SubtitleMode = 'static' | 'dynamic';
 
+export interface SubtitleLineData {
+  text: string;
+  width?: number;
+}
+
+export interface SubtitleSegmentData {
+  start: number;
+  end: number;
+  text: string;
+  lines?: SubtitleLineData[];
+}
+
 export interface SubtitleConfig {
   text?: string;
   mode: SubtitleMode;
+  lines?: SubtitleLineData[];
+  segments?: SubtitleSegmentData[];
   font_family?: string;
   font_size?: number;
   text_color?: string;
@@ -11,3 +25,4 @@ export interface SubtitleConfig {
   use_background_box?: boolean;
   position?: 'top' | 'center' | 'bottom' | string;
 }
+

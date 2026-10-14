@@ -15,6 +15,8 @@ import {
   type CreateVideoJobPayload,
   type GeminiSubtitleSegment,
   type StudioVideoQueueItem,
+  type SubtitleLineData,
+  type SubtitleSegmentData,
 } from '../services/media.service';
 import { toast } from 'sonner';
 
@@ -867,6 +869,59 @@ export const StudioPage: React.FC = () => {
             ? dynamicSegments.map((s) => s.text).join(' ')
             : geminiPrompt;
 
+      // Medição precisa no mesmo padrão do canvas de preview do Studio
+      const previewCanvasWidth = aspectRatio === '9:16' ? 360 : 640;
+      const previewSafePadding = Math.max(48, previewCanvasWidth * 0.08);
+      const previewMaxTextWidth = previewCanvasWidth - previewSafePadding * 2;
+
+      const measureCanvas = document.createElement('canvas');
+      const measureCtx = measureCanvas.getContext('2d');
+      if (measureCtx) {
+        measureCtx.font = `bold ${fontSize}px "${fontFamily}", sans-serif`;
+      }
+
+      const wrapAndMeasure = (textToWrap: string): SubtitleLineData[] => {
+        if (!textToWrap.trim()) return [];
+        const words = textToWrap.trim().split(/\s+/);
+        const lines: string[] = [];
+        let currentLine = '';
+
+        for (const w of words) {
+          if (!w) continue;
+          const testLine = currentLine ? `${currentLine} ${w}` : w;
+          const metrics = measureCtx
+            ? measureCtx.measureText(testLine).width
+            : testLine.length * fontSize * 0.55;
+          if (metrics > previewMaxTextWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = w;
+          } else {
+            currentLine = testLine;
+          }
+        }
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+
+        return lines.map((l) => ({
+          text: l,
+          width: measureCtx ? Math.round(measureCtx.measureText(l).width) : undefined,
+        }));
+      };
+
+      const staticLinesData: SubtitleLineData[] | undefined =
+        subtitleMode === 'static' ? wrapAndMeasure(staticText) : undefined;
+
+      const dynamicSegmentsData: SubtitleSegmentData[] | undefined =
+        subtitleMode === 'dynamic' && dynamicSegments.length > 0
+          ? dynamicSegments.map((seg) => ({
+              start: seg.start,
+              end: seg.end,
+              text: seg.text,
+              lines: wrapAndMeasure(seg.text),
+            }))
+          : undefined;
+
       const payload: CreateVideoJobPayload = {
         source_url: rawSourceUrl,
         platform: 'youtube',
@@ -881,6 +936,8 @@ export const StudioPage: React.FC = () => {
         subtitle_config: {
           mode: subtitleMode,
           text: resolvedSubtitleText,
+          lines: staticLinesData,
+          segments: dynamicSegmentsData,
           font_family: fontFamily,
           font_size: fontSize,
           text_color: textColor,

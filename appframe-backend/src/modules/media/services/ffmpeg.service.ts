@@ -232,41 +232,100 @@ export class FFmpegService {
   }
 
   /**
-   * Cálculo determinístico de quebra de linhas para legendas.
-   * Garante que o texto NUNCA estoure as margens do canvas em nenhuma resolução.
+   * Caminho vetorial em formato ASS para retângulo com cantos arredondados (roundRect)
+   * posicionado a partir de seu topo-esquerdo (0,0).
    */
-  calculateDeterministicTextWrapping(
+  private generateAssRoundedRectPath(w: number, h: number, r: number): string {
+    const k = Math.round(0.5522847 * r);
+    return [
+      `m ${r} 0`,
+      `l ${w - r} 0`,
+      `b ${w - r + k} 0 ${w} ${r - k} ${w} ${r}`,
+      `l ${w} ${h - r}`,
+      `b ${w} ${h - r + k} ${w - r + k} ${h} ${w - r} ${h}`,
+      `l ${r} ${h}`,
+      `b ${r - k} ${h} 0 ${h - r + k} 0 ${h - r}`,
+      `l 0 ${r}`,
+      `b 0 ${r - k} ${r - k} 0 ${r} 0`,
+    ].join(' ');
+  }
+
+  /**
+   * Formata segundos em timestamp padrão ASS (H:MM:SS.cs).
+   */
+  private formatAssTimestamp(seconds: number): string {
+    const totalCs = Math.max(0, Math.round(seconds * 100));
+    const cs = totalCs % 100;
+    const totalSec = Math.floor(totalCs / 100);
+    const s = totalSec % 60;
+    const totalMin = Math.floor(totalSec / 60);
+    const m = totalMin % 60;
+    const h = Math.floor(totalMin / 60);
+    const pad = (n: number, z = 2) => String(n).padStart(z, '0');
+    return `${h}:${pad(m)}:${pad(s)}.${pad(cs)}`;
+  }
+
+  /**
+   * Estimativa de largura em pixels para fontes proporcionais modernas em caso de ausência de medição prévia.
+   */
+  private estimateLineWidth(text: string, fontSize: number): number {
+    let w = 0;
+    for (const ch of text) {
+      if ('ijlIt1.,;:!| \''.includes(ch)) {
+        w += fontSize * 0.28;
+      } else if ('mwMW@%#&'.includes(ch)) {
+        w += fontSize * 0.85;
+      } else if (ch >= 'A' && ch <= 'Z') {
+        w += fontSize * 0.65;
+      } else if (ch >= 'a' && ch <= 'z') {
+        w += fontSize * 0.52;
+      } else if (ch >= '0' && ch <= '9') {
+        w += fontSize * 0.56;
+      } else {
+        w += fontSize * 0.60;
+      }
+    }
+    return w;
+  }
+
+  /**
+   * Quebra determinística de linhas respeitando as margens seguras (safe zone) do Studio.
+   */
+  private calculateDeterministicLines(
     text: string,
     canvasWidth: number,
     fontSize: number,
-  ): string {
-    if (!text) return '';
+    canvasScale = 3.0,
+  ): Array<{ text: string; width?: number }> {
+    if (!text || !text.trim()) return [];
 
-    // Largura útil de 82% do canvas (9% de margem em cada lateral)
-    const availableWidth = canvasWidth * 0.82;
-    // Largura estimada por caractere considerando fontes proporcionais modernas
-    const estimatedCharWidth = fontSize * 0.58;
-    const maxCharsPerLine = Math.max(12, Math.floor(availableWidth / estimatedCharWidth));
+    const safePadding = Math.max(48 * canvasScale, canvasWidth * 0.08);
+    const maxTextWidth = canvasWidth - safePadding * 2;
 
-    const words = text.split(/\s+/);
-    const lines: string[] = [];
+    const words = text.trim().split(/\s+/).filter(Boolean);
+    const lines: Array<{ text: string; width?: number }> = [];
     let currentLine = '';
 
-    for (const word of words) {
-      if (!currentLine) {
-        currentLine = word;
-      } else if ((currentLine + ' ' + word).length <= maxCharsPerLine) {
-        currentLine += ' ' + word;
+    for (const w of words) {
+      const testLine = currentLine ? `${currentLine} ${w}` : w;
+      const testWidth = this.estimateLineWidth(testLine, fontSize);
+      if (testWidth > maxTextWidth && currentLine) {
+        lines.push({
+          text: currentLine,
+          width: this.estimateLineWidth(currentLine, fontSize) / canvasScale,
+        });
+        currentLine = w;
       } else {
-        lines.push(currentLine);
-        currentLine = word;
+        currentLine = testLine;
       }
     }
     if (currentLine) {
-      lines.push(currentLine);
+      lines.push({
+        text: currentLine,
+        width: this.estimateLineWidth(currentLine, fontSize) / canvasScale,
+      });
     }
-
-    return lines.join('\n');
+    return lines;
   }
 
   /**
@@ -285,42 +344,170 @@ export class FFmpegService {
   }
 
   /**
-   * Converte texto para arquivo de legenda .ass com suporte estrito a Emojis e Quebra Automática.
+   * Cálculo determinístico de quebra de linhas para legendas (compatibilidade com suite de testes).
+   */
+  calculateDeterministicTextWrapping(
+    text: string,
+    canvasWidth: number,
+    fontSize: number,
+  ): string {
+    const lines = this.calculateDeterministicLines(text, canvasWidth, fontSize, 1.0);
+    return lines.map((l) => l.text).join('\n');
+  }
+
+  /**
+   * Converte texto para arquivo de legenda .ass com fidelidade de 100% ao Studio:
+   * - Badges individuais por linha com cantos arredondados (roundRect)
+   * - Alinhamento e posicionamento vertical fiel à safe zone
+   * - Suporte sincronizado a legendas dinâmicas do Gemini com efeito karaoke
    */
   async generateAssSubtitleFile(
-    text: string,
-    width: number,
-    height: number,
-    config?: SubtitleConfig | null,
-    isVertical = false,
+    arg1: string | number,
+    arg2: number,
+    arg3?: number | SubtitleConfig | null,
+    arg4?: SubtitleConfig | boolean | null,
+    arg5?: boolean | number,
+    arg6?: number,
+    arg7?: number,
   ): Promise<string> {
+    let width: number;
+    let height: number;
+    let config: SubtitleConfig | null | undefined;
+    let isVertical = false;
+    let durationSeconds = 3600;
+    let trimStart = 0;
+    let trimEnd: number | undefined;
+
+    if (typeof arg1 === 'string') {
+      // Assinatura legada: (text, width, height, config, isVertical)
+      width = arg2;
+      height = arg3 as number;
+      config = (arg4 as SubtitleConfig) || { mode: 'static', text: arg1 };
+      if (!config.text) config.text = arg1;
+      isVertical = Boolean(arg5);
+    } else {
+      width = arg1;
+      height = arg2;
+      config = arg3 as SubtitleConfig;
+      isVertical = Boolean(arg4);
+      durationSeconds = typeof arg5 === 'number' ? arg5 : 3600;
+      trimStart = typeof arg6 === 'number' ? arg6 : 0;
+      trimEnd = arg7;
+    }
     const tempAssPath = path.resolve(
       process.cwd(),
       `storage/temp/sub_${Date.now()}_${Math.random().toString(36).substring(7)}.ass`,
     );
 
-    const fontFamily = config?.font_family || 'Noto Sans, Arial, Noto Color Emoji';
-    // No Studio, o canvas tem largura 360 (9:16) ou 640 (16:9).
-    // Fator de escala para renderização 1080p: 3.0x.
-    const canvasScale = 3.0;
-    const fontSize = config?.font_size
-      ? Math.round(config.font_size * canvasScale)
-      : Math.round(height * (isVertical ? 0.038 : 0.05));
+    const userFont = (config?.font_family || 'Plus Jakarta Sans').trim();
+    const fontFamily = `${userFont}, Plus Jakarta Sans, Montserrat, DejaVu Sans, Noto Sans, sans-serif`;
 
-    // Posicionamento vertical: no Studio, startY = height * 0.72 (9:16) ou 0.78 (16:9).
-    // No ASS, marginV mede a distância da borda inferior: (1 - 0.72) = 28% em 9:16, 22% em 16:9.
-    const marginV = Math.round(height * (isVertical ? 0.28 : 0.22));
-    const marginH = isVertical ? 60 : 40;
+    const canvasScale = 3.0;
+    const rawFontSize = config?.font_size || 28;
+    const fontSize = Math.round(rawFontSize * canvasScale);
+    const paddingX = Math.round(14 * canvasScale);
+    const paddingY = Math.round(8 * canvasScale);
+    const boxHeight = fontSize + paddingY;
+    const radius = Math.round(8 * canvasScale);
+    const lineHeight = Math.round(fontSize * 1.35);
+    const startY = Math.round(height * (isVertical ? 0.72 : 0.78));
+    const centerX = Math.round(width / 2);
 
     const primaryColor = this.formatAssColor(config?.text_color || '#FFFFFF');
     const outlineColor = this.formatAssColor(config?.stroke_color || '#000000');
-    const backColor = this.formatAssColor(config?.background_color || '#000000');
+    const boxColor = this.formatAssColor(config?.background_color || '#10131A');
+    const highlightColor = '&H005EBEF2&'; // Âmbar #F2BE5E
+    const useBackgroundBox = config?.use_background_box ?? true;
+    const outlineThickness = Math.round(4 * canvasScale);
 
-    // Se caixa de fundo ativada: BorderStyle 3 (caixa opaca retangular); senão: BorderStyle 1 (contorno de texto)
-    const borderStyle = config?.use_background_box ? 3 : 1;
-    const outlineThickness = borderStyle === 3 ? 2 : 4;
+    let stylesSection = `Style: Default,${fontFamily},${fontSize},${primaryColor},&H00FFFFFF&,${outlineColor},&H00000000&,1,0,0,0,100,100,0,0,1,${outlineThickness},0,5,0,0,0,1\n`;
+    stylesSection += `Style: HighlightText,${fontFamily},${fontSize},${highlightColor},${primaryColor},${outlineColor},&H00000000&,1,0,0,0,100,100,0,0,1,${outlineThickness},0,5,0,0,0,1\n`;
+    if (useBackgroundBox) {
+      stylesSection += `Style: Box,${fontFamily},${fontSize},${boxColor},&H000000FF,&H00000000&,&H00000000&,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1\n`;
+    }
 
-    // Cabeçalho padronizado ASS com suporte a estilos modernos e emojis
+    const events: string[] = [];
+
+    if (config?.mode === 'dynamic' && config?.segments && config.segments.length > 0) {
+      for (const seg of config.segments) {
+        const segStart = typeof seg.start === 'number' ? seg.start : 0;
+        const segEnd = typeof seg.end === 'number' ? seg.end : segStart + 2;
+
+        let effectiveStart = segStart - (trimStart || 0);
+        let effectiveEnd = segEnd - (trimStart || 0);
+
+        if (effectiveEnd <= 0) continue;
+        if (trimEnd && trimStart && segStart >= trimEnd) continue;
+
+        effectiveStart = Math.max(0, effectiveStart);
+        effectiveEnd = Math.max(effectiveStart + 0.1, effectiveEnd);
+
+        const startTimeStr = this.formatAssTimestamp(effectiveStart);
+        const endTimeStr = this.formatAssTimestamp(effectiveEnd);
+
+        const lines =
+          seg.lines && seg.lines.length > 0
+            ? seg.lines
+            : this.calculateDeterministicLines(seg.text, width, fontSize, canvasScale);
+
+        const segDuration = Math.max(0.2, effectiveEnd - effectiveStart);
+        const segWords = seg.text.trim().split(/\s+/).filter(Boolean);
+        const durationCs = Math.round(segDuration * 100);
+        const csPerWord =
+          segWords.length > 0 ? Math.max(10, Math.floor(durationCs / segWords.length)) : 50;
+
+        lines.forEach((l, index) => {
+          const lineY = Math.round(startY + index * lineHeight);
+          const rawLineWidth = l.width ? l.width * canvasScale : this.estimateLineWidth(l.text, fontSize);
+          const currentBoxWidth = Math.min(width - 24, Math.round(rawLineWidth + paddingX * 2));
+          const rx = Math.round(centerX - currentBoxWidth / 2);
+          const ry = Math.round(lineY - boxHeight / 2);
+
+          if (useBackgroundBox) {
+            const pathData = this.generateAssRoundedRectPath(currentBoxWidth, boxHeight, radius);
+            events.push(
+              `Dialogue: 0,${startTimeStr},${endTimeStr},Box,,0,0,0,,{\\an7\\pos(${rx},${ry})\\p1}${pathData}{\\p0}`,
+            );
+          }
+
+          const lineWords = l.text.trim().split(/\s+/).filter(Boolean);
+          const karaokeTagged = lineWords.map((w) => `{\\k${csPerWord}}${w}`).join(' ');
+
+          events.push(
+            `Dialogue: 1,${startTimeStr},${endTimeStr},HighlightText,,0,0,0,,{\\an5\\pos(${centerX},${lineY})}${karaokeTagged}`,
+          );
+        });
+      }
+    } else {
+      const duration = durationSeconds && durationSeconds > 0 ? durationSeconds : 3600;
+      const startTimeStr = this.formatAssTimestamp(0);
+      const endTimeStr = this.formatAssTimestamp(duration);
+
+      const lines =
+        config?.lines && config.lines.length > 0
+          ? config.lines
+          : this.calculateDeterministicLines(config?.text || '', width, fontSize, canvasScale);
+
+      lines.forEach((l, index) => {
+        const lineY = Math.round(startY + index * lineHeight);
+        const rawLineWidth = l.width ? l.width * canvasScale : this.estimateLineWidth(l.text, fontSize);
+        const currentBoxWidth = Math.min(width - 24, Math.round(rawLineWidth + paddingX * 2));
+        const rx = Math.round(centerX - currentBoxWidth / 2);
+        const ry = Math.round(lineY - boxHeight / 2);
+
+        if (useBackgroundBox) {
+          const pathData = this.generateAssRoundedRectPath(currentBoxWidth, boxHeight, radius);
+          events.push(
+            `Dialogue: 0,${startTimeStr},${endTimeStr},Box,,0,0,0,,{\\an7\\pos(${rx},${ry})\\p1}${pathData}{\\p0}`,
+          );
+        }
+
+        events.push(
+          `Dialogue: 1,${startTimeStr},${endTimeStr},Default,,0,0,0,,{\\an5\\pos(${centerX},${lineY})}${l.text}`,
+        );
+      });
+    }
+
     const assContent = `[Script Info]
 ScriptType: v4.00+
 PlayResX: ${width}
@@ -330,11 +517,10 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontFamily},${fontSize},${primaryColor},&H000000FF,${outlineColor},${backColor},1,0,0,0,100,100,0,0,${borderStyle},${outlineThickness},1,2,${marginH},${marginH},${marginV},1
-
+${stylesSection}
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-Dialogue: 0,0:00:00.00,0:59:59.00,Default,,0,0,0,,${text.replace(/\n/g, '\\N')}
+${events.join('\n')}
 `;
 
     await fsPromises.mkdir(path.dirname(tempAssPath), { recursive: true });
@@ -473,25 +659,22 @@ Dialogue: 0,0:00:00.00,0:59:59.00,Default,,0,0,0,,${text.replace(/\n/g, '\\N')}
 
     // 4.3. Filtro de Legendas na resolução e safe zone adequadas
     let tempAssFile: string | null = null;
-    if (subtitleConfig?.text) {
-      const canvasScale = 3.0;
-      const effectiveFontSize = subtitleConfig.font_size
-        ? Math.round(subtitleConfig.font_size * canvasScale)
-        : Math.round(targetHeight * (isVertical ? 0.038 : 0.05));
+    const hasSubtitles = Boolean(
+      subtitleConfig?.text ||
+      (subtitleConfig?.lines && subtitleConfig.lines.length > 0) ||
+      (subtitleConfig?.segments && subtitleConfig.segments.length > 0),
+    );
 
-      const wrappedText = this.calculateDeterministicTextWrapping(
-        subtitleConfig.text,
-        targetWidth,
-        effectiveFontSize,
-      );
-
+    if (hasSubtitles) {
       // Gera arquivo de legendas .ass com fontes, emojis e posicionamento seguro
       tempAssFile = await this.generateAssSubtitleFile(
-        wrappedText,
         targetWidth,
         targetHeight,
         subtitleConfig,
         isVertical,
+        effectiveDuration,
+        trimStart || 0,
+        trimEnd,
       );
 
       // Escapa o caminho para o filtro subtitles do FFmpeg

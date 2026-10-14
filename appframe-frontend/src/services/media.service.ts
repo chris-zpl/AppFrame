@@ -7,9 +7,23 @@ export type VideoJobStatus =
   | 'COMPLETED'
   | 'FAILED';
 
+export interface SubtitleLineData {
+  text: string;
+  width?: number;
+}
+
+export interface SubtitleSegmentData {
+  start: number;
+  end: number;
+  text: string;
+  lines?: SubtitleLineData[];
+}
+
 export interface SubtitleConfigPayload {
   mode?: 'static' | 'dynamic';
   text?: string;
+  lines?: SubtitleLineData[];
+  segments?: SubtitleSegmentData[];
   font_family?: string;
   font_size?: number;
   text_color?: string;

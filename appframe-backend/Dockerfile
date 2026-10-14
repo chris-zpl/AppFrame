@@ -38,6 +38,11 @@ RUN apk add --no-cache \
     font-noto-extra \
     curl \
     ca-certificates \
+  && mkdir -p /usr/share/fonts/google-fonts \
+  && curl -sSL https://raw.githubusercontent.com/google/fonts/main/ofl/plusjakartasans/PlusJakartaSans%5Bwght%5D.ttf -o /usr/share/fonts/google-fonts/PlusJakartaSans.ttf \
+  && curl -sSL https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/Montserrat%5Bwght%5D.ttf -o /usr/share/fonts/google-fonts/Montserrat.ttf \
+  && curl -sSL https://raw.githubusercontent.com/google/fonts/main/ofl/anton/Anton-Regular.ttf -o /usr/share/fonts/google-fonts/Anton.ttf \
+  && curl -sSL https://raw.githubusercontent.com/google/fonts/main/ofl/bebasneue/BebasNeue-Regular.ttf -o /usr/share/fonts/google-fonts/BebasNeue.ttf \
   && fc-cache -f
 
 ENV NODE_ENV=production
