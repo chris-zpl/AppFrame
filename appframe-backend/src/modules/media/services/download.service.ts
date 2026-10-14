@@ -162,6 +162,10 @@ export class DownloadService {
           return;
         }
       } catch (err: any) {
+        if (err instanceof BadRequestException) {
+          await this.cleanupFile(destinationPath);
+          throw err;
+        }
         lastError = err?.message || 'erro no download';
         this.logger.warn(
           `Tentativa yt-dlp com (${extractorArgs}) falhou: ${lastError}`,
@@ -223,6 +227,19 @@ export class DownloadService {
         if (code === 0 && fs.existsSync(destinationPath)) {
           resolve();
         } else {
+          if (
+            /members on level|available to this channel's members|members-only|exclusivo para membros/i.test(
+              stderrBuffer,
+            )
+          ) {
+            reject(
+              new BadRequestException(
+                'Este vídeo é exclusivo para membros do canal no YouTube e não está disponível publicamente.',
+              ),
+            );
+            return;
+          }
+
           const errorLine =
             stderrBuffer
               .trim()

@@ -327,6 +327,75 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   }
 
   /**
+   * Identifica se um vídeo/Short é destinado exclusivamente ou com prioridade para membros do canal.
+   * Detecta badges InnerTube (modernos e legados) como BADGE_MEMBERS_ONLY, BADGE_STYLE_TYPE_MEMBERS_ONLY,
+   * ícone SPONSORSHIP_STAR, URLs de badge de patrocinador e rótulos de membros.
+   */
+  isMembersOnly(node: any): boolean {
+    if (!node || typeof node !== 'object') return false;
+
+    // 1. Verificação rápida por constantes e ícones estritos do YouTube InnerTube
+    const rawStr = JSON.stringify(node);
+    if (
+      rawStr.includes('BADGE_MEMBERS_ONLY') ||
+      rawStr.includes('BADGE_STYLE_TYPE_MEMBERS_ONLY') ||
+      rawStr.includes('SPONSORSHIP_STAR') ||
+      rawStr.includes('sponsors_default_badge') ||
+      rawStr.includes('sponsorships_default_badge')
+    ) {
+      return true;
+    }
+
+    // 2. Verificação explícita em badges de metadados
+    const checkBadgeList = (badges?: any[]): boolean => {
+      if (!Array.isArray(badges)) return false;
+      return badges.some((b) => {
+        const style =
+          b.badgeViewModel?.badgeStyle ||
+          b.metadataBadgeRenderer?.style ||
+          '';
+        const icon =
+          b.badgeViewModel?.iconName ||
+          b.metadataBadgeRenderer?.icon?.iconType ||
+          '';
+        const label = (
+          b.badgeViewModel?.badgeText ||
+          b.metadataBadgeRenderer?.label ||
+          b.metadataBadgeRenderer?.accessibilityData?.label ||
+          ''
+        ).toLowerCase();
+
+        return (
+          style.includes('MEMBERS_ONLY') ||
+          icon.includes('SPONSOR') ||
+          label.includes('membro') ||
+          label.includes('member')
+        );
+      });
+    };
+
+    // LockupViewModel metadata rows badges
+    const metadataRows =
+      node.lockupViewModel?.metadata?.lockupMetadataViewModel?.metadata
+        ?.contentMetadataViewModel?.metadataRows ||
+      node.metadata?.lockupMetadataViewModel?.metadata
+        ?.contentMetadataViewModel?.metadataRows;
+    if (Array.isArray(metadataRows)) {
+      for (const row of metadataRows) {
+        if (checkBadgeList(row.badges)) return true;
+      }
+    }
+
+    // Legacy renderers badges
+    if (checkBadgeList(node.videoRenderer?.badges || node.badges)) return true;
+    if (checkBadgeList(node.gridVideoRenderer?.badges)) return true;
+    if (checkBadgeList(node.compactVideoRenderer?.badges)) return true;
+    if (checkBadgeList(node.reelItemRenderer?.badges)) return true;
+
+    return false;
+  }
+
+  /**
    * Percorre recursivamente os renderers do YouTube para extrair vídeos e Shorts
    */
   private extractItemsFromData(
@@ -344,6 +413,11 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         const lockup = node.lockupViewModel;
         const id = lockup.contentId;
         if (id && !visitedIds.has(id)) {
+          if (this.isMembersOnly(node) || this.isMembersOnly(lockup)) {
+            visitedIds.add(id);
+            return;
+          }
+
           visitedIds.add(id);
 
           const title =
@@ -397,6 +471,11 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         }
 
         if (id && !visitedIds.has(id)) {
+          if (this.isMembersOnly(node) || this.isMembersOnly(short)) {
+            visitedIds.add(id);
+            return;
+          }
+
           visitedIds.add(id);
 
           const title =
@@ -440,6 +519,11 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       if (videoRenderer && videoRenderer.videoId) {
         const id = videoRenderer.videoId;
         if (!visitedIds.has(id)) {
+          if (this.isMembersOnly(node) || this.isMembersOnly(videoRenderer)) {
+            visitedIds.add(id);
+            return;
+          }
+
           visitedIds.add(id);
 
           const title =
@@ -488,6 +572,11 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       if (reelRenderer && reelRenderer.videoId) {
         const id = reelRenderer.videoId;
         if (!visitedIds.has(id)) {
+          if (this.isMembersOnly(node) || this.isMembersOnly(reelRenderer)) {
+            visitedIds.add(id);
+            return;
+          }
+
           visitedIds.add(id);
 
           const title =
