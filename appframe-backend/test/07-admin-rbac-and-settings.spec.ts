@@ -16,6 +16,8 @@ import { DownloadService } from '../src/modules/media/services/download.service'
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../src/modules/auth/auth.service';
 import { UserResponseDto } from '../src/modules/users/dto/response/user-response.dto';
+import { getWelcomeEmailHtml } from '../src/shared/mail/templates/welcome-email.template';
+
 
 
 describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratamento de Cota Gemini', () => {
@@ -307,6 +309,9 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
           return def;
         }),
       };
+      const mockMail = {
+        sendWelcomeEmail: jest.fn().mockResolvedValue(true),
+      };
       authService = new AuthService(
         mockUserRepo as any,
         {} as any,
@@ -317,8 +322,10 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
         {} as any,
         {} as any,
         {} as any,
+        mockMail as any,
       );
     });
+
 
 
     it('deve bloquear a alteração de e-mail se foi alterado há menos de 6 meses', async () => {
@@ -481,6 +488,39 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       expect(result.error).toContain('já está cadastrado em outro perfil');
     });
   });
+
+  describe('7.5 E-mail Oficial de Boas-Vindas e Template Responsivo', () => {
+    it('getWelcomeEmailHtml deve gerar o template fiel com todas as seções e botão na cor do sistema', () => {
+      const html = getWelcomeEmailHtml({
+        name: 'Maria Silva',
+        appUrl: 'https://appframe.io',
+      });
+
+      // 1. Cabeçalho e Identidade Visual
+      expect(html).toContain('AppFrame');
+      expect(html).toContain('appframe-amber-grad');
+
+      // 2. Card Escuro com Glow Âmbar e Textos Oficiais
+      expect(html).toContain('Bem-vindo ao');
+      expect(html).toContain('A maneira inteligente');
+      expect(html).toContain('de criar e editar seus vídeos');
+
+      // 3. Três Tópicos de Recursos da Imagem de Referência
+      expect(html).toContain('Importação fácil');
+      expect(html).toContain('YouTube, Instagram e TikTok');
+      expect(html).toContain('Crie Shorts, Reels e afins');
+      expect(html).toContain('dinâmicos e rápidos');
+      expect(html).toContain('Legendas automáticas');
+      expect(html).toContain('geradas por IA ou legenda fixa');
+
+      // 4. Seção Inferior e Botão na Cor Primária Oficial (#D4A346)
+      expect(html).toContain('Sua conta está pronta');
+      expect(html).toContain('Acessar Plataforma');
+      expect(html).toContain('background-color: #D4A346');
+      expect(html).toContain('https://appframe.io/login');
+    });
+  });
 });
+
 
 

@@ -37,6 +37,7 @@ import { UserResponseDto } from '../users/dto/response/user-response.dto';
 import { TwoFactorService } from './services/two-factor.service';
 import { EncryptionService } from '../../core/security/encryption.service';
 import { StorageService } from '../../shared/storage/storage.service';
+import { MailService } from '../../shared/mail/mail.service';
 import { DeviceDetectorHelper } from './helpers/device-detector.helper';
 import { GoogleProfile } from './strategies/google.strategy';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
@@ -67,7 +68,9 @@ export class AuthService {
     private readonly twoFactorService: TwoFactorService,
     private readonly encryptionService: EncryptionService,
     private readonly storageService: StorageService,
+    private readonly mailService: MailService,
   ) {
+
     this.jwtExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN', '15m');
     this.refreshExpiresIn = this.configService.get<string>(
       'REFRESH_TOKEN_EXPIRES_IN',
@@ -190,9 +193,18 @@ export class AuthService {
     });
 
     const savedUser = await this.userRepository.save(user);
+
+    // Dispara e-mail de boas-vindas oficial em background
+    this.mailService
+      .sendWelcomeEmail(savedUser.email, savedUser.name)
+      .catch((err) => {
+        this.logger.warn(`Falha ao disparar e-mail de boas-vindas: ${err?.message}`);
+      });
+
     return {
       user: UserResponseDto.fromEntity(savedUser)!,
     };
+
   }
 
   async login(
@@ -358,7 +370,15 @@ export class AuthService {
           is_active: true,
         });
         user = await this.userRepository.save(user);
+
+        // Dispara e-mail de boas-vindas para novos usuários via Google
+        this.mailService
+          .sendWelcomeEmail(user.email, user.name)
+          .catch((err) => {
+            this.logger.warn(`Falha ao disparar e-mail de boas-vindas: ${err?.message}`);
+          });
       }
+
     } else {
       user.google_email = emailNormalized;
       if (isFounder && user.role !== UserRole.SUPER_ADMIN) {
