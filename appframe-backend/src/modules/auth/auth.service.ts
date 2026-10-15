@@ -206,6 +206,10 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
 
+    if (user.is_active === false) {
+      throw new UnauthorizedException('Sua conta foi desativada pelo administrador.');
+    }
+
     const isValid = this.verifyPassword(dto.password, user.password_hash);
     if (!isValid) {
       throw new UnauthorizedException('Credenciais inválidas.');
@@ -275,6 +279,10 @@ export class AuthService {
       throw new UnauthorizedException('Usuário não encontrado.');
     }
 
+    if (user.is_active === false) {
+      throw new UnauthorizedException('Sua conta foi desativada pelo administrador.');
+    }
+
     const rememberMe = Boolean(payload.rememberMe);
 
     // Rotação estrita: gera novo par de tokens
@@ -340,6 +348,10 @@ export class AuthService {
         });
         user = await this.userRepository.save(user);
       }
+    }
+
+    if (user.is_active === false) {
+      throw new UnauthorizedException('Sua conta foi desativada pelo administrador.');
     }
 
     // Se 2FA estiver ativado na conta, emite desafio
