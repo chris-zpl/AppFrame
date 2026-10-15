@@ -126,9 +126,16 @@ export const AdminPage: React.FC = () => {
     }
     try {
       await adminService.updateUserRole(targetUser.id, newRole);
+      queryClient.setQueryData<AdminUser[]>(['admin-users'], (prev) =>
+        prev
+          ? prev.map((u) => (u.id === targetUser.id ? { ...u, role: newRole } : u))
+          : []
+      );
       await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      await queryClient.refetchQueries({ queryKey: ['admin-users'] });
       toast.success(`Papel do usuário ${targetUser.name} alterado para ${newRole}.`);
     } catch (err: any) {
+      await queryClient.refetchQueries({ queryKey: ['admin-users'] });
       const msg = err?.response?.data?.message || 'Falha ao alterar papel do usuário.';
       toast.error(Array.isArray(msg) ? msg[0] : msg);
     }
@@ -142,9 +149,16 @@ export const AdminPage: React.FC = () => {
     const nextStatus = !targetUser.is_active;
     try {
       await adminService.updateUserStatus(targetUser.id, nextStatus);
+      queryClient.setQueryData<AdminUser[]>(['admin-users'], (prev) =>
+        prev
+          ? prev.map((u) => (u.id === targetUser.id ? { ...u, is_active: nextStatus } : u))
+          : []
+      );
       await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      await queryClient.refetchQueries({ queryKey: ['admin-users'] });
       toast.success(`Usuário ${targetUser.name} foi ${nextStatus ? 'ativado' : 'bloqueado'}.`);
     } catch (err: any) {
+      await queryClient.refetchQueries({ queryKey: ['admin-users'] });
       const msg = err?.response?.data?.message || 'Falha ao alterar status do usuário.';
       toast.error(Array.isArray(msg) ? msg[0] : msg);
     }

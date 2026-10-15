@@ -163,7 +163,7 @@ export class AdminUsersService {
       throw new ForbiddenException('Admins não podem desativar contas de outros administradores.');
     }
 
-    targetUser.is_active = isActive;
+    targetUser.is_active = Boolean(isActive);
     await this.userRepository.save(targetUser);
 
     if (!isActive) {

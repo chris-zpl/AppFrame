@@ -46,8 +46,12 @@ export class AdminUsersController {
   async updateUserStatus(
     @CurrentUser() adminUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) targetUserId: string,
-    @Body('is_active') isActive: boolean,
+    @Body() body: any,
   ) {
+    const isActive =
+      body?.is_active !== undefined
+        ? Boolean(body.is_active)
+        : Boolean(body?.isActive);
     return this.usersService.updateUserStatus(adminUser, targetUserId, isActive);
   }
 

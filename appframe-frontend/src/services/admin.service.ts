@@ -60,8 +60,11 @@ export const adminService = {
     return res.data;
   },
 
-  async updateUserStatus(userId: string, isActive: boolean): Promise<{ success: boolean; user: AdminUser }> {
-    const res = await api.patch<{ success: boolean; user: AdminUser }>(`/admin/users/${userId}/status`, { isActive });
+  async updateUserStatus(userId: string, isActive: boolean): Promise<{ success: boolean; user?: AdminUser }> {
+    const res = await api.patch<{ success: boolean; user?: AdminUser }>(`/admin/users/${userId}/status`, {
+      is_active: isActive,
+      isActive,
+    });
     return res.data;
   },
 
