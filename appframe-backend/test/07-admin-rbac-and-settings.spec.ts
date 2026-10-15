@@ -291,18 +291,35 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
         findOne: jest.fn(),
         save: jest.fn((u) => Promise.resolve(u)),
       };
+      const mockJwt = {
+        sign: jest.fn(() => 'signed_token_123'),
+        verify: jest.fn((token: string) => {
+          if (token === 'valid_link_token') {
+            return { purpose: 'google_link', userId: 'user-joao' };
+          }
+          throw new Error('Invalid token');
+        }),
+      };
+      const mockConfig = {
+        get: jest.fn((k: string, def?: any) => {
+          if (k === 'GOOGLE_CLIENT_ID') return 'google-client-id-123';
+          if (k === 'GOOGLE_CALLBACK_URL') return 'http://localhost:3000/api/v1/auth/google/callback';
+          return def;
+        }),
+      };
       authService = new AuthService(
         mockUserRepo as any,
         {} as any,
         {} as any,
         {} as any,
-        { sign: jest.fn() } as any,
-        { get: jest.fn((k, def) => def) } as any,
+        mockJwt as any,
+        mockConfig as any,
         {} as any,
         {} as any,
         {} as any,
       );
     });
+
 
     it('deve bloquear a alteração de e-mail se foi alterado há menos de 6 meses', async () => {
       const lastChanged = new Date();
@@ -373,6 +390,97 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       expect(dto.google_email).toBe('google@gmail.com');
       expect(dto.email_changed_at).toEqual(new Date('2026-01-01T00:00:00Z'));
     });
+
+    it('getGoogleConnectUrl deve gerar URL contendo prompt=select_account e state assinado', () => {
+      const result = authService.getGoogleConnectUrl('user-joao');
+      expect(result.url).toContain('prompt=select_account');
+      expect(result.url).toContain('state=signed_token_123');
+      expect(result.url).toContain('client_id=google-client-id-123');
+    });
+
+    it('verifyGoogleLinkState deve extrair userId do state válido e null se inválido', () => {
+      expect(authService.verifyGoogleLinkState('valid_link_token')).toBe('user-joao');
+      expect(authService.verifyGoogleLinkState('invalid_token')).toBeNull();
+    });
+
+    it('linkGoogleAccount deve vincular Google ID e Google Email ao perfil do usuário atual', async () => {
+      const joaoUser: any = {
+        id: 'user-joao',
+        name: 'João',
+        email: 'joao@empresa.com',
+        google_id: null,
+        google_email: null,
+      };
+      // 1º findOne: busca usuário atual; 2º findOne: busca google_id; 3º findOne: busca email Google
+      mockUserRepo.findOne
+        .mockResolvedValueOnce(joaoUser)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
+
+      const result = await authService.linkGoogleAccount('user-joao', {
+        googleId: 'google-id-joao-999',
+        email: 'joao.silva@gmail.com',
+        name: 'João Silva',
+      });
+
+      expect(result.success).toBe(true);
+      expect(joaoUser.google_id).toBe('google-id-joao-999');
+      expect(joaoUser.google_email).toBe('joao.silva@gmail.com');
+      expect(mockUserRepo.save).toHaveBeenCalledWith(joaoUser);
+    });
+
+    it('linkGoogleAccount deve recusar se a conta Google já estiver vinculada a outro usuário', async () => {
+      const joaoUser: any = {
+        id: 'user-joao',
+        email: 'joao@empresa.com',
+      };
+      const christianUser: any = {
+        id: 'user-christian',
+        email: 'christian.zimpel@gmail.com',
+        google_id: 'google-id-christian-111',
+      };
+
+      // 1º findOne: busca usuário atual; 2º findOne: encontra Christian pelo google_id
+      mockUserRepo.findOne
+        .mockResolvedValueOnce(joaoUser)
+        .mockResolvedValueOnce(christianUser);
+
+      const result = await authService.linkGoogleAccount('user-joao', {
+        googleId: 'google-id-christian-111',
+        email: 'christian.zimpel@gmail.com',
+        name: 'Christian Zimpel',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('já está vinculada a outro perfil');
+    });
+
+    it('linkGoogleAccount deve recusar se o e-mail do Google já estiver cadastrado em outro usuário', async () => {
+      const joaoUser: any = {
+        id: 'user-joao',
+        email: 'joao@empresa.com',
+      };
+      const outroUser: any = {
+        id: 'user-outro',
+        email: 'outro@gmail.com',
+      };
+
+      // 1º findOne: busca usuário atual; 2º findOne: google_id livre; 3º findOne: e-mail já existe
+      mockUserRepo.findOne
+        .mockResolvedValueOnce(joaoUser)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(outroUser);
+
+      const result = await authService.linkGoogleAccount('user-joao', {
+        googleId: 'new-google-id',
+        email: 'outro@gmail.com',
+        name: 'Outro Usuário',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('já está cadastrado em outro perfil');
+    });
   });
 });
+
 

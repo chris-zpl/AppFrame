@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { authService, type ActiveSession } from '../services/auth.service';
-import { API_BASE_URL } from '../services/api';
 import { AppShell } from '../components/layout/AppShell';
+
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
@@ -128,6 +128,8 @@ export const SettingsPage: React.FC = () => {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [isUnlinkingGoogle, setIsUnlinkingGoogle] = useState(false);
+  const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
+
 
   // Estados dos Modais de Alteração de E-mail (Regra de 6 meses)
   const [showEmailChangeModal, setShowEmailChangeModal] = useState(false);
@@ -201,6 +203,23 @@ export const SettingsPage: React.FC = () => {
     fetchSessions();
   }, [fetchSessions]);
 
+  // Trata retorno do fluxo de vinculação do Google OAuth
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const googleLinked = searchParams.get('google_linked');
+    const errorParam = searchParams.get('error');
+
+    if (googleLinked === 'true') {
+      refreshProfile();
+      toast.success('Conta Google conectada com sucesso ao seu perfil!');
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (errorParam) {
+      toast.error(decodeURIComponent(errorParam));
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [refreshProfile]);
+
+
   const executeSaveProfile = async () => {
     setIsSavingProfile(true);
     setProfileSaved(false);
@@ -256,9 +275,22 @@ export const SettingsPage: React.FC = () => {
   // Ação de Conectar ou Desvincular Google OAuth
   const handleGoogleProviderAction = async () => {
     if (!isGoogleLinked) {
-      window.location.href = `${API_BASE_URL}/auth/google`;
+      setIsLinkingGoogle(true);
+      try {
+        const { url } = await authService.getGoogleConnectUrl();
+        window.location.href = url;
+      } catch (error) {
+        toast.error(
+          extractApiErrorMessage(
+            error,
+            'Não foi possível iniciar a conexão com a conta Google.',
+          ),
+        );
+        setIsLinkingGoogle(false);
+      }
       return;
     }
+
 
     setIsUnlinkingGoogle(true);
     try {
@@ -643,12 +675,13 @@ export const SettingsPage: React.FC = () => {
                 <Button
                   variant={isGoogleLinked ? 'outline' : 'secondary'}
                   size="sm"
-                  isLoading={isUnlinkingGoogle}
-                  disabled={isUnlinkingGoogle}
+                  isLoading={isUnlinkingGoogle || isLinkingGoogle}
+                  disabled={isUnlinkingGoogle || isLinkingGoogle}
                   onClick={handleGoogleProviderAction}
                 >
                   {isGoogleLinked ? 'Desvincular' : 'Conectar Google'}
                 </Button>
+
               </div>
             </Card>
           </div>

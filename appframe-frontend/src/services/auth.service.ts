@@ -73,10 +73,16 @@ export const authService = {
     return res.data?.data || res.data;
   },
 
+  async getGoogleConnectUrl(): Promise<{ url: string }> {
+    const res = await api.get<any>('/auth/google/connect-url');
+    return res.data?.data || res.data;
+  },
+
   async unlinkGoogle(): Promise<UserProfile> {
     const res = await api.post<any>('/auth/google/unlink');
     return res.data?.data || res.data;
   },
+
 
   async generate2fa(): Promise<Generate2faResponse> {
     const res = await api.post<any>('/auth/2fa/generate');

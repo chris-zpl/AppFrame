@@ -106,11 +106,55 @@ export class AuthController {
     // Redireciona para o consentimento do Google
   }
 
+  @Get('google/connect')
+  @UseGuards(JwtAuthGuard)
+  async googleConnect(
+    @CurrentUser('userId') userId: string,
+    @Res() res: Response,
+  ) {
+    const { url } = this.authService.getGoogleConnectUrl(userId);
+    return res.redirect(url);
+  }
+
+  @Get('google/connect-url')
+  @UseGuards(JwtAuthGuard)
+  async getGoogleConnectUrl(@CurrentUser('userId') userId: string) {
+    return this.authService.getGoogleConnectUrl(userId);
+  }
+
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
     const googleProfile = req.user as GoogleProfile;
     const meta = this.extractMeta(req);
+    const stateParam = (req.query?.state as string) || '';
+
+    // Verifica se a requisição originou de um fluxo de vinculação de conta (Settings)
+    if (stateParam) {
+      const linkUserId = this.authService.verifyGoogleLinkState(stateParam);
+      if (!linkUserId) {
+        return res.redirect(
+          `${this.frontendUrl}/settings?error=${encodeURIComponent(
+            'A solicitação de vinculação da conta Google expirou ou é inválida. Por favor, tente novamente.',
+          )}`,
+        );
+      }
+
+      const linkResult = await this.authService.linkGoogleAccount(
+        linkUserId,
+        googleProfile,
+      );
+
+      if (!linkResult.success || !linkResult.user) {
+        return res.redirect(
+          `${this.frontendUrl}/settings?error=${encodeURIComponent(
+            linkResult.error || 'Falha ao vincular conta Google.',
+          )}`,
+        );
+      }
+
+      return res.redirect(`${this.frontendUrl}/settings?google_linked=true`);
+    }
 
     const authResult = await this.authService.handleGoogleCallback(
       googleProfile,

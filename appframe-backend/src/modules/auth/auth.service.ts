@@ -746,4 +746,94 @@ export class AuthService {
     const saved = await this.userRepository.save(user);
     return UserResponseDto.fromEntity(saved)!;
   }
+
+  getGoogleConnectUrl(userId: string): { url: string } {
+    const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+    if (!clientId) {
+      throw new BadRequestException('Google OAuth não está configurado no servidor.');
+    }
+
+    const state = this.jwtService.sign(
+      {
+        purpose: 'google_link',
+        userId,
+      },
+      { expiresIn: '10m' },
+    );
+
+    const callbackURL =
+      this.configService.get<string>('GOOGLE_CALLBACK_URL') ||
+      'http://localhost:3000/api/v1/auth/google/callback';
+
+    const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    googleAuthUrl.searchParams.set('client_id', clientId);
+    googleAuthUrl.searchParams.set('redirect_uri', callbackURL);
+    googleAuthUrl.searchParams.set('response_type', 'code');
+    googleAuthUrl.searchParams.set('scope', 'email profile');
+    googleAuthUrl.searchParams.set('prompt', 'select_account');
+    googleAuthUrl.searchParams.set('access_type', 'offline');
+    googleAuthUrl.searchParams.set('state', state);
+
+    return { url: googleAuthUrl.toString() };
+  }
+
+  verifyGoogleLinkState(state: string): string | null {
+    try {
+      const payload = this.jwtService.verify(state);
+      if (payload && payload.purpose === 'google_link' && payload.userId) {
+        return payload.userId;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  async linkGoogleAccount(
+    userId: string,
+    profile: GoogleProfile,
+  ): Promise<{ success: boolean; error?: string; user?: User }> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      return { success: false, error: 'Usuário não encontrado.' };
+    }
+
+    const emailNormalized = profile.email.trim().toLowerCase();
+
+    // 1. Verifica se a conta Google já está vinculada a OUTRO usuário
+    const existingWithGoogleId = await this.userRepository.findOne({
+      where: { google_id: profile.googleId },
+    });
+    if (existingWithGoogleId && existingWithGoogleId.id !== userId) {
+      return {
+        success: false,
+        error: 'Esta conta Google já está vinculada a outro perfil do sistema.',
+      };
+    }
+
+    // 2. Verifica se o e-mail Google já pertence como e-mail principal a outro usuário
+    const existingWithEmail = await this.userRepository.findOne({
+      where: { email: emailNormalized },
+    });
+    if (existingWithEmail && existingWithEmail.id !== userId) {
+      return {
+        success: false,
+        error: 'O e-mail desta conta Google já está cadastrado em outro perfil do sistema.',
+      };
+    }
+
+    // 3. Atualiza os dados de vinculação do usuário
+    user.google_id = profile.googleId;
+    user.google_email = emailNormalized;
+    user.auth_provider = AuthProvider.GOOGLE;
+
+    const isFounder = emailNormalized === 'christian.zimpel@gmail.com';
+    if (isFounder && user.role !== UserRole.SUPER_ADMIN) {
+      user.role = UserRole.SUPER_ADMIN;
+    }
+
+    const saved = await this.userRepository.save(user);
+    return { success: true, user: saved };
+  }
 }
+

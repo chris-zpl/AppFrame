@@ -97,6 +97,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
       );
     }
 
+    // Se o erro ocorreu durante o callback OAuth do Google, redireciona amigavelmente para o frontend
+    if (request.url?.includes('/auth/google/callback')) {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const state = request.query?.state as string;
+      const target = state ? `${frontendUrl}/settings` : `${frontendUrl}/login`;
+      const errText = encodeURIComponent(
+        typeof message === 'string'
+          ? message
+          : 'Autenticação com o Google cancelada ou não autorizada.',
+      );
+      return response.redirect(`${target}?error=${errText}`);
+    }
+
     // Resposta sanitizada entregue ao cliente HTTP
     const responsePayload: Record<string, any> = {
       statusCode: status,
