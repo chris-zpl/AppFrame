@@ -10,6 +10,7 @@ import {
   ClassSerializerInterceptor,
   UploadedFile,
   BadRequestException,
+  ForbiddenException,
   Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -18,6 +19,9 @@ import { WatermarksService } from './watermarks.service';
 import { WatermarkResponseDto } from './dto/response/watermark-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import { UserRole } from '../users/enums/user-role.enum';
+
 
 @Controller('watermarks')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -77,25 +81,46 @@ export class WatermarksController {
   }
 
   @Get('user/:userId')
+  @UseGuards(JwtAuthGuard)
   async listByUser(
     @Param('userId', new ParseUUIDPipe()) userId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<WatermarkResponseDto[]> {
+    const isOwner = currentUser.userId === userId;
+    const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN;
+    if (!isOwner && !isSuperAdmin) {
+      throw new ForbiddenException('Acesso negado aos recursos de outro usuário.');
+    }
     return this.watermarksService.findByUser(userId);
   }
 
   @Get(':id/user/:userId')
+  @UseGuards(JwtAuthGuard)
   async getById(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Param('userId', new ParseUUIDPipe()) userId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<WatermarkResponseDto> {
+    const isOwner = currentUser.userId === userId;
+    const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN;
+    if (!isOwner && !isSuperAdmin) {
+      throw new ForbiddenException('Acesso negado aos recursos de outro usuário.');
+    }
     return this.watermarksService.findById(id, userId);
   }
 
   @Delete(':id/user/:userId')
+  @UseGuards(JwtAuthGuard)
   async delete(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Param('userId', new ParseUUIDPipe()) userId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<{ deleted: boolean }> {
+    const isOwner = currentUser.userId === userId;
+    const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN;
+    if (!isOwner && !isSuperAdmin) {
+      throw new ForbiddenException('Acesso negado para remover recursos de outro usuário.');
+    }
     const deleted = await this.watermarksService.delete(id, userId);
     return { deleted };
   }

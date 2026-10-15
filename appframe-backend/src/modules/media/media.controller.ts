@@ -19,7 +19,11 @@ import { CreateVideoJobDto } from './dto/request/create-video-job.dto';
 import { DownloadBatchDto } from './dto/request/download-batch.dto';
 import { VideoJobResponseDto } from './dto/response/video-job-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { UserRole } from '../users/enums/user-role.enum';
+
 
 @Controller('media')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -27,7 +31,8 @@ export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
   @Get('youtube-cookies')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
   async getYouTubeCookiesStatus(): Promise<{
     configured: boolean;
     path: string | null;
@@ -37,7 +42,8 @@ export class MediaController {
   }
 
   @Post('youtube-cookies')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
   async saveYouTubeCookies(
     @Body() body: { cookies?: any; content?: any },
   ): Promise<{ success: boolean; message: string }> {
@@ -46,7 +52,8 @@ export class MediaController {
   }
 
   @Delete('youtube-cookies')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
   async deleteYouTubeCookies(): Promise<{ success: boolean; message: string }> {
     return this.mediaService.deleteYouTubeCookies();
   }
