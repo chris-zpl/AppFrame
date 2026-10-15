@@ -207,97 +207,38 @@ export class GeminiService {
   }
 
   /**
-   * Obtém o status de conexão da IA Gemini (global pela plataforma ou retrocompatível).
+   * Obtém o status de conexão da IA Gemini (global pela plataforma).
    */
-  async getStatus(userId?: string): Promise<{ connected: boolean }> {
+  async getStatus(_userId?: string): Promise<{ connected: boolean }> {
     const globalKey = await this.getGlobalApiKey();
-    if (globalKey) {
-      return { connected: true };
-    }
-
-    if (userId) {
-      const user = await this.userRepository.findOne({ where: { id: userId } });
-      if (user?.gemini_api_key) {
-        return { connected: true };
-      }
-    }
-
-    return { connected: false };
+    return { connected: Boolean(globalKey) };
   }
 
   /**
-   * Conexão retrocompatível de conta.
+   * Conexão retrocompatível de conta (descontinuada em favor do gerenciamento central pelo Super-Admin).
    */
-  async connectAccount(userId: string, apiKey: string): Promise<{ connected: boolean }> {
-    const cleanKey = (apiKey || '').trim();
-    if (!cleanKey || cleanKey.length < 15) {
-      throw new BadRequestException(
-        'Informe uma chave de API válida do Google AI Studio.',
-      );
-    }
-
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new BadRequestException('Usuário não encontrado.');
-    }
-
-    try {
-      const testClient = new GoogleGenAI({ apiKey: cleanKey });
-      await this.generateContentWithFallback(testClient, {
-        contents: 'Responda apenas OK',
-      });
-    } catch (err: any) {
-      this.logger.warn(
-        `Falha ao validar chave do Google AI Studio para o usuário ${userId}: ${err.message}`,
-      );
-      throw new BadRequestException(
-        'Não foi possível autenticar no Google Gemini com esta chave. Verifique se a chave do Google AI Studio está correta e ativa.',
-      );
-    }
-
-    user.gemini_api_key = this.encryptionService.encrypt(cleanKey);
-    await this.userRepository.save(user);
-
-    return { connected: true };
+  async connectAccount(_userId: string, _apiKey: string): Promise<{ connected: boolean }> {
+    throw new BadRequestException(
+      'A configuração da chave de API do Google Gemini é centralizada no Painel de Administração pelo Super-Admin.',
+    );
   }
 
   /**
    * Desconexão retrocompatível de conta do usuário.
    */
-  async disconnectAccount(userId: string): Promise<{ connected: boolean }> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new BadRequestException('Usuário não encontrado.');
-    }
-
-    user.gemini_api_key = null;
-    await this.userRepository.save(user);
-
-    return { connected: false };
+  async disconnectAccount(_userId: string): Promise<{ connected: boolean }> {
+    throw new BadRequestException(
+      'A configuração da chave de API do Google Gemini é centralizada no Painel de Administração pelo Super-Admin.',
+    );
   }
 
   /**
-   * Instancia o cliente GoogleGenAI utilizando a chave global configurada pelo Super-Admin
-   * (com fallback para chave individual legada do usuário).
+   * Instancia o cliente GoogleGenAI utilizando exclusivamente a chave global configurada pelo Super-Admin.
    */
-  private async getClientForUser(userId?: string): Promise<GoogleGenAI> {
+  private async getClientForUser(_userId?: string): Promise<GoogleGenAI> {
     const globalKey = await this.getGlobalApiKey();
     if (globalKey) {
       return new GoogleGenAI({ apiKey: globalKey });
-    }
-
-    if (userId) {
-      const user = await this.userRepository.findOne({ where: { id: userId } });
-      if (user?.gemini_api_key) {
-        try {
-          const decryptedKey = this.encryptionService.decrypt(user.gemini_api_key);
-          if (decryptedKey) {
-            return new GoogleGenAI({ apiKey: decryptedKey });
-          }
-        } catch (err: any) {
-          this.logger.error(`Erro ao descriptografar chave Gemini legada do usuário ${userId}: ${err.message}`);
-        }
-      }
     }
 
     throw new BadRequestException(

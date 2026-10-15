@@ -312,7 +312,10 @@ export const AdminPage: React.FC = () => {
   const totalRendersCount = users.reduce((acc, u) => acc + (u.total_renders || 0), 0);
 
   return (
-    <AppShell currentPath="admin" onNavigate={(path) => navigate(`/${path}`)}>
+    <AppShell
+      currentPath="admin"
+      onNavigate={(path) => navigate(path === 'configuracoes' ? '/settings' : `/${path}`)}
+    >
       <div className="flex flex-col gap-6 animate-in fade-in duration-200">
         {/* ================= HEADER DO PAINEL ADMIN ================= */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-surface-container-highest">

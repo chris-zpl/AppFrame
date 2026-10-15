@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { AppFrameLogo } from '../common/AppFrameLogo';
 import { ThemeToggle } from '../common/ThemeToggle';
@@ -37,9 +38,11 @@ export const AppShell: React.FC<AppShellProps> = ({
   children,
 }) => {
   const [activePath, setActivePath] = useState<AppNavigationPath>(currentPath);
+  const routerNavigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.email === 'christian.zimpel@gmail.com';
+  const isAdmin = isSuperAdmin || user?.role === 'ADMIN';
 
   const navItems = [
     ...NAV_ITEMS,
@@ -60,6 +63,16 @@ export const AppShell: React.FC<AppShellProps> = ({
     setActivePath(path);
     if (onNavigate) {
       onNavigate(path);
+    } else {
+      const routeMap: Record<AppNavigationPath, string> = {
+        varredura: '/varredura',
+        studio: '/studio',
+        'marcas-dagua': '/marcas-dagua',
+        historico: '/historico',
+        configuracoes: '/settings',
+        admin: '/admin',
+      };
+      routerNavigate(routeMap[path] || `/${path}`);
     }
   };
 
@@ -154,7 +167,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       {/* ================= BARRA DE NAVEGAÇÃO MÓVEL (BOTTOM BAR < 768px) ================= */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-surface/90 backdrop-blur-xl border-t border-neutral-200 dark:border-surface-container-high/80 px-2 py-1.5 flex items-center justify-around shadow-lg pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-colors">
         {navItems.map((item) => {
-          const isActive = activePath === item.key;
+          const isActive = (currentPath || activePath) === item.key;
           return (
             <button
               key={item.key}

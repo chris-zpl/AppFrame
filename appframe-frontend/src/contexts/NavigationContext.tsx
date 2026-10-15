@@ -14,7 +14,8 @@ export type AppRoute =
   | 'historico'
   | 'history'
   | 'settings'
-  | 'configuracoes';
+  | 'configuracoes'
+  | 'admin';
 
 export interface NavigateOptions {
   replace?: boolean;
@@ -42,6 +43,7 @@ function parsePathname(pathname: string): AppRoute {
   if (clean === 'marcas-dagua' || clean === 'watermarks' || clean === 'marcas' || clean === 'marca-dagua') return 'marcas-dagua';
   if (clean === 'historico' || clean === 'history') return 'historico';
   if (clean === 'settings' || clean === 'configuracoes') return 'settings';
+  if (clean === 'admin') return 'admin';
   if (clean === 'scraper' || clean === 'varredura' || clean === '') return 'varredura';
   return 'varredura';
 }
@@ -69,22 +71,24 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       paramsOrOptions?: Record<string, any>,
       options?: NavigateOptions,
     ) => {
+      const clean = (route || '').replace(/^\/+|\/+$/g, '').toLowerCase();
       let path = '/varredura';
-      if (route === 'register') path = '/register';
-      else if (route === 'login') path = '/login';
-      else if (route === 'auth-callback' || route === 'auth/callback') path = '/auth/callback';
-      else if (route === '2fa' || route === 'two-factor') path = '/2fa';
-      else if (route === 'studio') path = '/studio';
+      if (clean === 'register') path = '/register';
+      else if (clean === 'login') path = '/login';
+      else if (clean === 'auth/callback' || clean === 'auth-callback') path = '/auth/callback';
+      else if (clean === '2fa' || clean === 'two-factor') path = '/2fa';
+      else if (clean === 'studio') path = '/studio';
       else if (
-        route === 'marcas-dagua' ||
-        route === 'watermarks' ||
-        route === 'marcas' ||
-        route === 'marca-dagua'
+        clean === 'marcas-dagua' ||
+        clean === 'watermarks' ||
+        clean === 'marcas' ||
+        clean === 'marca-dagua'
       )
         path = '/marcas-dagua';
-      else if (route === 'historico' || route === 'history') path = '/historico';
-      else if (route === 'settings' || route === 'configuracoes') path = '/settings';
-      else if (route === 'scraper' || route === 'varredura' || route === '/') path = '/varredura';
+      else if (clean === 'historico' || clean === 'history') path = '/historico';
+      else if (clean === 'settings' || clean === 'configuracoes') path = '/settings';
+      else if (clean === 'admin') path = '/admin';
+      else if (clean === 'scraper' || clean === 'varredura' || clean === '') path = '/varredura';
       else if (route.startsWith('/')) path = route;
 
       let finalOptions = options;

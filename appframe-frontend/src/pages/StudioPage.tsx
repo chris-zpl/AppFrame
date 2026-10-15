@@ -110,7 +110,7 @@ export const StudioPage: React.FC = () => {
     queryFn: mediaService.getGeminiStatus,
   });
 
-  const isGeminiConnected = Boolean(geminiStatus?.connected ?? user?.has_gemini_key);
+  const isGeminiConnected = Boolean(geminiStatus?.connected);
 
   // Estados de Exclusão do Studio
   const [isDeleteStudioModalOpen, setIsDeleteStudioModalOpen] = useState<boolean>(false);

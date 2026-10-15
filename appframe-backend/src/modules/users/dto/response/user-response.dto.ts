@@ -54,7 +54,7 @@ export class UserResponseDto {
       dto.role = user.role || UserRole.USER;
     }
     dto.is_active = user.is_active !== undefined ? user.is_active : true;
-    dto.has_gemini_key = Boolean(user.gemini_api_key);
+    dto.has_gemini_key = false;
     return dto;
   }
 
