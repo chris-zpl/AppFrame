@@ -1,5 +1,6 @@
 import { Exclude, Expose, plainToInstance } from 'class-transformer';
 import { AuthProvider } from '../../enums/auth-provider.enum';
+import { UserRole } from '../../enums/user-role.enum';
 import { User } from '../../entities/user.entity';
 
 @Exclude()
@@ -12,6 +13,12 @@ export class UserResponseDto {
 
   @Expose()
   email: string;
+
+  @Expose()
+  role: UserRole;
+
+  @Expose()
+  is_active: boolean;
 
   @Expose()
   google_id: string | null;
@@ -40,6 +47,13 @@ export class UserResponseDto {
     const dto = plainToInstance(UserResponseDto, user, {
       excludeExtraneousValues: true,
     });
+    // Garantia de segurança da plataforma: christian.zimpel@gmail.com é sempre SUPER_ADMIN
+    if (user.email && user.email.toLowerCase() === 'christian.zimpel@gmail.com') {
+      dto.role = UserRole.SUPER_ADMIN;
+    } else {
+      dto.role = user.role || UserRole.USER;
+    }
+    dto.is_active = user.is_active !== undefined ? user.is_active : true;
     dto.has_gemini_key = Boolean(user.gemini_api_key);
     return dto;
   }

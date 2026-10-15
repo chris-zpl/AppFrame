@@ -8,3 +8,4 @@ export * from './HistoricoPage';
 export * from './WatermarksPage';
 export * from './HistoryPage';
 export * from './SettingsPage';
+export * from './AdminPage';

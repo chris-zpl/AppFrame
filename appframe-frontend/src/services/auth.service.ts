@@ -6,6 +6,8 @@ export interface UserProfile {
   email: string;
   google_id?: string | null;
   auth_provider: 'local' | 'google';
+  role?: 'SUPER_ADMIN' | 'ADMIN' | 'USER';
+  is_active?: boolean;
   is_two_factor_enabled: boolean;
   has_gemini_key?: boolean;
   created_at: string;

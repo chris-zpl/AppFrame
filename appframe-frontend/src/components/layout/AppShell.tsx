@@ -4,7 +4,7 @@ import { AppFrameLogo } from '../common/AppFrameLogo';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { useAuth } from '../../contexts/AuthContext';
 
-export type AppNavigationPath = 'varredura' | 'studio' | 'marcas-dagua' | 'historico' | 'configuracoes';
+export type AppNavigationPath = 'varredura' | 'studio' | 'marcas-dagua' | 'historico' | 'configuracoes' | 'admin';
 
 export interface AppShellProps {
   currentPath?: AppNavigationPath;
@@ -39,6 +39,21 @@ export const AppShell: React.FC<AppShellProps> = ({
   const [activePath, setActivePath] = useState<AppNavigationPath>(currentPath);
   const { user, logout } = useAuth();
 
+  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
+
+  const navItems = [
+    ...NAV_ITEMS,
+    ...(isAdmin
+      ? [
+          {
+            key: 'admin' as AppNavigationPath,
+            label: 'Admin',
+            icon: 'admin_panel_settings',
+          },
+        ]
+      : []),
+  ];
+
   const effectiveUserName = userName || user?.name || user?.email?.split('@')[0] || 'Usuário';
 
   const handleNavClick = (path: AppNavigationPath) => {
@@ -69,7 +84,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
           {/* Navegação Desktop (oculta em mobile < 768px) */}
           <nav className="hidden md:flex items-center gap-space-sm">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const isActive = (currentPath || activePath) === item.key;
               return (
                 <button
@@ -138,7 +153,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
       {/* ================= BARRA DE NAVEGAÇÃO MÓVEL (BOTTOM BAR < 768px) ================= */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-surface/90 backdrop-blur-xl border-t border-neutral-200 dark:border-surface-container-high/80 px-2 py-1.5 flex items-center justify-around shadow-lg pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-colors">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const isActive = activePath === item.key;
           return (
             <button

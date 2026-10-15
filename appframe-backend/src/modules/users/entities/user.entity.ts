@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { AuthProvider } from '../enums/auth-provider.enum';
+import { UserRole } from '../enums/user-role.enum';
 import { UserSession } from './user-session.entity';
 import { Watermark } from '../../watermarks/entities/watermark.entity';
 import { VideoJob } from '../../media/entities/video-job.entity';
@@ -39,6 +40,16 @@ export class User {
     default: AuthProvider.LOCAL,
   })
   auth_provider: AuthProvider;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.USER,
+  })
+  role: UserRole;
+
+  @Column({ type: 'boolean', default: true })
+  is_active: boolean;
 
   @Column({ type: 'boolean', default: false })
   is_two_factor_enabled: boolean;

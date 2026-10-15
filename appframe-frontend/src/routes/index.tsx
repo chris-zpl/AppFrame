@@ -11,6 +11,7 @@ import {
   WatermarksPage,
   HistoryPage,
   SettingsPage,
+  AdminPage,
 } from '../pages';
 
 // Componente para proteção de rotas privadas
@@ -154,6 +155,14 @@ export const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminPage />
           </ProtectedRoute>
         }
       />

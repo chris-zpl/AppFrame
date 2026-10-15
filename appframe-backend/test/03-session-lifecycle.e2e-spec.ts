@@ -10,6 +10,7 @@ import { JwtStrategy } from '../src/modules/auth/strategies/jwt.strategy';
 import { AllExceptionsFilter } from '../src/core/filters/all-exceptions.filter';
 import { ConfigService } from '@nestjs/config';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { User } from '../src/modules/users/entities/user.entity';
 import { UserSession } from '../src/modules/users/entities/user-session.entity';
 
 describe('3. Ciclo de Vida de Sessões e Autenticação (E2E)', () => {
@@ -99,6 +100,17 @@ describe('3. Ciclo de Vida de Sessões e Autenticação (E2E)', () => {
           },
         },
         { provide: getRepositoryToken(UserSession), useValue: mockSessionRepo },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn().mockResolvedValue({
+              id: testUserId,
+              email: 'user@appframe.io',
+              is_active: true,
+              role: 'USER',
+            }),
+          },
+        },
         JwtStrategy,
       ],
     }).compile();

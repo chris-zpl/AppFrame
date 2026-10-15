@@ -17,6 +17,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { User } from '../users/entities/user.entity';
+import { SystemSetting } from '../admin/entities/system-setting.entity';
 import { EncryptionService } from '../../core/security/encryption.service';
 import { DownloadService } from '../media/services/download.service';
 import { FFmpegService } from '../media/services/ffmpeg.service';
@@ -39,6 +40,8 @@ export class GeminiService {
     private readonly configService: ConfigService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(SystemSetting)
+    private readonly settingRepository: Repository<SystemSetting>,
     private readonly encryptionService: EncryptionService,
     @Optional()
     @Inject(forwardRef(() => DownloadService))
@@ -47,7 +50,7 @@ export class GeminiService {
     @Inject(forwardRef(() => FFmpegService))
     private readonly ffmpegService?: FFmpegService,
   ) {
-    this.modelName = this.configService.get<string>('GEMINI_MODEL', 'gemini-3.5-flash-lite');
+    this.modelName = this.configService.get<string>('GEMINI_MODEL', 'gemini-2.5-flash');
     this.ensureDirs();
   }
 
@@ -57,6 +60,36 @@ export class GeminiService {
     } catch (err: any) {
       this.logger.error(`Falha ao criar pasta TTS: ${err.message}`);
     }
+  }
+
+  private isQuotaOrOverloadError(err: any): boolean {
+    const msg = (err?.message || String(err)).toLowerCase();
+    const status = Number(err?.status || err?.code || 0);
+    return (
+      status === 429 ||
+      msg.includes('resource has been exhausted') ||
+      msg.includes('resource_exhausted') ||
+      msg.includes('quota') ||
+      msg.includes('rate limit') ||
+      msg.includes('too many requests')
+    );
+  }
+
+  private handleGeminiError(err: any, contextDescription: string): never {
+    if (err instanceof BadRequestException || err instanceof ForbiddenException) {
+      throw err;
+    }
+
+    if (this.isQuotaOrOverloadError(err)) {
+      throw new BadRequestException(
+        'A cota gratuita do assistente de inteligência artificial (Gemini) foi atingida temporariamente. Por favor, aguarde alguns instantes ou contate o administrador da plataforma.',
+      );
+    }
+
+    this.logger.error(`${contextDescription}: ${err?.message || err}`);
+    throw new BadRequestException(
+      `Falha na integração com o Google Gemini: ${err?.message || err}`,
+    );
   }
 
   /**
@@ -96,6 +129,8 @@ export class GeminiService {
     const candidateModels = Array.from(new Set(defaultCandidates)).filter(Boolean);
 
     let lastError: any = null;
+    let quotaHit = false;
+
     for (const model of candidateModels) {
       try {
         return await ai.models.generateContent({
@@ -106,6 +141,10 @@ export class GeminiService {
         lastError = err;
         const msg = err?.message || String(err);
         const status = Number(err?.status || err?.code || 0);
+
+        if (this.isQuotaOrOverloadError(err)) {
+          quotaHit = true;
+        }
 
         const isTransientOrModelError =
           msg.includes('is no longer available') ||
@@ -134,22 +173,60 @@ export class GeminiService {
       }
     }
 
-    throw lastError;
+    if (quotaHit) {
+      throw new BadRequestException(
+        'A cota gratuita do assistente de inteligência artificial (Gemini) foi atingida temporariamente. Por favor, aguarde alguns instantes ou contate o administrador da plataforma.',
+      );
+    }
+
+    this.handleGeminiError(lastError, 'Falha ao executar geração no Gemini');
   }
 
   /**
-   * Obtém o status de conexão da conta Google AI Studio (Gemini) do usuário.
+   * Obtém a chave de API global do Gemini configurada pelo Super-Admin ou no ambiente.
    */
-  async getStatus(userId: string): Promise<{ connected: boolean }> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    return {
-      connected: Boolean(user?.gemini_api_key),
-    };
+  private async getGlobalApiKey(): Promise<string | null> {
+    try {
+      const setting = await this.settingRepository.findOne({ where: { key: 'GEMINI_API_KEY' } });
+      if (setting?.value) {
+        const decrypted = this.encryptionService.decrypt(setting.value);
+        if (decrypted && decrypted.trim().length > 0) {
+          return decrypted.trim();
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`Falha ao descriptografar chave global do Gemini: ${err.message}`);
+    }
+
+    const envKey = this.configService.get<string>('GEMINI_API_KEY') || process.env.GEMINI_API_KEY;
+    if (envKey && envKey.trim()) {
+      return envKey.trim();
+    }
+
+    return null;
   }
 
   /**
-   * Valida a chave do Google AI Studio na API oficial do Gemini,
-   * criptografa com AES-256-GCM e vincula à conta do usuário.
+   * Obtém o status de conexão da IA Gemini (global pela plataforma ou retrocompatível).
+   */
+  async getStatus(userId?: string): Promise<{ connected: boolean }> {
+    const globalKey = await this.getGlobalApiKey();
+    if (globalKey) {
+      return { connected: true };
+    }
+
+    if (userId) {
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+      if (user?.gemini_api_key) {
+        return { connected: true };
+      }
+    }
+
+    return { connected: false };
+  }
+
+  /**
+   * Conexão retrocompatível de conta.
    */
   async connectAccount(userId: string, apiKey: string): Promise<{ connected: boolean }> {
     const cleanKey = (apiKey || '').trim();
@@ -185,7 +262,7 @@ export class GeminiService {
   }
 
   /**
-   * Remove o vínculo da chave do Google AI Studio da conta do usuário.
+   * Desconexão retrocompatível de conta do usuário.
    */
   async disconnectAccount(userId: string): Promise<{ connected: boolean }> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -200,29 +277,32 @@ export class GeminiService {
   }
 
   /**
-   * Instancia o cliente GoogleGenAI exclusivamente com a chave vinculada pelo usuário.
-   * Nenhuma chave padrão do servidor é utilizada.
+   * Instancia o cliente GoogleGenAI utilizando a chave global configurada pelo Super-Admin
+   * (com fallback para chave individual legada do usuário).
    */
-  private async getClientForUser(userId: string): Promise<GoogleGenAI> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user || !user.gemini_api_key) {
-      throw new ForbiddenException(
-        'Conecte sua conta do Google AI Studio (Gemini) para habilitar o gerador de legendas.',
-      );
+  private async getClientForUser(userId?: string): Promise<GoogleGenAI> {
+    const globalKey = await this.getGlobalApiKey();
+    if (globalKey) {
+      return new GoogleGenAI({ apiKey: globalKey });
     }
 
-    try {
-      const decryptedKey = this.encryptionService.decrypt(user.gemini_api_key);
-      if (!decryptedKey) {
-        throw new Error('Chave descriptografada vazia');
+    if (userId) {
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+      if (user?.gemini_api_key) {
+        try {
+          const decryptedKey = this.encryptionService.decrypt(user.gemini_api_key);
+          if (decryptedKey) {
+            return new GoogleGenAI({ apiKey: decryptedKey });
+          }
+        } catch (err: any) {
+          this.logger.error(`Erro ao descriptografar chave Gemini legada do usuário ${userId}: ${err.message}`);
+        }
       }
-      return new GoogleGenAI({ apiKey: decryptedKey });
-    } catch (err: any) {
-      this.logger.error(`Erro ao descriptografar chave Gemini do usuário ${userId}: ${err.message}`);
-      throw new ForbiddenException(
-        'Sua credencial do Google Gemini expirou ou é inválida. Reconecte sua conta no Studio.',
-      );
     }
+
+    throw new BadRequestException(
+      'O assistente de inteligência artificial (Gemini) ainda não foi configurado na plataforma. Por favor, contate o administrador do sistema.',
+    );
   }
 
   /**
@@ -355,10 +435,7 @@ Retorne estritamente um JSON válido no seguinte formato:
         segments,
       };
     } catch (err: any) {
-      this.logger.error(`Erro ao gerar legendas no Gemini para usuário ${userId}: ${err.message}`);
-      throw new InternalServerErrorException(
-        `Falha ao gerar legendas no Google Gemini: ${err.message}`,
-      );
+      this.handleGeminiError(err, `Erro ao gerar legendas no Gemini para usuário ${userId}`);
     }
   }
 
@@ -443,10 +520,7 @@ Retorne estritamente um JSON no seguinte formato:
         segments,
       };
     } catch (err: any) {
-      this.logger.error(`Erro na chamada da API Gemini GenAI: ${err.message}`);
-      throw new InternalServerErrorException(
-        `Falha ao processar transcrição no Google Gemini: ${err.message}`,
-      );
+      this.handleGeminiError(err, 'Erro na chamada da API Gemini GenAI');
     }
   }
 
@@ -508,10 +582,7 @@ Retorne estritamente um JSON no seguinte formato:
         durationEstimateSeconds: durationEstimate,
       };
     } catch (err: any) {
-      this.logger.error(`Chamada de síntese Gemini falhou: ${err.message}`);
-      throw new InternalServerErrorException(
-        `Falha ao sintetizar áudio no Google Gemini: ${err.message}`,
-      );
+      this.handleGeminiError(err, 'Chamada de síntese Gemini falhou');
     }
   }
 }

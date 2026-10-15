@@ -6,6 +6,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtPayload, AuthenticatedUser } from '../interfaces/jwt-payload.interface';
 import { UserSession } from '../../users/entities/user-session.entity';
+import { User } from '../../users/entities/user.entity';
+import { UserRole } from '../../users/enums/user-role.enum';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -13,6 +15,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     configService: ConfigService,
     @InjectRepository(UserSession)
     private readonly sessionRepository: Repository<UserSession>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -54,9 +58,31 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       this.sessionRepository.update(session.id, { last_active_at: new Date() }).catch(() => {});
     }
 
+    const user = await this.userRepository.findOne({
+      where: { id: payload.sub },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado.');
+    }
+
+    if (user.is_active === false) {
+      throw new UnauthorizedException('Sua conta foi desativada pelo administrador.');
+    }
+
+    let role = user.role || UserRole.USER;
+    if (user.email && user.email.toLowerCase() === 'christian.zimpel@gmail.com') {
+      role = UserRole.SUPER_ADMIN;
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        user.role = UserRole.SUPER_ADMIN;
+        this.userRepository.save(user).catch(() => {});
+      }
+    }
+
     return {
-      userId: payload.sub,
-      email: payload.email,
+      userId: user.id,
+      email: user.email,
+      role,
       sessionId: payload.sessionId || '',
     };
   }

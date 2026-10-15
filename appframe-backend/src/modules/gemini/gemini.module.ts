@@ -5,13 +5,14 @@ import { GeminiService } from './gemini.service';
 import { GeminiController } from './gemini.controller';
 import { SharedModule } from '../../shared/shared.module';
 import { User } from '../users/entities/user.entity';
+import { SystemSetting } from '../admin/entities/system-setting.entity';
 import { MediaModule } from '../media/media.module';
 
 @Module({
   imports: [
     ConfigModule,
     SharedModule,
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, SystemSetting]),
     forwardRef(() => MediaModule),
   ],
   controllers: [GeminiController],
