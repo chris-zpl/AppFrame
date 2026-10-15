@@ -71,7 +71,7 @@ describe('6. Gestão de Cookies e Autenticação do YouTube (DownloadService)', 
     expect(savedContent).toContain('SAPISID\tsapisid_value');
   });
 
-  it('deve aceitar um array de objetos de cookies retornado por extensão nativa (chrome.cookies.getAll)', () => {
+  it('deve aceitar um array de objetos de cookies JSON para configuração da conta global no servidor', () => {
     const cookieArray = [
       {
         domain: '.youtube.com',

@@ -231,29 +231,4 @@ export const mediaService = {
     });
     return res.data?.data || res.data;
   },
-
-  async getYouTubeCookiesStatus(): Promise<{
-    configured: boolean;
-    path: string | null;
-    updatedAt: string | null;
-  }> {
-    const res = await api.get('/media/youtube-cookies');
-    return res.data;
-  },
-
-  async saveYouTubeCookies(cookies: string): Promise<{
-    success: boolean;
-    message: string;
-  }> {
-    const res = await api.post('/media/youtube-cookies', { cookies });
-    return res.data;
-  },
-
-  async deleteYouTubeCookies(): Promise<{
-    success: boolean;
-    message: string;
-  }> {
-    const res = await api.delete('/media/youtube-cookies');
-    return res.data;
-  },
 };

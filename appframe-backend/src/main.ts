@@ -30,18 +30,7 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: (origin, callback) => {
-      if (
-        !origin ||
-        allowedOrigins.includes(origin) ||
-        origin.startsWith('chrome-extension://') ||
-        origin.startsWith('moz-extension://')
-      ) {
-        callback(null, true);
-      } else {
-        callback(new Error(`Origem ${origin} não permitida por CORS`));
-      }
-    },
+    origin: allowedOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });

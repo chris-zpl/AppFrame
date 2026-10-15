@@ -7,7 +7,6 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
-import { YouTubeAuthModal } from '../components/common/YouTubeAuthModal';
 import { cn } from '../lib/utils';
 import { API_BASE_URL } from '../services/api';
 import { watermarksService } from '../services/watermarks.service';
@@ -84,7 +83,6 @@ export const StudioPage: React.FC = () => {
   const [isPreparingPreview, setIsPreparingPreview] = useState<boolean>(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewStreamUrl, setPreviewStreamUrl] = useState<string | null>(null);
-  const [isYouTubeAuthModalOpen, setIsYouTubeAuthModalOpen] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Identifica se o erro é decorrente de restrição de idade ou necessidade de autenticação/cookies do YouTube
@@ -1218,21 +1216,6 @@ export const StudioPage: React.FC = () => {
               <Button
                 variant="ghost"
                 size="md"
-                onClick={() => setIsYouTubeAuthModalOpen(true)}
-                title="Sincronizar conta do YouTube com a extensão AppFrame Companion para vídeos com restrição (+18)"
-                leftIcon={
-                  <span className="material-symbols-outlined text-[18px]">
-                    smart_display
-                  </span>
-                }
-                className="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer"
-              >
-                <span>Sincronizar YouTube</span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="md"
                 disabled={!currentVideo || isPreparingPreview || isGenerating}
                 onClick={handleResetStudio}
                 title="Restaurar configurações para o padrão de fábrica"
@@ -1417,28 +1400,14 @@ export const StudioPage: React.FC = () => {
                       {isAuthError ? 'lock_person' : 'error'}
                     </span>
                     <p className="font-title-sm text-title-sm font-bold text-on-surface">
-                      {isAuthError ? 'Autenticação Necessária no YouTube' : 'Falha ao carregar o vídeo'}
+                      {isAuthError ? 'Vídeo com Restrição de Idade (+18)' : 'Falha ao carregar o vídeo'}
                     </p>
                     <p className="text-body-sm text-on-surface-variant line-clamp-4">
                       {isAuthError
-                        ? 'Este vídeo possui restrição de idade (+18) do YouTube. Conecte sua conta com a extensão AppFrame Companion para baixar com 1 clique.'
+                        ? 'Este vídeo possui restrição de idade (+18) do YouTube. O download requer autorização da conta global configurada no servidor (storage/cookies.txt).'
                         : previewError}
                     </p>
                     <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-                      {isAuthError && (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => setIsYouTubeAuthModalOpen(true)}
-                          leftIcon={
-                            <span className="material-symbols-outlined text-[16px]">
-                              sync
-                            </span>
-                          }
-                        >
-                          Sincronizar YouTube (1 Clique)
-                        </Button>
-                      )}
                       <Button
                         variant="secondary"
                         size="sm"
@@ -2613,17 +2582,6 @@ export const StudioPage: React.FC = () => {
         confirmText="Confirmar Exclusão"
         isLoading={isDeletingFromStudio}
         variant="danger"
-      />
-
-      {/* Modal de Autenticação / Login no YouTube */}
-      <YouTubeAuthModal
-        isOpen={isYouTubeAuthModalOpen}
-        onClose={() => setIsYouTubeAuthModalOpen(false)}
-        onSuccess={() => {
-          if (currentVideo) {
-            loadVideoPreview(currentVideo);
-          }
-        }}
       />
     </AppShell>
   );
