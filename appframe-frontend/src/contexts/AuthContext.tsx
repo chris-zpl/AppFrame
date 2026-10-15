@@ -25,7 +25,7 @@ interface AuthContextType {
   verify2fa: (tempToken: string, token: string) => Promise<{ user?: UserProfile }>;
   handleOAuthCallback: (accessToken?: string, refreshToken?: string) => Promise<void>;
   logout: () => Promise<void>;
-  refreshProfile: () => Promise<UserProfile | null>;
+  refreshProfile: (tokenOverride?: string) => Promise<UserProfile | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,15 +37,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 1. Deduplicação de Requisição (In-Flight Promise)
   const profileRequestPromiseRef = useRef<Promise<UserProfile | null> | null>(null);
 
-  const refreshProfile = useCallback(async (): Promise<UserProfile | null> => {
-    // Se já existe uma requisição em andamento, retorna a Promise ativa
-    if (profileRequestPromiseRef.current) {
+  const refreshProfile = useCallback(async (tokenOverride?: string): Promise<UserProfile | null> => {
+    // Se já existe uma requisição em andamento e não há override, retorna a Promise ativa
+    if (profileRequestPromiseRef.current && !tokenOverride) {
       return profileRequestPromiseRef.current;
     }
 
     const requestPromise = (async () => {
       try {
-        const profile = await authService.getMe();
+        const profile = await authService.getMe(tokenOverride);
         const resolvedUser = (profile as any)?.user || (profile as any)?.data || profile;
         if (resolvedUser && resolvedUser.id) {
           setUser(resolvedUser);
@@ -78,7 +78,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     })();
 
-    profileRequestPromiseRef.current = requestPromise;
+    if (!tokenOverride) {
+      profileRequestPromiseRef.current = requestPromise;
+    }
     return requestPromise;
   }, []);
 
@@ -226,14 +228,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const handleOAuthCallback = async () => {
+  const handleOAuthCallback = async (accessToken?: string, _refreshToken?: string) => {
     setIsLoading(true);
     try {
-      const profile = await refreshProfile();
+      try {
+        localStorage.setItem('appframe_has_session', 'true');
+        sessionStorage.setItem('appframe_has_session', 'true');
+      } catch {}
+      const profile = await refreshProfile(accessToken);
       if (profile && profile.id) {
-        try {
-          localStorage.setItem('appframe_has_session', 'true');
-        } catch {}
+        setUser(profile);
       }
     } finally {
       setIsLoading(false);

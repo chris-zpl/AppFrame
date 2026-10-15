@@ -34,8 +34,8 @@ export const AuthCallbackPage: React.FC = () => {
           setStatusText('Desafio de Dois Fatores (2FA) detectado...');
           setProgress(75);
           setTimeout(() => {
-            navigate('2fa', { tempToken });
-          }, 800);
+            window.location.replace(`/2fa?tempToken=${encodeURIComponent(tempToken)}`);
+          }, 400);
           return;
         }
 
@@ -52,8 +52,8 @@ export const AuthCallbackPage: React.FC = () => {
         setStatusText('Sessão estabelecida! Redirecionando para o Workspace...');
         setProgress(100);
         setTimeout(() => {
-          navigate('/', { replace: true });
-        }, 500);
+          window.location.replace('/varredura');
+        }, 300);
       } catch (err: any) {
         setError(err.message || 'Ocorreu um erro ao sincronizar a conta do Google.');
       }

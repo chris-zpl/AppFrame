@@ -566,8 +566,8 @@ export class AuthService {
     }
 
     if (sessionId) {
-      await this.sessionRepository.update({ id: sessionId }, { is_revoked: true });
-      this.logger.log(`Sessão ${sessionId} encerrada e revogada com sucesso.`);
+      await this.sessionRepository.delete({ id: sessionId });
+      this.logger.log(`Sessão ${sessionId} encerrada e removida com sucesso.`);
       return { loggedOut: true };
     }
 

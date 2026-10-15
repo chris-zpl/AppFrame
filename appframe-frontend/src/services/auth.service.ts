@@ -60,8 +60,9 @@ export const authService = {
     return res.data?.data || res.data;
   },
 
-  async getMe(): Promise<UserProfile> {
-    const res = await api.get<any>('/auth/me');
+  async getMe(token?: string): Promise<UserProfile> {
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : undefined;
+    const res = await api.get<any>('/auth/me', config);
     return res.data?.data || res.data;
   },
 
@@ -95,8 +96,8 @@ export const authService = {
     return res.data?.data || res.data;
   },
 
-  async logout(): Promise<void> {
-    await api.post('/auth/logout');
+  async logout(sessionId?: string): Promise<void> {
+    await api.post('/auth/logout', sessionId ? { sessionId } : {});
   },
 
   async getSessions(): Promise<ActiveSession[]> {
