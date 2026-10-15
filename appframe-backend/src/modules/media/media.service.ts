@@ -72,7 +72,7 @@ export class MediaService {
     return this.downloadService.getCookiesStatus();
   }
 
-  saveYouTubeCookies(cookies: string) {
+  saveYouTubeCookies(cookies: any) {
     return this.downloadService.saveCookies(cookies);
   }
 

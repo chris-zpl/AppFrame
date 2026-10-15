@@ -71,6 +71,25 @@ describe('6. Gestão de Cookies e Autenticação do YouTube (DownloadService)', 
     expect(savedContent).toContain('SAPISID\tsapisid_value');
   });
 
+  it('deve aceitar um array de objetos de cookies retornado por extensão nativa (chrome.cookies.getAll)', () => {
+    const cookieArray = [
+      {
+        domain: '.youtube.com',
+        name: 'LOGIN_INFO',
+        value: 'extension_cookie_token',
+        secure: true,
+        expirationDate: 1950000000,
+      },
+    ];
+
+    const res = service.saveCookies(cookieArray);
+    expect(res.success).toBe(true);
+
+    const savedContent = fs.readFileSync(testCookiesPath, 'utf-8');
+    expect(savedContent).toContain('# Netscape HTTP Cookie File');
+    expect(savedContent).toContain('LOGIN_INFO\textension_cookie_token');
+  });
+
   it('deve remover cookies com deleteCookies', () => {
     service.saveCookies('.youtube.com\tTRUE\t/\tTRUE\t1800000000\tLOGIN_INFO\tval');
     expect(fs.existsSync(testCookiesPath)).toBe(true);

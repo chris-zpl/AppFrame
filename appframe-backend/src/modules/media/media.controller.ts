@@ -39,9 +39,10 @@ export class MediaController {
   @Post('youtube-cookies')
   @UseGuards(JwtAuthGuard)
   async saveYouTubeCookies(
-    @Body() body: { cookies: string },
+    @Body() body: { cookies?: any; content?: any },
   ): Promise<{ success: boolean; message: string }> {
-    return this.mediaService.saveYouTubeCookies(body?.cookies);
+    const rawCookies = body?.cookies !== undefined ? body.cookies : body?.content;
+    return this.mediaService.saveYouTubeCookies(rawCookies);
   }
 
   @Delete('youtube-cookies')

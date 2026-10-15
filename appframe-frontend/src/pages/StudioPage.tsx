@@ -1219,7 +1219,7 @@ export const StudioPage: React.FC = () => {
                 variant="ghost"
                 size="md"
                 onClick={() => setIsYouTubeAuthModalOpen(true)}
-                title="Configurar login e cookies do YouTube para vídeos com restrição de idade"
+                title="Sincronizar conta do YouTube com a extensão AppFrame Companion para vídeos com restrição (+18)"
                 leftIcon={
                   <span className="material-symbols-outlined text-[18px]">
                     smart_display
@@ -1227,7 +1227,7 @@ export const StudioPage: React.FC = () => {
                 }
                 className="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer"
               >
-                <span>Login YouTube</span>
+                <span>Sincronizar YouTube</span>
               </Button>
 
               <Button
@@ -1421,7 +1421,7 @@ export const StudioPage: React.FC = () => {
                     </p>
                     <p className="text-body-sm text-on-surface-variant line-clamp-4">
                       {isAuthError
-                        ? 'Este vídeo possui restrição de idade (+18) ou verificação do YouTube. Conecte sua conta para fazer o bypass do download.'
+                        ? 'Este vídeo possui restrição de idade (+18) do YouTube. Conecte sua conta com a extensão AppFrame Companion para baixar com 1 clique.'
                         : previewError}
                     </p>
                     <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
@@ -1432,11 +1432,11 @@ export const StudioPage: React.FC = () => {
                           onClick={() => setIsYouTubeAuthModalOpen(true)}
                           leftIcon={
                             <span className="material-symbols-outlined text-[16px]">
-                              login
+                              sync
                             </span>
                           }
                         >
-                          Fazer Login no YouTube
+                          Sincronizar YouTube (1 Clique)
                         </Button>
                       )}
                       <Button

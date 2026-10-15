@@ -230,18 +230,16 @@ export class DownloadService {
     };
   }
 
-  saveCookies(rawContent: string): { success: boolean; message: string } {
-    if (!rawContent || !rawContent.trim()) {
+  saveCookies(rawContent: string | any[]): { success: boolean; message: string } {
+    if (!rawContent || (typeof rawContent === 'string' && !rawContent.trim())) {
       throw new BadRequestException('O conteúdo dos cookies não pode estar vazio.');
     }
 
-    let netscapeContent = rawContent.trim();
+    let netscapeContent = '';
 
-    // Se o usuário colou um JSON de cookies (ex: exportado por extensões populares como EditThisCookie)
-    if (netscapeContent.startsWith('[') || netscapeContent.startsWith('{')) {
+    if (typeof rawContent !== 'string') {
       try {
-        const parsed = JSON.parse(netscapeContent);
-        const cookieArray = Array.isArray(parsed) ? parsed : [parsed];
+        const cookieArray = Array.isArray(rawContent) ? rawContent : [rawContent];
         const lines: string[] = [
           '# Netscape HTTP Cookie File',
           '# https://curl.haxx.se/rfc/cookie_spec.html',
@@ -265,9 +263,43 @@ export class DownloadService {
 
         netscapeContent = lines.join('\n');
       } catch (err: any) {
-        this.logger.warn(
-          `Falha ao converter JSON de cookies para Netscape: ${err.message}`,
-        );
+        this.logger.warn(`Falha ao converter array de cookies: ${err.message}`);
+      }
+    } else {
+      netscapeContent = rawContent.trim();
+
+      // Se o usuário colou um JSON de cookies
+      if (netscapeContent.startsWith('[') || netscapeContent.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(netscapeContent);
+          const cookieArray = Array.isArray(parsed) ? parsed : [parsed];
+          const lines: string[] = [
+            '# Netscape HTTP Cookie File',
+            '# https://curl.haxx.se/rfc/cookie_spec.html',
+            '# This is a generated file! Do not edit.',
+            '',
+          ];
+
+          for (const c of cookieArray) {
+            if (!c.name || c.value === undefined) continue;
+            const domain = c.domain || '.youtube.com';
+            const flag = domain.startsWith('.') ? 'TRUE' : 'FALSE';
+            const cookiePath = c.path || '/';
+            const secure = c.secure ? 'TRUE' : 'FALSE';
+            const expiration = c.expirationDate
+              ? Math.floor(c.expirationDate)
+              : Math.floor(Date.now() / 1000) + 31536000;
+            lines.push(
+              `${domain}\t${flag}\t${cookiePath}\t${secure}\t${expiration}\t${c.name}\t${c.value}`,
+            );
+          }
+
+          netscapeContent = lines.join('\n');
+        } catch (err: any) {
+          this.logger.warn(
+            `Falha ao converter JSON de cookies para Netscape: ${err.message}`,
+          );
+        }
       }
     }
 
