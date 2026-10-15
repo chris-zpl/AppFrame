@@ -26,6 +26,9 @@ export class User {
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  email_changed_at: Date | null;
+
   @Exclude()
   @Column({ type: 'varchar', length: 255, nullable: true })
   password_hash: string | null;
@@ -33,6 +36,9 @@ export class User {
   @Index('idx_users_google_id', { unique: true })
   @Column({ type: 'varchar', length: 255, nullable: true, unique: true })
   google_id: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  google_email: string | null;
 
   @Column({
     type: 'enum',

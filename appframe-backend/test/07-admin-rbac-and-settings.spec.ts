@@ -14,6 +14,9 @@ import { SystemSetting } from '../src/modules/admin/entities/system-setting.enti
 import { EncryptionService } from '../src/core/security/encryption.service';
 import { DownloadService } from '../src/modules/media/services/download.service';
 import { ConfigService } from '@nestjs/config';
+import { AuthService } from '../src/modules/auth/auth.service';
+import { UserResponseDto } from '../src/modules/users/dto/response/user-response.dto';
+
 
 describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratamento de Cota Gemini', () => {
   let rolesGuard: RolesGuard;
@@ -278,4 +281,98 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       expect(status.connected).toBe(false);
     });
   });
+
+  describe('7.4 Regra de Alteração de E-mail (6 meses) e Google OAuth Email', () => {
+    let authService: AuthService;
+    let mockUserRepo: any;
+
+    beforeEach(() => {
+      mockUserRepo = {
+        findOne: jest.fn(),
+        save: jest.fn((u) => Promise.resolve(u)),
+      };
+      authService = new AuthService(
+        mockUserRepo as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        { sign: jest.fn() } as any,
+        { get: jest.fn((k, def) => def) } as any,
+        {} as any,
+        {} as any,
+        {} as any,
+      );
+    });
+
+    it('deve bloquear a alteração de e-mail se foi alterado há menos de 6 meses', async () => {
+      const lastChanged = new Date();
+      lastChanged.setMonth(lastChanged.getMonth() - 2); // 2 meses atrás
+
+      const user = {
+        id: 'user-1',
+        name: 'Christian',
+        email: 'antigo@appframe.io',
+        email_changed_at: lastChanged,
+      };
+      mockUserRepo.findOne.mockResolvedValue(user);
+
+      await expect(
+        authService.updateProfile('user-1', { email: 'novo@appframe.io' })
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('deve permitir a alteração de e-mail se a última alteração foi há mais de 6 meses e atualizar email_changed_at', async () => {
+      const lastChanged = new Date();
+      lastChanged.setMonth(lastChanged.getMonth() - 7); // 7 meses atrás
+
+      const user: any = {
+        id: 'user-1',
+        name: 'Christian',
+        email: 'antigo@appframe.io',
+        email_changed_at: lastChanged,
+      };
+      // 1º findOne: busca o usuário atual; 2º findOne: checa se novo e-mail já existe
+      mockUserRepo.findOne
+        .mockResolvedValueOnce(user)
+        .mockResolvedValueOnce(null);
+
+      const updated = await authService.updateProfile('user-1', { email: 'novo@appframe.io' });
+      expect(updated.email).toBe('novo@appframe.io');
+      expect(mockUserRepo.save).toHaveBeenCalled();
+      expect(user.email_changed_at).toBeDefined();
+      expect(new Date().getTime() - new Date(user.email_changed_at!).getTime()).toBeLessThan(5000);
+    });
+
+    it('deve permitir atualizar apenas o nome sem bloquear pela regra de 6 meses de e-mail', async () => {
+      const lastChanged = new Date();
+      const user: any = {
+        id: 'user-1',
+        name: 'Nome Antigo',
+        email: 'mesmo@appframe.io',
+        email_changed_at: lastChanged,
+      };
+      mockUserRepo.findOne.mockResolvedValue(user);
+
+      const updated = await authService.updateProfile('user-1', { name: 'Nome Novo' });
+      expect(updated.name).toBe('Nome Novo');
+      expect(user.email_changed_at).toBe(lastChanged);
+    });
+
+    it('UserResponseDto.fromEntity deve expor google_email e email_changed_at', () => {
+      const user: any = {
+        id: 'u-1',
+        name: 'User',
+        email: 'sys@appframe.io',
+        google_email: 'google@gmail.com',
+        google_id: 'g-123',
+        email_changed_at: new Date('2026-01-01T00:00:00Z'),
+        role: UserRole.USER,
+        is_active: true,
+      };
+      const dto = UserResponseDto.fromEntity(user);
+      expect(dto.google_email).toBe('google@gmail.com');
+      expect(dto.email_changed_at).toEqual(new Date('2026-01-01T00:00:00Z'));
+    });
+  });
 });
+

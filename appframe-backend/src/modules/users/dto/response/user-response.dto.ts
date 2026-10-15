@@ -24,6 +24,12 @@ export class UserResponseDto {
   google_id: string | null;
 
   @Expose()
+  google_email: string | null;
+
+  @Expose()
+  email_changed_at: Date | null;
+
+  @Expose()
   auth_provider: AuthProvider;
 
   @Expose()
@@ -54,6 +60,8 @@ export class UserResponseDto {
       dto.role = user.role || UserRole.USER;
     }
     dto.is_active = user.is_active !== undefined ? user.is_active : true;
+    dto.google_email = user.google_email || null;
+    dto.email_changed_at = user.email_changed_at || null;
     dto.has_gemini_key = false;
     return dto;
   }

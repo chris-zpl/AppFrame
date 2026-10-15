@@ -338,6 +338,7 @@ export class AuthService {
       if (user) {
         // Vincula o google_id à conta existente
         user.google_id = profile.googleId;
+        user.google_email = emailNormalized;
         user.auth_provider = AuthProvider.GOOGLE;
         if (isFounder && user.role !== UserRole.SUPER_ADMIN) {
           user.role = UserRole.SUPER_ADMIN;
@@ -349,6 +350,7 @@ export class AuthService {
           name: profile.name,
           email: emailNormalized,
           google_id: profile.googleId,
+          google_email: emailNormalized,
           auth_provider: AuthProvider.GOOGLE,
           password_hash: null, // Senha nula para contas Google
           is_two_factor_enabled: false,
@@ -358,8 +360,11 @@ export class AuthService {
         user = await this.userRepository.save(user);
       }
     } else {
+      user.google_email = emailNormalized;
       if (isFounder && user.role !== UserRole.SUPER_ADMIN) {
         user.role = UserRole.SUPER_ADMIN;
+        await this.userRepository.save(user);
+      } else {
         await this.userRepository.save(user);
       }
     }
@@ -693,6 +698,19 @@ export class AuthService {
     if (dto.email) {
       const emailNormalized = dto.email.trim().toLowerCase();
       if (emailNormalized !== user.email) {
+        // Regra de segurança: Usuário só pode alterar o e-mail de 6 em 6 meses
+        if (user.email_changed_at) {
+          const nextAllowedDate = new Date(user.email_changed_at);
+          nextAllowedDate.setMonth(nextAllowedDate.getMonth() + 6);
+          const now = new Date();
+          if (now < nextAllowedDate) {
+            const formattedDate = nextAllowedDate.toLocaleDateString('pt-BR');
+            throw new BadRequestException(
+              `O e-mail só pode ser alterado uma vez a cada 6 meses. Sua próxima alteração estará disponível em ${formattedDate}.`,
+            );
+          }
+        }
+
         const existing = await this.userRepository.findOne({
           where: { email: emailNormalized },
         });
@@ -700,6 +718,7 @@ export class AuthService {
           throw new ConflictException('Já existe um usuário cadastrado com este e-mail.');
         }
         user.email = emailNormalized;
+        user.email_changed_at = new Date();
       }
     }
 
@@ -722,6 +741,7 @@ export class AuthService {
       );
     }
     user.google_id = null;
+    user.google_email = null;
     user.auth_provider = AuthProvider.LOCAL;
     const saved = await this.userRepository.save(user);
     return UserResponseDto.fromEntity(saved)!;

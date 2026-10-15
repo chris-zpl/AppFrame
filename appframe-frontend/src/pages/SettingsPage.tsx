@@ -109,6 +109,12 @@ const extractApiErrorMessage = (error: any, fallback: string): string => {
   return fallback;
 };
 
+const calculateNextEmailChangeDate = (fromDate: Date): string => {
+  const nextDate = new Date(fromDate);
+  nextDate.setMonth(nextDate.getMonth() + 6);
+  return nextDate.toLocaleDateString('pt-BR');
+};
+
 export const SettingsPage: React.FC = () => {
   const { navigate } = useNavigation();
   const { user, refreshProfile, logout } = useAuth();
@@ -122,6 +128,14 @@ export const SettingsPage: React.FC = () => {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [isUnlinkingGoogle, setIsUnlinkingGoogle] = useState(false);
+
+  // Estados dos Modais de Alteração de E-mail (Regra de 6 meses)
+  const [showEmailChangeModal, setShowEmailChangeModal] = useState(false);
+  const [emailChangeBlockedModal, setEmailChangeBlockedModal] = useState<{
+    isOpen: boolean;
+    lastChanged: string;
+    nextAllowed: string;
+  }>({ isOpen: false, lastChanged: '', nextAllowed: '' });
 
   const isGoogleLinked = Boolean(user?.google_id || user?.auth_provider === 'google');
   const is2faEnabled = Boolean(user?.is_two_factor_enabled);
@@ -187,14 +201,7 @@ export const SettingsPage: React.FC = () => {
     fetchSessions();
   }, [fetchSessions]);
 
-  // Ação de Salvar Perfil
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !email.trim()) {
-      toast.error('Preencha o nome e o e-mail.');
-      return;
-    }
-
+  const executeSaveProfile = async () => {
     setIsSavingProfile(true);
     setProfileSaved(false);
     try {
@@ -204,6 +211,7 @@ export const SettingsPage: React.FC = () => {
       });
       await refreshProfile();
       setProfileSaved(true);
+      setShowEmailChangeModal(false);
       toast.success('Dados do perfil atualizados com sucesso!');
       setTimeout(() => setProfileSaved(false), 3000);
     } catch (error) {
@@ -211,6 +219,38 @@ export const SettingsPage: React.FC = () => {
     } finally {
       setIsSavingProfile(false);
     }
+  };
+
+  // Ação de Salvar Perfil
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim()) {
+      toast.error('Preencha o nome e o e-mail.');
+      return;
+    }
+
+    const isEmailChanging = email.trim().toLowerCase() !== (user?.email || '').toLowerCase();
+
+    if (isEmailChanging) {
+      if (user?.email_changed_at) {
+        const lastChangedDate = new Date(user.email_changed_at);
+        const nextAllowedDate = new Date(lastChangedDate);
+        nextAllowedDate.setMonth(nextAllowedDate.getMonth() + 6);
+        if (new Date() < nextAllowedDate) {
+          setEmailChangeBlockedModal({
+            isOpen: true,
+            lastChanged: lastChangedDate.toLocaleDateString('pt-BR'),
+            nextAllowed: nextAllowedDate.toLocaleDateString('pt-BR'),
+          });
+          return;
+        }
+      }
+
+      setShowEmailChangeModal(true);
+      return;
+    }
+
+    await executeSaveProfile();
   };
 
   // Ação de Conectar ou Desvincular Google OAuth
@@ -510,17 +550,23 @@ export const SettingsPage: React.FC = () => {
                   }
                 />
 
-                <Input
-                  label="E-mail Profissional"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isSavingProfile}
-                  leftIcon={
-                    <span className="material-symbols-outlined text-[18px]">mail</span>
-                  }
-                />
+                <div>
+                  <Input
+                    label="E-mail Profissional"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={isSavingProfile}
+                    leftIcon={
+                      <span className="material-symbols-outlined text-[18px]">mail</span>
+                    }
+                  />
+                  <p className="text-[11px] text-neutral-500 dark:text-on-surface-variant flex items-center gap-1 mt-1 pl-1">
+                    <span className="material-symbols-outlined text-[14px]">schedule</span>
+                    O e-mail da conta só pode ser alterado uma vez a cada 6 meses.
+                  </p>
+                </div>
 
                 <div className="pt-2">
                   <Button
@@ -587,7 +633,9 @@ export const SettingsPage: React.FC = () => {
                       )}
                     </div>
                     <span className="font-body-sm text-body-sm text-on-surface-variant font-mono">
-                      {user?.email || email}
+                      {isGoogleLinked
+                        ? (user?.google_email || 'Conta vinculada ao Google')
+                        : 'Nenhuma conta Google vinculada'}
                     </span>
                   </div>
                 </div>
@@ -1264,6 +1312,113 @@ export const SettingsPage: React.FC = () => {
                   onClick={handleDeleteAccountPermanent}
                 >
                   Confirmar Exclusão Permanente
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Modal de Confirmação de Alteração de E-mail (Regra de 6 meses) */}
+        {showEmailChangeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
+            <Card className="w-full max-w-md p-6 bg-surface-container border-2 border-primary/40 shadow-2xl flex flex-col gap-4">
+              <div className="flex items-center gap-3 text-primary">
+                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[24px]">mark_email_unread</span>
+                </div>
+                <h3 className="font-title-md text-title-md font-bold text-on-surface">
+                  Alteração de E-mail
+                </h3>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-body-sm flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-[20px] shrink-0 mt-0.5">schedule</span>
+                  <span>
+                    <strong>Regra de 6 Meses:</strong> Por segurança, você só pode alterar o e-mail da sua conta <strong>uma vez a cada 6 meses</strong>.
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-surface-container-low border border-surface-container-high flex flex-col gap-2 text-body-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-on-surface-variant">E-mail atual:</span>
+                    <span className="font-mono text-on-surface">{user?.email}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-on-surface-variant font-semibold">Novo e-mail:</span>
+                    <span className="font-mono font-bold text-primary">{email.trim()}</span>
+                  </div>
+                </div>
+
+                <p className="font-body-sm text-body-sm text-on-surface-variant">
+                  Após confirmar esta mudança, sua próxima alteração de e-mail só estará liberada em <strong>{calculateNextEmailChangeDate(new Date())}</strong>. Deseja realmente prosseguir?
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 mt-2">
+                <Button
+                  variant="ghost"
+                  disabled={isSavingProfile}
+                  onClick={() => setShowEmailChangeModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  isLoading={isSavingProfile}
+                  disabled={isSavingProfile}
+                  onClick={executeSaveProfile}
+                >
+                  Confirmar Alteração
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Modal Informativo de Bloqueio (Caso não tenham se passado 6 meses) */}
+        {emailChangeBlockedModal.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
+            <Card className="w-full max-w-md p-6 bg-surface-container border-2 border-amber-500/40 shadow-2xl flex flex-col gap-4">
+              <div className="flex items-center gap-3 text-amber-500">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[24px]">lock_clock</span>
+                </div>
+                <h3 className="font-title-md text-title-md font-bold text-on-surface">
+                  Alteração Indisponível
+                </h3>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <p className="font-body-sm text-body-sm text-on-surface-variant">
+                  Por diretriz de segurança, o e-mail da conta só pode ser alterado <strong>uma vez a cada 6 meses</strong>.
+                </p>
+
+                <div className="p-3 rounded-xl bg-surface-container-low border border-surface-container-high flex flex-col gap-2 text-body-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-on-surface-variant">Última alteração:</span>
+                    <span className="font-mono text-on-surface">{emailChangeBlockedModal.lastChanged}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-on-surface-variant font-semibold">Próxima liberação:</span>
+                    <span className="font-mono font-bold text-amber-500">{emailChangeBlockedModal.nextAllowed}</span>
+                  </div>
+                </div>
+
+                <p className="font-body-sm text-body-sm text-on-surface-variant">
+                  Aguarde o prazo regulamentar para efetuar uma nova troca do seu e-mail de acesso.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end mt-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setEmailChangeBlockedModal({ isOpen: false, lastChanged: '', nextAllowed: '' });
+                    if (user?.email) setEmail(user.email);
+                  }}
+                >
+                  Entendido
                 </Button>
               </div>
             </Card>

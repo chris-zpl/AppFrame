@@ -5,6 +5,8 @@ export interface UserProfile {
   name: string;
   email: string;
   google_id?: string | null;
+  google_email?: string | null;
+  email_changed_at?: string | null;
   auth_provider: 'local' | 'google';
   role?: 'SUPER_ADMIN' | 'ADMIN' | 'USER';
   is_active?: boolean;

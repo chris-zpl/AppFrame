@@ -8,6 +8,7 @@ import { VideoJob } from '../../modules/media/entities/video-job.entity';
 import { SystemSetting } from '../../modules/admin/entities/system-setting.entity';
 import { InitialAppFrameSchema1740000000000 } from './migrations/1740000000000-InitialAppFrameSchema';
 import { AddUserRoleAndStatus1740000000001 } from './migrations/1740000000001-AddUserRoleAndStatus';
+import { AddGoogleEmailAndEmailChangedAt1740000000002 } from './migrations/1740000000002-AddGoogleEmailAndEmailChangedAt';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { AddUserRoleAndStatus1740000000001 } from './migrations/1740000000001-Ad
         migrations: [
           InitialAppFrameSchema1740000000000,
           AddUserRoleAndStatus1740000000001,
+          AddGoogleEmailAndEmailChangedAt1740000000002,
         ],
         logging: configService.get<string>('NODE_ENV') !== 'production',
         ssl:
