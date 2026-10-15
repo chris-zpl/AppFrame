@@ -80,11 +80,20 @@ describe('2. Testes de Controle de Acesso e IDOR (E2E)', () => {
       }
       return jobUserA;
     }),
-    createJob: jest.fn().mockImplementation((userId: string, dto: any) => ({
-      id: 'j2222222-2222-2222-2222-222222222222',
-      user_id: userId,
-      ...dto,
-    })),
+    createJob: jest.fn().mockImplementation((userId: string, dto: any) => {
+      if (dto.watermark_id && dto.watermark_id === watermarkUserA.id && userId !== userA.id) {
+        throw new NotFoundException('Marca d’água não encontrada.');
+      }
+      return {
+        id: 'j2222222-2222-2222-2222-222222222222',
+        user_id: userId,
+        ...dto,
+      };
+    }),
+    listUserJobs: jest.fn().mockImplementation((userId: string) => {
+      if (userId === userA.id) return [jobUserA];
+      return [];
+    }),
     getYouTubeCookiesStatus: jest.fn().mockReturnValue({ configured: true, path: '/tmp/cookies.txt', updatedAt: new Date().toISOString() }),
     saveYouTubeCookies: jest.fn().mockReturnValue({ success: true, message: 'Cookies salvos' }),
     deleteYouTubeCookies: jest.fn().mockReturnValue({ success: true, message: 'Cookies removidos' }),
@@ -221,6 +230,51 @@ describe('2. Testes de Controle de Acesso e IDOR (E2E)', () => {
         .expect(404);
 
       expect(res.body.message).toContain('Job de vídeo não encontrado');
+    });
+
+    it('User B não deve conseguir criar jobs em nome de User A via POST /media/users/:userId/jobs (403)', async () => {
+      currentUserContext = userB;
+
+      const res = await request(app.getHttpServer())
+        .post(`/media/users/${userA.id}/jobs`)
+        .send({ source_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' })
+        .expect(403);
+
+      expect(res.body.message).toContain('Acesso negado');
+    });
+
+    it('User B não deve conseguir listar jobs de User A via GET /media/users/:userId/jobs (403)', async () => {
+      currentUserContext = userB;
+
+      const res = await request(app.getHttpServer())
+        .get(`/media/users/${userA.id}/jobs`)
+        .expect(403);
+
+      expect(res.body.message).toContain('Acesso negado');
+    });
+
+    it('User B não deve conseguir obter job de User A via GET /media/users/:userId/jobs/:id (403)', async () => {
+      currentUserContext = userB;
+
+      const res = await request(app.getHttpServer())
+        .get(`/media/users/${userA.id}/jobs/${jobUserA.id}`)
+        .expect(403);
+
+      expect(res.body.message).toContain('Acesso negado');
+    });
+
+    it('User B não deve conseguir usar a marca d’água de User A ao criar um job (404)', async () => {
+      currentUserContext = userB;
+
+      const res = await request(app.getHttpServer())
+        .post('/media/jobs')
+        .send({
+          source_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          watermark_id: watermarkUserA.id,
+        })
+        .expect(404);
+
+      expect(res.body.message).toContain('Marca d’água não encontrada');
     });
   });
 

@@ -11,6 +11,7 @@ import {
   ParseUUIDPipe,
   UseInterceptors,
   ClassSerializerInterceptor,
+  ForbiddenException,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import * as fs from 'fs';
@@ -22,7 +23,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { UserRole } from '../users/enums/user-role.enum';
+
 
 
 @Controller('media')
@@ -211,25 +214,52 @@ export class MediaController {
   }
 
   @Post('users/:userId/jobs')
+  @UseGuards(JwtAuthGuard)
   async createJob(
     @Param('userId', new ParseUUIDPipe()) userId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: CreateVideoJobDto,
   ): Promise<VideoJobResponseDto> {
+    const isOwner = currentUser.userId === userId;
+    const isAdmin =
+      currentUser.role === UserRole.SUPER_ADMIN ||
+      currentUser.role === UserRole.ADMIN;
+    if (!isOwner && !isAdmin) {
+      throw new ForbiddenException('Acesso negado para criar jobs em nome de outro usuário.');
+    }
     return this.mediaService.createJob(userId, dto);
   }
 
   @Get('users/:userId/jobs')
+  @UseGuards(JwtAuthGuard)
   async listUserJobs(
     @Param('userId', new ParseUUIDPipe()) userId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<VideoJobResponseDto[]> {
+    const isOwner = currentUser.userId === userId;
+    const isAdmin =
+      currentUser.role === UserRole.SUPER_ADMIN ||
+      currentUser.role === UserRole.ADMIN;
+    if (!isOwner && !isAdmin) {
+      throw new ForbiddenException('Acesso negado aos jobs de outro usuário.');
+    }
     return this.mediaService.listUserJobs(userId);
   }
 
   @Get('users/:userId/jobs/:id')
+  @UseGuards(JwtAuthGuard)
   async getJobById(
     @Param('userId', new ParseUUIDPipe()) userId: string,
     @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<VideoJobResponseDto> {
+    const isOwner = currentUser.userId === userId;
+    const isAdmin =
+      currentUser.role === UserRole.SUPER_ADMIN ||
+      currentUser.role === UserRole.ADMIN;
+    if (!isOwner && !isAdmin) {
+      throw new ForbiddenException('Acesso negado ao job de outro usuário.');
+    }
     return this.mediaService.getJobById(id, userId);
   }
 }

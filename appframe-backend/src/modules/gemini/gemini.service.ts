@@ -397,8 +397,21 @@ Retorne estritamente um JSON válido no seguinte formato:
 
     if (!buffer && params.audioPath) {
       const resolvedPath = path.isAbsolute(params.audioPath)
-        ? params.audioPath
+        ? path.normalize(params.audioPath)
         : path.resolve(process.cwd(), params.audioPath);
+
+      // Blindagem estrita contra Path Traversal e Leitura Arbitrária de Arquivos (CWE-22)
+      const allowedRoots = [
+        path.resolve(process.cwd(), 'storage'),
+        path.resolve(process.cwd(), 'uploads'),
+      ];
+      const isInsideAllowedDir = allowedRoots.some(
+        (root) => resolvedPath === root || resolvedPath.startsWith(root + path.sep),
+      );
+
+      if (!isInsideAllowedDir) {
+        throw new BadRequestException('Acesso negado: caminho de arquivo fora do diretório permitido.');
+      }
 
       if (!fs.existsSync(resolvedPath)) {
         throw new BadRequestException(`Arquivo de áudio não encontrado em: ${params.audioPath}`);

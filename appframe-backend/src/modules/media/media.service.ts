@@ -13,6 +13,7 @@ import { VideoJobStatus } from './enums/video-job-status.enum';
 import { VideoPlatform } from './enums/video-platform.enum';
 import { DownloadService } from './services/download.service';
 import { FFmpegService } from './services/ffmpeg.service';
+import { WatermarksService } from '../watermarks/watermarks.service';
 import {
   MEDIA_DOWNLOAD_QUEUE,
   DownloadJobPayload,
@@ -27,6 +28,7 @@ export class MediaService {
     private readonly downloadQueue: Queue<DownloadJobPayload>,
     private readonly downloadService: DownloadService,
     private readonly ffmpegService: FFmpegService,
+    private readonly watermarksService: WatermarksService,
   ) {}
 
   /**
@@ -126,8 +128,14 @@ export class MediaService {
     userId: string,
     dto: CreateVideoJobDto,
   ): Promise<VideoJobResponseDto> {
+    if (dto.watermark_id) {
+      // Garante que a marca d'água pertence ao usuário autenticado (Prevenção de IDOR)
+      await this.watermarksService.findById(dto.watermark_id, userId);
+    }
+
     const isShorts = dto.aspect_ratio === '9:16';
     const defaultPlatform = VideoPlatform.YOUTUBE;
+
 
     const job = this.videoJobRepository.create({
       user_id: userId,
