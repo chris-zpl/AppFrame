@@ -11,6 +11,8 @@ import { EncryptionService } from '../../../core/security/encryption.service';
 import { DownloadService } from '../../media/services/download.service';
 import { GoogleGenAI } from '@google/genai';
 import * as nodemailer from 'nodemailer';
+import * as fs from 'fs';
+
 
 export interface SmtpConfigDto {
   host: string;
@@ -73,8 +75,29 @@ export class AdminSettingsService {
 
   // --- YouTube Cookies Globais ---
 
-  getYouTubeCookiesStatus() {
-    return this.downloadService.getCookiesStatus();
+  getYouTubeCookiesStatus(): {
+    configured: boolean;
+    hasCookies: boolean;
+    path: string | null;
+    filePath: string | null;
+    updatedAt: string | null;
+    sizeBytes: number;
+  } {
+    const status = this.downloadService.getCookiesStatus();
+    let sizeBytes = 0;
+    if (status.path && fs.existsSync(status.path)) {
+      try {
+        sizeBytes = fs.statSync(status.path).size;
+      } catch {}
+    }
+    return {
+      configured: status.configured,
+      hasCookies: status.configured,
+      path: status.path,
+      filePath: status.path,
+      updatedAt: status.updatedAt,
+      sizeBytes,
+    };
   }
 
   saveYouTubeCookies(cookies: any) {
@@ -89,6 +112,8 @@ export class AdminSettingsService {
 
   async getGeminiStatus(): Promise<{
     configured: boolean;
+    hasKey: boolean;
+    maskedKey: string | null;
     model: string;
     source: 'database' | 'environment' | 'none';
   }> {
@@ -97,16 +122,24 @@ export class AdminSettingsService {
       (await this.getSetting('GEMINI_MODEL')) ||
       this.configService.get<string>('GEMINI_MODEL', 'gemini-3.8-flash');
 
-    if (dbKey) {
-      return { configured: true, model, source: 'database' };
-    }
-
     const envKey = this.configService.get<string>('GEMINI_API_KEY');
-    if (envKey) {
-      return { configured: true, model, source: 'environment' };
+    const activeKey = dbKey || envKey || null;
+    const hasKey = Boolean(activeKey);
+    const maskedKey = activeKey
+      ? activeKey.length > 8
+        ? `${activeKey.slice(0, 4)}••••••••${activeKey.slice(-4)}`
+        : '••••••••'
+      : null;
+
+    if (dbKey) {
+      return { configured: true, hasKey: true, maskedKey, model, source: 'database' };
     }
 
-    return { configured: false, model, source: 'none' };
+    if (envKey) {
+      return { configured: true, hasKey: true, maskedKey, model, source: 'environment' };
+    }
+
+    return { configured: false, hasKey: false, maskedKey: null, model, source: 'none' };
   }
 
   async saveGeminiApiKey(apiKey: string, modelName?: string): Promise<{ success: boolean; message: string }> {

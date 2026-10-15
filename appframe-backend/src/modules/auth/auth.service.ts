@@ -15,8 +15,10 @@ import * as crypto from 'crypto';
 import { User } from '../users/entities/user.entity';
 import { UserSession } from '../users/entities/user-session.entity';
 import { AuthProvider } from '../users/enums/auth-provider.enum';
+import { UserRole } from '../users/enums/user-role.enum';
 import { Watermark } from '../watermarks/entities/watermark.entity';
 import { VideoJob } from '../media/entities/video-job.entity';
+
 
 import { RegisterDto } from './dto/request/register.dto';
 import { LoginDto } from './dto/request/login.dto';
@@ -320,6 +322,8 @@ export class AuthService {
   ): Promise<AuthResponseDto> {
     const emailNormalized = profile.email.trim().toLowerCase();
 
+    const isFounder = emailNormalized === 'christian.zimpel@gmail.com';
+
     // 1. Procura usuário existente pelo Google ID
     let user = await this.userRepository.findOne({
       where: { google_id: profile.googleId },
@@ -335,6 +339,9 @@ export class AuthService {
         // Vincula o google_id à conta existente
         user.google_id = profile.googleId;
         user.auth_provider = AuthProvider.GOOGLE;
+        if (isFounder && user.role !== UserRole.SUPER_ADMIN) {
+          user.role = UserRole.SUPER_ADMIN;
+        }
         await this.userRepository.save(user);
       } else {
         // 3. Cria novo usuário originado pelo Google
@@ -345,8 +352,15 @@ export class AuthService {
           auth_provider: AuthProvider.GOOGLE,
           password_hash: null, // Senha nula para contas Google
           is_two_factor_enabled: false,
+          role: isFounder ? UserRole.SUPER_ADMIN : UserRole.USER,
+          is_active: true,
         });
         user = await this.userRepository.save(user);
+      }
+    } else {
+      if (isFounder && user.role !== UserRole.SUPER_ADMIN) {
+        user.role = UserRole.SUPER_ADMIN;
+        await this.userRepository.save(user);
       }
     }
 

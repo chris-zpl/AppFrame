@@ -20,6 +20,7 @@ export interface UserManagementItem {
   is_active: boolean;
   active_sessions_count: number;
   video_jobs_count: number;
+  total_renders: number;
   created_at: Date;
 }
 
@@ -87,6 +88,7 @@ export class AdminUsersService {
         is_active: u.is_active !== undefined ? u.is_active : true,
         active_sessions_count: activeSessionsCount,
         video_jobs_count: videoJobsCount,
+        total_renders: videoJobsCount,
         created_at: u.created_at,
       });
     }
