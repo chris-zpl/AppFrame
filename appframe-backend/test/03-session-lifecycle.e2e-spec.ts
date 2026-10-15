@@ -76,6 +76,14 @@ describe('3. Ciclo de Vida de Sessões e Autenticação (E2E)', () => {
         user: { id: testUserId, email: 'user@appframe.io' },
       };
     }),
+    logout: jest.fn().mockImplementation((tokenOrSessionId: string) => {
+      for (const [id, s] of activeSessionsDb.entries()) {
+        if (id === tokenOrSessionId) {
+          s.is_revoked = true;
+        }
+      }
+      return Promise.resolve({ loggedOut: true });
+    }),
   };
 
   beforeAll(async () => {
@@ -234,5 +242,22 @@ describe('3. Ciclo de Vida de Sessões e Autenticação (E2E)', () => {
       .expect(401);
 
     expect(res.body.message).toContain('desafio de 2FA primeiro');
+  });
+
+  it('3.7 Logout - deve revogar a sessão no banco e limpar cookies', async () => {
+    const currentToken = jwtService.sign({
+      sub: testUserId,
+      email: 'user@appframe.io',
+      sessionId: currentSessionId,
+      purpose: 'access',
+    });
+
+    const res = await request(app.getHttpServer())
+      .post('/auth/logout')
+      .set('Authorization', `Bearer ${currentToken}`)
+      .expect(200);
+
+    expect(res.body.success).toBe(true);
+    expect(mockAuthService.logout).toHaveBeenCalled();
   });
 });

@@ -524,6 +524,42 @@ export class AuthService {
     return { revokedCount: result.affected || 0 };
   }
 
+  /**
+   * Encerra a sessão do usuário revogando-a no banco de dados.
+   * Suporta UUID direto da sessão ou token JWT (access/refresh) contendo sessionId.
+   */
+  async logout(tokenOrSessionId?: string): Promise<{ loggedOut: boolean }> {
+    if (!tokenOrSessionId) {
+      return { loggedOut: false };
+    }
+
+    let sessionId: string | null = null;
+    const clean = tokenOrSessionId.trim();
+
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(clean)) {
+      sessionId = clean;
+    } else {
+      try {
+        const decoded = this.jwtService.decode(clean) as JwtPayload;
+        if (decoded?.sessionId) {
+          sessionId = decoded.sessionId;
+        }
+      } catch (err: any) {
+        this.logger.warn(`Falha ao extrair sessionId no logout: ${err.message}`);
+      }
+    }
+
+    if (sessionId) {
+      await this.sessionRepository.update({ id: sessionId }, { is_revoked: true });
+      this.logger.log(`Sessão ${sessionId} encerrada e revogada com sucesso.`);
+      return { loggedOut: true };
+    }
+
+    return { loggedOut: false };
+  }
+
   // --- Perfil e Ciclo de Vida ---
 
   async changePassword(

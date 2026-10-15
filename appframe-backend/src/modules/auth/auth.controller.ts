@@ -207,10 +207,26 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @Body('sessionId') bodySessionId?: string,
   ): Promise<{ success: boolean; message: string }> {
+    const accessToken =
+      (req as any)?.cookies?.['access_token'] ||
+      (req.headers['authorization'] as string)?.replace(/^Bearer\s+/i, '');
+
+    const refreshToken = (req as any)?.cookies?.['refresh_token'];
+
+    if (bodySessionId) {
+      await this.authService.logout(bodySessionId);
+    } else if (accessToken) {
+      await this.authService.logout(accessToken);
+    } else if (refreshToken) {
+      await this.authService.logout(refreshToken);
+    }
+
     this.clearAuthCookies(res);
-    return { success: true, message: 'Sessão encerrada e cookies limpos com sucesso.' };
+    return { success: true, message: 'Sessão encerrada e removida com sucesso.' };
   }
 
   // --- Segundo Fator de Autenticação (2FA) ---
