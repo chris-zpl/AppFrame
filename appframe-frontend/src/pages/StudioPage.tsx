@@ -92,6 +92,8 @@ export const StudioPage: React.FC = () => {
         previewError.toLowerCase().includes('confirm your age') ||
         previewError.toLowerCase().includes('cookies') ||
         previewError.toLowerCase().includes("not a bot") ||
+        previewError.toLowerCase().includes('restrição de idade') ||
+        previewError.toLowerCase().includes('conta global') ||
         previewError.toLowerCase().includes('authentication') ||
         previewError.toLowerCase().includes('login')),
   );
@@ -719,11 +721,26 @@ export const StudioPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Erro ao baixar vídeo para preview no Studio:', err);
-      const msg =
+      const rawMsg =
         err?.response?.data?.message ||
         'Não foi possível baixar o vídeo selecionado para visualização em tempo real.';
-      setPreviewError(Array.isArray(msg) ? msg[0] : msg);
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
+      const msgStr = Array.isArray(rawMsg) ? rawMsg[0] : String(rawMsg);
+      const isRestricted =
+        msgStr.toLowerCase().includes('sign in') ||
+        msgStr.toLowerCase().includes('confirm your age') ||
+        msgStr.toLowerCase().includes('cookies') ||
+        msgStr.toLowerCase().includes('not a bot') ||
+        msgStr.toLowerCase().includes('restrição de idade') ||
+        msgStr.toLowerCase().includes('conta global') ||
+        msgStr.toLowerCase().includes('authentication') ||
+        msgStr.toLowerCase().includes('login');
+
+      const friendlyMsg = isRestricted
+        ? 'Este vídeo possui restrição de idade (+18) do YouTube. O download requer autorização da conta global configurada no servidor (storage/cookies.txt).'
+        : msgStr;
+
+      setPreviewError(friendlyMsg);
+      toast.error(friendlyMsg);
     } finally {
       setIsPreparingPreview(false);
     }
@@ -1108,11 +1125,26 @@ export const StudioPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Falha ao gerar e baixar vídeo:', err);
-      const msg =
+      const rawMsg =
         err?.response?.data?.message ||
         err?.message ||
         'Falha ao gerar o vídeo. Verifique os parâmetros e tente novamente.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
+      const msgStr = Array.isArray(rawMsg) ? rawMsg[0] : String(rawMsg);
+      const isRestricted =
+        msgStr.toLowerCase().includes('sign in') ||
+        msgStr.toLowerCase().includes('confirm your age') ||
+        msgStr.toLowerCase().includes('cookies') ||
+        msgStr.toLowerCase().includes('not a bot') ||
+        msgStr.toLowerCase().includes('restrição de idade') ||
+        msgStr.toLowerCase().includes('conta global') ||
+        msgStr.toLowerCase().includes('authentication') ||
+        msgStr.toLowerCase().includes('login');
+
+      const friendlyMsg = isRestricted
+        ? 'Este vídeo possui restrição de idade (+18) do YouTube. O download requer autorização da conta global configurada no servidor (storage/cookies.txt).'
+        : msgStr;
+
+      toast.error(friendlyMsg);
     } finally {
       setIsGenerating(false);
       setRenderProgress(0);

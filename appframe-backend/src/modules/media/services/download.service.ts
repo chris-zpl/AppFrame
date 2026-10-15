@@ -208,6 +208,17 @@ export class DownloadService {
       }
     }
 
+    const isAgeOrBotRestricted =
+      lastError.includes('Sign in to confirm your age') ||
+      lastError.includes("confirm you're not a bot") ||
+      lastError.includes('--cookies');
+
+    if (isAgeOrBotRestricted) {
+      throw new BadRequestException(
+        'Este vídeo possui restrição de idade (+18) do YouTube. O download requer autorização da conta global configurada no servidor (storage/cookies.txt).',
+      );
+    }
+
     throw new BadRequestException(
       `Não foi possível baixar o vídeo selecionado (${lastError}).`,
     );
