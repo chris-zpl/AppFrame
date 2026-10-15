@@ -19,9 +19,9 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
-  // Rastreia a última rota protegida navegada para redirecionamento inteligente
+  // Rastreia a última rota protegida navegada para redirecionamento inteligente (ignora área administrativa)
   React.useEffect(() => {
-    if (isAuthenticated && !isPublicAuthRoute(location.pathname)) {
+    if (isAuthenticated && !isPublicAuthRoute(location.pathname) && !location.pathname.startsWith('/admin')) {
       try {
         sessionStorage.setItem('appframe_last_active_route', location.pathname + location.search);
       } catch {}
@@ -38,7 +38,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
@@ -47,7 +47,6 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
 // Componente para proteção de rotas exclusivas de administradores
 export const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -58,7 +57,7 @@ export const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.email === 'christian.zimpel@gmail.com';
@@ -74,7 +73,7 @@ export const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }
 // Componente para rotas públicas (impede usuário autenticado de acessar login/register)
 
 export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -95,12 +94,19 @@ export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children 
       lastActive = sessionStorage.getItem('appframe_last_active_route');
     } catch {}
 
-    const target =
+    let target =
       fromUrl && !isPublicAuthRoute(fromUrl)
         ? fromUrl
         : lastActive && !isPublicAuthRoute(lastActive)
         ? lastActive
         : '/varredura';
+
+    const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.email === 'christian.zimpel@gmail.com';
+    const isAdmin = isSuperAdmin || user?.role === 'ADMIN';
+
+    if (target.startsWith('/admin') && !isAdmin) {
+      target = '/varredura';
+    }
 
     return <Navigate to={target} replace />;
   }

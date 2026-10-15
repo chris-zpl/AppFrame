@@ -13,7 +13,7 @@ import { API_BASE_URL } from '../services/api';
 
 export const LoginPage: React.FC = () => {
   const { navigate, params } = useNavigation();
-  const { isAuthenticated, refreshProfile } = useAuth();
+  const { isAuthenticated, user, refreshProfile } = useAuth();
   const location = useLocation();
   const [email, setEmail] = useState(params.email || '');
   const [password, setPassword] = useState('');
@@ -36,16 +36,22 @@ export const LoginPage: React.FC = () => {
         lastActive = sessionStorage.getItem('appframe_last_active_route');
       } catch {}
 
-      const target =
+      let target =
         fromUrl && !isPublicAuthRoute(fromUrl)
           ? fromUrl
           : lastActive && !isPublicAuthRoute(lastActive)
           ? lastActive
           : '/varredura';
 
+      const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.email === 'christian.zimpel@gmail.com';
+      const isAdmin = isSuperAdmin || user?.role === 'ADMIN';
+      if (target.startsWith('/admin') && !isAdmin) {
+        target = '/varredura';
+      }
+
       navigate(target, { replace: true });
     }
-  }, [isAuthenticated, location.state, navigate]);
+  }, [isAuthenticated, location.state, navigate, user]);
 
   const handleGoogleLogin = () => {
     window.location.href = `${API_BASE_URL}/auth/google`;
@@ -73,7 +79,8 @@ export const LoginPage: React.FC = () => {
         navigate('2fa', { tempToken: data.tempToken || data.temp_token || '', email });
         return;
       }
-      await refreshProfile();
+      const loggedProfile = await refreshProfile();
+      const currentUser = loggedProfile || data.user || (data as any)?.data?.user || user;
 
       const fromPath = (location.state as any)?.from?.pathname;
       const fromSearch = (location.state as any)?.from?.search || '';
@@ -83,12 +90,18 @@ export const LoginPage: React.FC = () => {
         lastActive = sessionStorage.getItem('appframe_last_active_route');
       } catch {}
 
-      const target =
+      let target =
         fromUrl && !isPublicAuthRoute(fromUrl)
           ? fromUrl
           : lastActive && !isPublicAuthRoute(lastActive)
           ? lastActive
           : '/varredura';
+
+      const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.email === 'christian.zimpel@gmail.com';
+      const isAdmin = isSuperAdmin || currentUser?.role === 'ADMIN';
+      if (target.startsWith('/admin') && !isAdmin) {
+        target = '/varredura';
+      }
 
       navigate(target, { replace: true });
     } catch (err: any) {

@@ -99,6 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch {}
       setUser(null);
       setIsLoading(false);
+      window.location.replace('/login');
     }
   }, []);
 
@@ -143,6 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch {}
       setUser(null);
       setIsLoading(false);
+      window.location.replace('/login');
     };
 
     window.addEventListener('appframe-auth-logout', handleAuthLogout);

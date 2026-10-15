@@ -83,13 +83,21 @@ export const TwoFactorChallengePage: React.FC = () => {
     const tempToken = params.tempToken || '';
 
     try {
-      await verify2fa(tempToken, code);
+      const result = await verify2fa(tempToken, code);
+      const loggedUser = result?.user;
+      const isSuperAdmin = loggedUser?.role === 'SUPER_ADMIN' || loggedUser?.email === 'christian.zimpel@gmail.com';
+      const isAdmin = isSuperAdmin || loggedUser?.role === 'ADMIN';
+
       let lastActive: string | null = null;
       try {
         lastActive = sessionStorage.getItem('appframe_last_active_route');
       } catch {}
 
-      const target = lastActive && !isPublicAuthRoute(lastActive) ? lastActive : '/varredura';
+      let target = lastActive && !isPublicAuthRoute(lastActive) ? lastActive : '/varredura';
+      if (target.startsWith('/admin') && !isAdmin) {
+        target = '/varredura';
+      }
+
       navigate(target, { replace: true });
     } catch (err: any) {
       const msg =
