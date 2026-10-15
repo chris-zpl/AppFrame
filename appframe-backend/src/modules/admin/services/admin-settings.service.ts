@@ -93,8 +93,9 @@ export class AdminSettingsService {
     source: 'database' | 'environment' | 'none';
   }> {
     const dbKey = await this.getSetting('GEMINI_API_KEY');
-    const model = (await this.getSetting('GEMINI_MODEL')) ||
-      this.configService.get<string>('GEMINI_MODEL', 'gemini-2.5-flash');
+    const model =
+      (await this.getSetting('GEMINI_MODEL')) ||
+      this.configService.get<string>('GEMINI_MODEL', 'gemini-3.8-flash');
 
     if (dbKey) {
       return { configured: true, model, source: 'database' };
@@ -114,36 +115,77 @@ export class AdminSettingsService {
       throw new BadRequestException('Informe uma chave de API válida do Google AI Studio.');
     }
 
-    // Valida conexão com o Google Gemini antes de salvar
-    try {
-      const ai = new GoogleGenAI({ apiKey: cleanKey });
-      await ai.models.generateContent({
-        model: modelName || 'gemini-2.5-flash',
-        contents: 'Ping',
-      });
-    } catch (err: any) {
-      this.logger.warn(`Validação Gemini falhou com modelo primário: ${err.message}. Testando fallback...`);
+    const candidateModels = Array.from(
+      new Set(
+        [
+          modelName,
+          this.configService.get<string>('GEMINI_MODEL'),
+          'gemini-3.8-flash',
+          'gemini-3.5-flash-lite',
+          'gemini-3-flash-preview',
+          'gemini-3.1-flash-lite',
+          'gemini-3.5-flash',
+          'gemini-flash-latest',
+        ].filter(Boolean),
+      ),
+    ) as string[];
+
+    let validatedModel: string | null = null;
+    let lastError: any = null;
+
+    const ai = new GoogleGenAI({ apiKey: cleanKey });
+
+    for (const cand of candidateModels) {
       try {
-        const ai = new GoogleGenAI({ apiKey: cleanKey });
         await ai.models.generateContent({
-          model: 'gemini-1.5-flash',
+          model: cand,
           contents: 'Ping',
         });
-      } catch (fallbackErr: any) {
-        throw new BadRequestException(
-          `Chave de API do Gemini inválida ou sem permissão: ${fallbackErr.message || err.message}`,
-        );
+        validatedModel = cand;
+        break;
+      } catch (err: any) {
+        lastError = err;
+        this.logger.warn(`Validação Gemini com modelo ${cand} falhou: ${err.message}`);
       }
     }
 
-    await this.saveSetting('GEMINI_API_KEY', cleanKey, true);
-    if (modelName) {
-      await this.saveSetting('GEMINI_MODEL', modelName.trim(), false);
+    if (!validatedModel) {
+      try {
+        const response = await ai.models.list();
+        const list = (response as any)?.models || (Array.isArray(response) ? response : []);
+        const flashModel = list.find((m: any) => {
+          const name = (m?.name || '').toLowerCase();
+          const methods = m?.supportedGenerationMethods || [];
+          return (
+            (methods.includes('generateContent') || methods.length === 0) &&
+            (name.includes('flash') || name.includes('gemini'))
+          );
+        });
+        if (flashModel?.name) {
+          const modelToUse = flashModel.name.replace(/^models\//, '');
+          await ai.models.generateContent({
+            model: modelToUse,
+            contents: 'Ping',
+          });
+          validatedModel = modelToUse;
+        }
+      } catch (listErr: any) {
+        this.logger.warn(`Listagem de modelos alternativos do Gemini falhou: ${listErr.message}`);
+      }
     }
+
+    if (!validatedModel) {
+      throw new BadRequestException(
+        `Chave de API do Gemini inválida ou sem permissão: ${lastError?.message || 'Falha ao autenticar com os modelos disponíveis'}`,
+      );
+    }
+
+    await this.saveSetting('GEMINI_API_KEY', cleanKey, true);
+    await this.saveSetting('GEMINI_MODEL', validatedModel, false);
 
     return {
       success: true,
-      message: 'Chave global do Google Gemini validada e salva com sucesso!',
+      message: `Chave global do Google Gemini validada e salva com sucesso (modelo: ${validatedModel})!`,
     };
   }
 
@@ -154,21 +196,55 @@ export class AdminSettingsService {
       throw new BadRequestException('Nenhuma chave do Gemini está configurada no servidor.');
     }
 
-    const model = (await this.getSetting('GEMINI_MODEL')) || 'gemini-2.5-flash';
-    try {
-      const ai = new GoogleGenAI({ apiKey: key });
-      await ai.models.generateContent({
-        model,
-        contents: 'Teste de conexão AppFrame',
-      });
-      return {
-        success: true,
-        message: `Conexão com Google Gemini (${model}) estabelecida com sucesso!`,
-        model,
-      };
-    } catch (err: any) {
-      throw new BadRequestException(`Falha ao comunicar com Google Gemini: ${err.message}`);
+    const savedModel =
+      (await this.getSetting('GEMINI_MODEL')) ||
+      this.configService.get<string>('GEMINI_MODEL') ||
+      'gemini-3.8-flash';
+
+    const candidateModels = Array.from(
+      new Set(
+        [
+          savedModel,
+          'gemini-3.8-flash',
+          'gemini-3.5-flash-lite',
+          'gemini-3-flash-preview',
+          'gemini-flash-latest',
+        ].filter(Boolean),
+      ),
+    ) as string[];
+
+    const ai = new GoogleGenAI({ apiKey: key });
+    let workingModel: string | null = null;
+    let lastError: any = null;
+
+    for (const cand of candidateModels) {
+      try {
+        await ai.models.generateContent({
+          model: cand,
+          contents: 'Teste de conexão AppFrame',
+        });
+        workingModel = cand;
+        break;
+      } catch (err: any) {
+        lastError = err;
+      }
     }
+
+    if (!workingModel) {
+      throw new BadRequestException(
+        `Falha ao comunicar com Google Gemini: ${lastError?.message || 'Nenhum modelo compatível pôde ser acessado.'}`,
+      );
+    }
+
+    if (workingModel !== savedModel) {
+      await this.saveSetting('GEMINI_MODEL', workingModel, false);
+    }
+
+    return {
+      success: true,
+      message: `Conexão com Google Gemini (${workingModel}) estabelecida com sucesso!`,
+      model: workingModel,
+    };
   }
 
   async deleteGeminiApiKey(): Promise<{ success: boolean; message: string }> {

@@ -50,7 +50,7 @@ export class GeminiService {
     @Inject(forwardRef(() => FFmpegService))
     private readonly ffmpegService?: FFmpegService,
   ) {
-    this.modelName = this.configService.get<string>('GEMINI_MODEL', 'gemini-2.5-flash');
+    this.modelName = this.configService.get<string>('GEMINI_MODEL', 'gemini-3.8-flash');
     this.ensureDirs();
   }
 
@@ -108,22 +108,20 @@ export class GeminiService {
     const defaultCandidates = isAudio
       ? [
           params.model || this.modelName,
+          'gemini-3.8-flash',
           'gemini-3.5-flash-lite',
           'gemini-3-flash-preview',
-          'gemini-3.8-flash',
           'gemini-3.8-flash-tts',
           'gemini-flash-latest',
         ]
       : [
           params.model || this.modelName,
+          'gemini-3.8-flash',
           'gemini-3.5-flash-lite',
           'gemini-3-flash-preview',
           'gemini-3.1-flash-lite',
-          'gemini-3.8-flash',
           'gemini-3.5-flash',
           'gemini-flash-latest',
-          'gemini-2.5-flash',
-          'gemini-2.5-flash-lite',
         ];
 
     const candidateModels = Array.from(new Set(defaultCandidates)).filter(Boolean);
