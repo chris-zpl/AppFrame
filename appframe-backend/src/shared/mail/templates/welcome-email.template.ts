@@ -112,7 +112,7 @@ export function getWelcomeEmailHtml(options: WelcomeEmailOptions = {}): string {
                 <strong style="color: #111827; font-weight: 700;">Importação fácil</strong> de YouTube, Instagram e TikTok.
               </p>
               <p style="margin: 0 0 8px 0;">
-                <strong style="color: #111827; font-weight: 700;">Crie Shorts, Reels e afins</strong> dinâmicos e rápidos.
+                <strong style="color: #111827; font-weight: 700;">Crie vídeos</strong> dinâmicos e rápidos.
               </p>
               <p style="margin: 0;">
                 <strong style="color: #111827; font-weight: 700;">Legendas automáticas</strong> geradas por IA ou legenda fixa.

@@ -508,8 +508,9 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       // 3. Três Tópicos de Recursos da Imagem de Referência
       expect(html).toContain('Importação fácil');
       expect(html).toContain('YouTube, Instagram e TikTok');
-      expect(html).toContain('Crie Shorts, Reels e afins');
+      expect(html).toContain('Crie vídeos');
       expect(html).toContain('dinâmicos e rápidos');
+
       expect(html).toContain('Legendas automáticas');
       expect(html).toContain('geradas por IA ou legenda fixa');
 
