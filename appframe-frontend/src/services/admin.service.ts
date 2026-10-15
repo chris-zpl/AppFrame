@@ -23,6 +23,7 @@ export interface AdminSession {
   created_at: string;
   expires_at: string;
   is_current: boolean;
+  user_role?: 'SUPER_ADMIN' | 'ADMIN' | 'USER';
 }
 
 export interface SmtpConfig {

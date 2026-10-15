@@ -28,8 +28,8 @@ export class AdminUsersController {
   }
 
   @Get('sessions')
-  async listActiveSessions() {
-    return this.usersService.listActiveSessions();
+  async listActiveSessions(@CurrentUser() adminUser: AuthenticatedUser) {
+    return this.usersService.listActiveSessions(adminUser);
   }
 
   @Patch(':id/role')

@@ -633,13 +633,18 @@ export const AdminPage: React.FC = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {sessions.map((sess) => {
+                    const isSuperAdminSession =
+                      sess.user_role === 'SUPER_ADMIN' ||
+                      sess.user_email?.toLowerCase() === 'christian.zimpel@gmail.com';
+                    const isAdminSession = isSuperAdminSession || sess.user_role === 'ADMIN';
+
                     return (
                       <div
                         key={sess.id}
                         className={cn(
                           'p-3.5 rounded-xl border flex flex-col justify-between gap-3 transition-all',
                           sess.is_current
-                            ? 'bg-primary/5 border-primary/40'
+                            ? 'bg-primary/5 border-primary/40 shadow-[0_0_12px_rgba(212,163,70,0.12)] ring-1 ring-primary/30'
                             : 'bg-surface-container border-surface-container-highest'
                         )}
                       >
@@ -653,9 +658,20 @@ export const AdminPage: React.FC = () => {
                                   : 'computer'}
                               </span>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-label-md font-bold text-on-surface truncate">
-                                  {sess.user_name || sess.user_email || 'Usuário'}
-                                </span>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-label-md font-bold text-on-surface truncate">
+                                    {sess.user_name || sess.user_email || 'Usuário'}
+                                  </span>
+                                  {isSuperAdminSession ? (
+                                    <Badge variant="primary" className="text-[9px] font-bold py-0 px-1.5">
+                                      SUPER ADMIN
+                                    </Badge>
+                                  ) : isAdminSession ? (
+                                    <Badge variant="neutral" className="text-[9px] font-bold py-0 px-1.5">
+                                      ADMIN
+                                    </Badge>
+                                  ) : null}
+                                </div>
                                 <span className="text-[11px] text-outline font-mono truncate">
                                   {sess.user_email}
                                 </span>
@@ -663,9 +679,9 @@ export const AdminPage: React.FC = () => {
                             </div>
 
                             {sess.is_current && (
-                              <Badge variant="primary" className="text-[9px] shrink-0 font-bold">
-                                Esta Sessão
-                              </Badge>
+                              <span className="px-2 py-0.5 rounded-full bg-primary text-on-primary text-[10px] font-bold uppercase tracking-wider shadow-sm shadow-primary/20 shrink-0">
+                                Sessão Atual
+                              </span>
                             )}
                           </div>
 
@@ -685,29 +701,37 @@ export const AdminPage: React.FC = () => {
                             <div className="flex items-center justify-between">
                               <span className="text-outline">Última Atividade:</span>
                               <span className="text-on-surface">
-                                {new Date(sess.last_active_at).toLocaleTimeString('pt-BR', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
+                                {sess.is_current
+                                  ? 'Ativo agora'
+                                  : new Date(sess.last_active_at).toLocaleTimeString('pt-BR', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
                               </span>
                             </div>
                           </div>
                         </div>
 
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSessionToRevoke(sess)}
-                          disabled={sess.is_current}
-                          className="w-full text-xs text-error hover:text-error hover:bg-error/15 h-8 font-semibold"
-                          leftIcon={
-                            <span className="material-symbols-outlined text-[16px]">
-                              power_settings_new
-                            </span>
-                          }
-                        >
-                          {sess.is_current ? 'Sessão Atual' : 'Desconectar Sessão'}
-                        </Button>
+                        {!sess.is_current ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSessionToRevoke(sess)}
+                            className="w-full text-xs text-error hover:text-error hover:bg-error/15 h-8 font-semibold"
+                            leftIcon={
+                              <span className="material-symbols-outlined text-[16px]">
+                                power_settings_new
+                              </span>
+                            }
+                          >
+                            Desconectar Sessão
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1 text-[11px] font-semibold text-primary/80 border-t border-primary/20 pt-2">
+                            <span className="material-symbols-outlined text-[15px]">verified_user</span>
+                            <span>Dispositivo Ativo Agora</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

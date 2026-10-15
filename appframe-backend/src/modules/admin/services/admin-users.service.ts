@@ -35,6 +35,7 @@ export interface ActiveSessionItem {
   last_active_at: Date;
   created_at: Date;
   expires_at: Date;
+  is_current: boolean;
 }
 
 @Injectable()
@@ -183,9 +184,9 @@ export class AdminUsersService {
   }
 
   /**
-   * Lista todas as sessões ativas (logadas) na plataforma.
+   * Lista todas as sessões ativas (logadas) na plataforma, identificando a sessão atual do administrador.
    */
-  async listActiveSessions(): Promise<ActiveSessionItem[]> {
+  async listActiveSessions(currentAdmin?: AuthenticatedUser): Promise<ActiveSessionItem[]> {
     const now = new Date();
     const sessions = await this.sessionRepository.find({
       where: {
@@ -202,6 +203,10 @@ export class AdminUsersService {
         role = UserRole.SUPER_ADMIN;
       }
 
+      const isCurrent = Boolean(
+        currentAdmin?.sessionId && s.id === currentAdmin.sessionId,
+      );
+
       return {
         id: s.id,
         user_id: s.user_id,
@@ -214,6 +219,7 @@ export class AdminUsersService {
         last_active_at: s.last_active_at,
         created_at: s.created_at,
         expires_at: s.expires_at,
+        is_current: isCurrent,
       };
     });
   }
