@@ -5,6 +5,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
@@ -25,6 +26,11 @@ export class AdminUsersController {
   @Get()
   async listUsers() {
     return this.usersService.listUsers();
+  }
+
+  @Get('audit-logs')
+  async getAuditLogs(@Query('userId') userId?: string) {
+    return this.usersService.getAuditLogs(userId);
   }
 
   @Get('sessions')

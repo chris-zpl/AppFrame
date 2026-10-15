@@ -28,6 +28,8 @@ import { Verify2faDto } from './dto/request/verify-2fa.dto';
 import { ChangePasswordDto } from './dto/request/change-password.dto';
 import { DeleteAccountDto } from './dto/request/delete-account.dto';
 import { UpdateProfileDto } from './dto/request/update-profile.dto';
+import { ForgotPasswordDto } from './dto/request/forgot-password.dto';
+import { ResetPasswordDto } from './dto/request/reset-password.dto';
 
 import { AuthResponseDto } from './dto/response/auth-response.dto';
 import { Generate2faResponseDto } from './dto/response/generate-2fa-response.dto';
@@ -143,6 +145,7 @@ export class AuthController {
       const linkResult = await this.authService.linkGoogleAccount(
         linkUserId,
         googleProfile,
+        meta,
       );
 
       if (!linkResult.success || !linkResult.user) {
@@ -288,8 +291,9 @@ export class AuthController {
   async enable2fa(
     @CurrentUser('userId') userId: string,
     @Body() dto: Enable2faDto,
+    @Req() req: Request,
   ): Promise<{ success: boolean }> {
-    return this.authService.enable2fa(userId, dto);
+    return this.authService.enable2fa(userId, dto, this.extractMeta(req));
   }
 
   @Post('2fa/disable')
@@ -297,8 +301,9 @@ export class AuthController {
   async disable2fa(
     @CurrentUser('userId') userId: string,
     @Body('token') token: string,
+    @Req() req: Request,
   ): Promise<{ success: boolean }> {
-    return this.authService.disable2fa(userId, token);
+    return this.authService.disable2fa(userId, token, this.extractMeta(req));
   }
 
   @Get('2fa/recovery-codes')
@@ -343,8 +348,9 @@ export class AuthController {
   async updateProfile(
     @CurrentUser('userId') userId: string,
     @Body() dto: UpdateProfileDto,
+    @Req() req: Request,
   ) {
-    return this.authService.updateProfile(userId, dto);
+    return this.authService.updateProfile(userId, dto, this.extractMeta(req));
   }
 
   @Post('google/unlink')
@@ -352,8 +358,9 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async unlinkGoogle(
     @CurrentUser('userId') userId: string,
+    @Req() req: Request,
   ) {
-    return this.authService.unlinkGoogle(userId);
+    return this.authService.unlinkGoogle(userId, this.extractMeta(req));
   }
 
   // --- Gerenciamento de Sessões ---
@@ -371,8 +378,9 @@ export class AuthController {
   async revokeSession(
     @CurrentUser('userId') userId: string,
     @Param('id', new ParseUUIDPipe()) sessionId: string,
+    @Req() req: Request,
   ): Promise<{ revoked: boolean }> {
-    return this.authService.revokeSession(userId, sessionId);
+    return this.authService.revokeSession(userId, sessionId, this.extractMeta(req));
   }
 
   @Post('sessions/revoke-others')
@@ -380,8 +388,9 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async revokeOthers(
     @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
   ): Promise<{ revokedCount: number }> {
-    return this.authService.revokeOtherSessions(user.userId, user.sessionId);
+    return this.authService.revokeOtherSessions(user.userId, user.sessionId, this.extractMeta(req));
   }
 
   // --- Perfil e Ciclo de Vida ---
@@ -391,8 +400,9 @@ export class AuthController {
   async changePassword(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ChangePasswordDto,
+    @Req() req: Request,
   ): Promise<{ success: boolean }> {
-    return this.authService.changePassword(user.userId, user.sessionId, dto);
+    return this.authService.changePassword(user.userId, user.sessionId, dto, this.extractMeta(req));
   }
 
   @Delete('account')
@@ -405,5 +415,25 @@ export class AuthController {
     const result = await this.authService.deleteAccount(userId, dto);
     this.clearAuthCookies(res);
     return result;
+  }
+
+  // --- Redefinição de Senha (Fluxo Público) ---
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+    @Req() req: Request,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.authService.requestPasswordReset(dto.email, this.extractMeta(req));
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+    @Req() req: Request,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.authService.resetPassword(dto, this.extractMeta(req));
   }
 }

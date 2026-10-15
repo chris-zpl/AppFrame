@@ -17,6 +17,10 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../src/modules/auth/auth.service';
 import { UserResponseDto } from '../src/modules/users/dto/response/user-response.dto';
 import { getWelcomeEmailHtml } from '../src/shared/mail/templates/welcome-email.template';
+import { getResetPasswordEmailHtml } from '../src/shared/mail/templates/reset-password-email.template';
+import { SecurityAuditService } from '../src/core/security/security-audit.service';
+import { RedisService } from '../src/core/redis/redis.service';
+import { SecurityAuditEvent } from '../src/core/security/entities/security-audit-log.entity';
 
 
 
@@ -126,6 +130,7 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
           { provide: getRepositoryToken(User), useValue: mockUserRepo },
           { provide: getRepositoryToken(UserSession), useValue: mockSessionRepo },
           { provide: getRepositoryToken(VideoJob), useValue: mockJobRepo },
+          { provide: SecurityAuditService, useValue: { logEvent: jest.fn(), findLogs: jest.fn() } },
         ],
       }).compile();
 
@@ -311,6 +316,16 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       };
       const mockMail = {
         sendWelcomeEmail: jest.fn().mockResolvedValue(true),
+        sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
+      };
+      const mockRedis = {
+        get: jest.fn().mockResolvedValue(null),
+        set: jest.fn().mockResolvedValue('OK'),
+        del: jest.fn().mockResolvedValue(1),
+      };
+      const mockAudit = {
+        logEvent: jest.fn().mockResolvedValue({}),
+        findLogs: jest.fn().mockResolvedValue([]),
       };
       authService = new AuthService(
         mockUserRepo as any,
@@ -323,6 +338,8 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
         {} as any,
         {} as any,
         mockMail as any,
+        mockRedis as any,
+        mockAudit as any,
       );
     });
 
@@ -519,6 +536,297 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       expect(html).toContain('Acessar Plataforma');
       expect(html).toContain('background-color: #D4A346');
       expect(html).toContain('https://appframe.io/login');
+    });
+  });
+
+  describe('7.6 Fluxo de Redefinição de Senha (1h de expiração) e Trilha de Auditoria de Segurança', () => {
+    let authService: AuthService;
+    let mockUserRepo: any;
+    let mockSessionRepo: any;
+    let mockRedis: any;
+    let mockAudit: any;
+    let mockMail: any;
+
+    beforeEach(() => {
+      mockUserRepo = {
+        findOne: jest.fn(),
+        save: jest.fn((u) => Promise.resolve(u)),
+      };
+      mockSessionRepo = {
+        find: jest.fn(),
+        findOne: jest.fn(),
+        save: jest.fn((s) => Promise.resolve(s)),
+        update: jest.fn().mockResolvedValue({ affected: 2 }),
+      };
+      mockMail = {
+        sendWelcomeEmail: jest.fn().mockResolvedValue(true),
+        sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
+      };
+      mockRedis = {
+        get: jest.fn().mockResolvedValue(null),
+        set: jest.fn().mockResolvedValue('OK'),
+        del: jest.fn().mockResolvedValue(1),
+      };
+      mockAudit = {
+        logEvent: jest.fn().mockResolvedValue({}),
+        findLogs: jest.fn().mockResolvedValue([]),
+      };
+
+      const mockJwt = {
+        sign: jest.fn(() => 'jwt-test-token'),
+        verify: jest.fn(),
+      };
+      const mockConfig = {
+        get: jest.fn((k: string, def?: any) => def),
+      };
+      const mockTwoFactor = {
+        verifyToken: jest.fn().mockReturnValue(true),
+      };
+      const mockEncryption = {
+        decrypt: jest.fn((t) => t),
+        encrypt: jest.fn((t) => t),
+      };
+
+      authService = new AuthService(
+        mockUserRepo as any,
+        mockSessionRepo as any,
+        {} as any,
+        {} as any,
+        mockJwt as any,
+        mockConfig as any,
+        mockTwoFactor as any,
+        mockEncryption as any,
+        {} as any,
+        mockMail as any,
+        mockRedis as any,
+        mockAudit as any,
+      );
+    });
+
+    it('deve renderizar o template de e-mail de redefinição de senha com layout idêntico à imagem de referência', () => {
+      const html = getResetPasswordEmailHtml({
+        name: 'Christian',
+        appUrl: 'https://appframe.io',
+        resetToken: 'secure-token-123456789',
+      });
+
+      // 1. Identidade Visual e Header
+      expect(html).toContain('AppFrame');
+      expect(html).toContain('appframe-amber-grad-reset');
+
+      // 2. Título Central Oficial
+      expect(html).toContain('Redefinir senha');
+
+      // 3. Mensagem Explicativa
+      expect(html).toContain('Recebemos uma solicitação para redefinir a sua senha.');
+
+      // 4. Botão com link seguro e cor do sistema
+      expect(html).toContain('https://appframe.io/reset-password?token=secure-token-123456789');
+      expect(html).toContain('#D99E41');
+      expect(html).toContain('btn-reset');
+
+      // 5. Nota de Expiração Estrita de 1 Hora e Segurança
+      expect(html).toContain('O link expira em 1 hora. Se você não solicitou, ignore este e-mail.');
+    });
+
+    it('deve gerar token no Redis com expiração estrita de 1 hora (3600 segundos) e registrar evento no log de auditoria', async () => {
+      const user = {
+        id: 'user-reset-1',
+        name: 'Christian Zimpel',
+        email: 'christian.zimpel@gmail.com',
+      };
+      mockUserRepo.findOne.mockResolvedValue(user);
+
+      const result = await authService.requestPasswordReset('christian.zimpel@gmail.com', {
+        ip: '200.100.50.25',
+        userAgent: 'Mozilla/5.0 Mac OS X',
+      });
+
+      expect(result.success).toBe(true);
+
+      // Valida gravação no Redis com TTL de 3600s (1 hora)
+      expect(mockRedis.set).toHaveBeenCalledWith(
+        expect.stringMatching(/^pwd_reset:/),
+        expect.stringContaining('user-reset-1'),
+        'EX',
+        3600,
+      );
+      expect(mockRedis.set).toHaveBeenCalledWith(
+        'user_pwd_reset:user-reset-1',
+        expect.any(String),
+        'EX',
+        3600,
+      );
+
+      // Valida disparo do e-mail oficial
+      expect(mockMail.sendPasswordResetEmail).toHaveBeenCalledWith(
+        'christian.zimpel@gmail.com',
+        expect.any(String),
+        'Christian Zimpel',
+      );
+
+      // Valida registro de auditoria persistente
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-reset-1',
+          action: SecurityAuditEvent.PASSWORD_RESET_REQUESTED,
+          ipAddress: '200.100.50.25',
+          userAgent: 'Mozilla/5.0 Mac OS X',
+        }),
+      );
+    });
+
+    it('deve redefinir a senha com sucesso, invalidar o token no Redis, desconectar todas as sessões e registrar logs', async () => {
+      const user = {
+        id: 'user-reset-1',
+        email: 'christian.zimpel@gmail.com',
+        password_hash: 'old_hash',
+      };
+      mockUserRepo.findOne.mockResolvedValue(user);
+      mockRedis.get.mockResolvedValue(
+        JSON.stringify({ userId: 'user-reset-1', email: 'christian.zimpel@gmail.com' }),
+      );
+
+      const result = await authService.resetPassword(
+        { token: 'valid-token-abc', newPassword: 'NovaSenhaUltraSegura123!' },
+        { ip: '177.10.20.30', userAgent: 'Chrome/120' },
+      );
+
+      expect(result.success).toBe(true);
+      expect(user.password_hash).not.toBe('old_hash');
+      expect(mockUserRepo.save).toHaveBeenCalledWith(user);
+
+      // Invalidação imediata do token no Redis (não permite reuso)
+      expect(mockRedis.del).toHaveBeenCalledWith(expect.stringMatching(/^pwd_reset:/));
+      expect(mockRedis.del).toHaveBeenCalledWith('user_pwd_reset:user-reset-1');
+
+      // Revogação de todas as sessões ativas do usuário
+      expect(mockSessionRepo.update).toHaveBeenCalledWith(
+        { user_id: 'user-reset-1', is_revoked: false },
+        { is_revoked: true },
+      );
+
+      // Logs de auditoria: PASSWORD_RESET_COMPLETED e ALL_SESSIONS_REVOKED
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-reset-1',
+          action: SecurityAuditEvent.PASSWORD_RESET_COMPLETED,
+        }),
+      );
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-reset-1',
+          action: SecurityAuditEvent.ALL_SESSIONS_REVOKED,
+        }),
+      );
+    });
+
+    it('deve falhar a redefinição se o token for inválido ou tiver expirado após 1 hora', async () => {
+      mockRedis.get.mockResolvedValue(null); // Expirado ou inexistente no Redis
+
+      await expect(
+        authService.resetPassword({
+          token: 'expired-or-invalid-token',
+          newPassword: 'NovaSenha123!',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('deve revogar qualquer token de redefinição no Redis e registrar logs quando o usuário alterar a senha autenticado', async () => {
+      const user = {
+        id: 'user-1',
+        email: 'christian@appframe.io',
+        password_hash: null, // Sem senha anterior para simplificar validação
+      };
+      mockUserRepo.findOne.mockResolvedValue(user);
+      mockRedis.get.mockResolvedValue('pending-token-hash-123'); // Havia um token de redefinição pendente
+
+      await authService.changePassword(
+        'user-1',
+        'current-session-id',
+        { newPassword: 'NovissimaSenha123' },
+        { ip: '10.0.0.1', userAgent: 'Firefox' },
+      );
+
+      // O token pendente no Redis deve ter sido revogado imediatamente
+      expect(mockRedis.del).toHaveBeenCalledWith('pwd_reset:pending-token-hash-123');
+      expect(mockRedis.del).toHaveBeenCalledWith('user_pwd_reset:user-1');
+
+      // Logs de auditoria
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          action: SecurityAuditEvent.PASSWORD_CHANGED,
+        }),
+      );
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          action: SecurityAuditEvent.ALL_SESSIONS_REVOKED,
+        }),
+      );
+    });
+
+    it('deve registrar eventos de auditoria ao alterar perfil, 2FA, sessões e conta Google', async () => {
+      const user = {
+        id: 'user-audit-1',
+        name: 'Nome Antigo',
+        email: 'antigo@appframe.io',
+        totp_secret: 'secret-123',
+        is_two_factor_enabled: true,
+        password_hash: 'hash-123',
+        google_id: 'google-123',
+        google_email: 'antigo@appframe.io',
+      };
+      mockUserRepo.findOne.mockResolvedValue(user);
+
+      const meta = { ip: '127.0.0.1', userAgent: 'Jest-Runner' };
+
+      // 1. Alteração de Nome
+      await authService.updateProfile('user-audit-1', { name: 'Nome Atualizado' }, meta);
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-audit-1',
+          action: SecurityAuditEvent.PROFILE_NAME_CHANGED,
+        }),
+      );
+
+      // 2. Desativação do 2FA
+      await authService.disable2fa('user-audit-1', '123456', meta);
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-audit-1',
+          action: SecurityAuditEvent.TWO_FACTOR_DISABLED,
+        }),
+      );
+
+      // 3. Desconexão de uma sessão específica
+      mockSessionRepo.findOne.mockResolvedValue({ id: 'sess-target', user_id: 'user-audit-1', device_name: 'Chrome' });
+      await authService.revokeSession('user-audit-1', 'sess-target', meta);
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-audit-1',
+          action: SecurityAuditEvent.SESSION_REVOKED,
+        }),
+      );
+
+      // 4. Desconexão de todas as outras sessões
+      await authService.revokeOtherSessions('user-audit-1', 'current-sess', meta);
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-audit-1',
+          action: SecurityAuditEvent.ALL_SESSIONS_REVOKED,
+        }),
+      );
+
+      // 5. Desvinculação de conta Google
+      await authService.unlinkGoogle('user-audit-1', meta);
+      expect(mockAudit.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-audit-1',
+          action: SecurityAuditEvent.GOOGLE_ACCOUNT_UNLINKED,
+        }),
+      );
     });
   });
 });

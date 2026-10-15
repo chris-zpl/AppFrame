@@ -12,6 +12,7 @@ import {
   HistoryPage,
   SettingsPage,
   AdminPage,
+  ResetPasswordPage,
 } from '../pages';
 
 // Componente para proteção de rotas privadas
@@ -215,6 +216,14 @@ export const AppRoutes: React.FC = () => {
         element={
           <PublicRoute>
             <RegisterPage />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <PublicRoute>
+            <ResetPasswordPage />
           </PublicRoute>
         }
       />

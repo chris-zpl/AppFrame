@@ -28,6 +28,8 @@ import { Verify2faDto } from './dto/request/verify-2fa.dto';
 import { ChangePasswordDto } from './dto/request/change-password.dto';
 import { DeleteAccountDto } from './dto/request/delete-account.dto';
 import { UpdateProfileDto } from './dto/request/update-profile.dto';
+import { ForgotPasswordDto } from './dto/request/forgot-password.dto';
+import { ResetPasswordDto } from './dto/request/reset-password.dto';
 
 import { AuthResponseDto } from './dto/response/auth-response.dto';
 import { Generate2faResponseDto } from './dto/response/generate-2fa-response.dto';
@@ -38,6 +40,9 @@ import { TwoFactorService } from './services/two-factor.service';
 import { EncryptionService } from '../../core/security/encryption.service';
 import { StorageService } from '../../shared/storage/storage.service';
 import { MailService } from '../../shared/mail/mail.service';
+import { RedisService } from '../../core/redis/redis.service';
+import { SecurityAuditService } from '../../core/security/security-audit.service';
+import { SecurityAuditEvent } from '../../core/security/entities/security-audit-log.entity';
 import { DeviceDetectorHelper } from './helpers/device-detector.helper';
 import { GoogleProfile } from './strategies/google.strategy';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
@@ -69,6 +74,8 @@ export class AuthService {
     private readonly encryptionService: EncryptionService,
     private readonly storageService: StorageService,
     private readonly mailService: MailService,
+    private readonly redisService: RedisService,
+    private readonly auditService: SecurityAuditService,
   ) {
 
     this.jwtExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN', '15m');
@@ -430,7 +437,7 @@ export class AuthService {
     };
   }
 
-  async enable2fa(userId: string, dto: Enable2faDto): Promise<{ success: boolean }> {
+  async enable2fa(userId: string, dto: Enable2faDto, meta?: SessionMeta): Promise<{ success: boolean }> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user || !user.totp_secret) {
       throw new BadRequestException('Gere a chave 2FA antes de ativá-la.');
@@ -446,10 +453,17 @@ export class AuthService {
     user.is_two_factor_enabled = true;
     await this.userRepository.save(user);
 
+    await this.auditService.logEvent({
+      userId: user.id,
+      action: SecurityAuditEvent.TWO_FACTOR_ENABLED,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+    });
+
     return { success: true };
   }
 
-  async disable2fa(userId: string, token: string): Promise<{ success: boolean }> {
+  async disable2fa(userId: string, token: string, meta?: SessionMeta): Promise<{ success: boolean }> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user || !user.is_two_factor_enabled || !user.totp_secret) {
       throw new BadRequestException('2FA não está ativo nesta conta.');
@@ -466,6 +480,13 @@ export class AuthService {
     user.totp_secret = null;
     user.recovery_codes = null;
     await this.userRepository.save(user);
+
+    await this.auditService.logEvent({
+      userId: user.id,
+      action: SecurityAuditEvent.TWO_FACTOR_DISABLED,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+    });
 
     return { success: true };
   }
@@ -536,7 +557,7 @@ export class AuthService {
     return ActiveSessionResponseDto.fromEntities(sessions, currentSessionId);
   }
 
-  async revokeSession(userId: string, sessionId: string): Promise<{ revoked: boolean }> {
+  async revokeSession(userId: string, sessionId: string, meta?: SessionMeta): Promise<{ revoked: boolean }> {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId, user_id: userId },
     });
@@ -545,12 +566,22 @@ export class AuthService {
     }
     session.is_revoked = true;
     await this.sessionRepository.save(session);
+
+    await this.auditService.logEvent({
+      userId,
+      action: SecurityAuditEvent.SESSION_REVOKED,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      metadata: { revokedSessionId: sessionId, deviceName: session.device_name },
+    });
+
     return { revoked: true };
   }
 
   async revokeOtherSessions(
     userId: string,
     currentSessionId: string,
+    meta?: SessionMeta,
   ): Promise<{ revokedCount: number }> {
     const result = await this.sessionRepository.update(
       {
@@ -560,7 +591,18 @@ export class AuthService {
       },
       { is_revoked: true },
     );
-    return { revokedCount: result.affected || 0 };
+
+    const revokedCount = result.affected || 0;
+
+    await this.auditService.logEvent({
+      userId,
+      action: SecurityAuditEvent.ALL_SESSIONS_REVOKED,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      metadata: { currentSessionId, revokedCount },
+    });
+
+    return { revokedCount };
   }
 
   /**
@@ -605,6 +647,7 @@ export class AuthService {
     userId: string,
     currentSessionId: string,
     dto: ChangePasswordDto,
+    meta?: SessionMeta,
   ): Promise<{ success: boolean }> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
@@ -629,11 +672,34 @@ export class AuthService {
     user.password_hash = this.hashPassword(dto.newPassword);
     await this.userRepository.save(user);
 
+    // Invalida qualquer token de redefinição pendente deste usuário no Redis
+    const pendingTokenHash = await this.redisService.get(`user_pwd_reset:${userId}`);
+    if (pendingTokenHash) {
+      await this.redisService.del(`pwd_reset:${pendingTokenHash}`);
+      await this.redisService.del(`user_pwd_reset:${userId}`);
+    }
+
     // Invalida todas as outras sessões ativas por segurança
     await this.sessionRepository.update(
       { user_id: userId, id: Not(currentSessionId) },
       { is_revoked: true },
     );
+
+    await this.auditService.logEvent({
+      userId,
+      action: SecurityAuditEvent.PASSWORD_CHANGED,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      metadata: { currentSessionId },
+    });
+
+    await this.auditService.logEvent({
+      userId,
+      action: SecurityAuditEvent.ALL_SESSIONS_REVOKED,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      metadata: { currentSessionId, reason: 'change_password' },
+    });
 
     return { success: true };
   }
@@ -709,11 +775,16 @@ export class AuthService {
     return UserResponseDto.fromEntity(user)!;
   }
 
-  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UserResponseDto> {
+  async updateProfile(userId: string, dto: UpdateProfileDto, meta?: SessionMeta): Promise<UserResponseDto> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('Usuário não encontrado.');
     }
+
+    const oldEmail = user.email;
+    const oldName = user.name;
+    let emailChanged = false;
+    let nameChanged = false;
 
     if (dto.email) {
       const emailNormalized = dto.email.trim().toLowerCase();
@@ -739,18 +810,41 @@ export class AuthService {
         }
         user.email = emailNormalized;
         user.email_changed_at = new Date();
+        emailChanged = true;
       }
     }
 
-    if (dto.name) {
+    if (dto.name && dto.name.trim() !== user.name) {
       user.name = dto.name.trim();
+      nameChanged = true;
     }
 
     const saved = await this.userRepository.save(user);
+
+    if (emailChanged) {
+      await this.auditService.logEvent({
+        userId,
+        action: SecurityAuditEvent.PROFILE_EMAIL_CHANGED,
+        ipAddress: meta?.ip,
+        userAgent: meta?.userAgent,
+        metadata: { oldEmail, newEmail: saved.email },
+      });
+    }
+
+    if (nameChanged) {
+      await this.auditService.logEvent({
+        userId,
+        action: SecurityAuditEvent.PROFILE_NAME_CHANGED,
+        ipAddress: meta?.ip,
+        userAgent: meta?.userAgent,
+        metadata: { oldName, newName: saved.name },
+      });
+    }
+
     return UserResponseDto.fromEntity(saved)!;
   }
 
-  async unlinkGoogle(userId: string): Promise<UserResponseDto> {
+  async unlinkGoogle(userId: string, meta?: SessionMeta): Promise<UserResponseDto> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('Usuário não encontrado.');
@@ -764,6 +858,14 @@ export class AuthService {
     user.google_email = null;
     user.auth_provider = AuthProvider.LOCAL;
     const saved = await this.userRepository.save(user);
+
+    await this.auditService.logEvent({
+      userId,
+      action: SecurityAuditEvent.GOOGLE_ACCOUNT_UNLINKED,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+    });
+
     return UserResponseDto.fromEntity(saved)!;
   }
 
@@ -812,6 +914,7 @@ export class AuthService {
   async linkGoogleAccount(
     userId: string,
     profile: GoogleProfile,
+    meta?: SessionMeta,
   ): Promise<{ success: boolean; error?: string; user?: User }> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
@@ -853,7 +956,152 @@ export class AuthService {
     }
 
     const saved = await this.userRepository.save(user);
+
+    await this.auditService.logEvent({
+      userId,
+      action: SecurityAuditEvent.GOOGLE_ACCOUNT_LINKED,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      metadata: { googleEmail: emailNormalized, googleId: profile.googleId },
+    });
+
     return { success: true, user: saved };
+  }
+
+  // --- Redefinição de Senha (Recuperação no Login) ---
+
+  async requestPasswordReset(
+    email: string,
+    meta?: SessionMeta,
+  ): Promise<{ success: boolean; message: string }> {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const genericMessage =
+      'Se o e-mail informado estiver cadastrado em nossa base, você receberá um link com instruções para redefinir a sua senha em instantes.';
+
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: true, message: genericMessage };
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { email: cleanEmail },
+    });
+
+    if (!user) {
+      await this.auditService.logEvent({
+        userId: null,
+        action: SecurityAuditEvent.PASSWORD_RESET_REQUESTED,
+        ipAddress: meta?.ip,
+        userAgent: meta?.userAgent,
+        metadata: { email: cleanEmail, userFound: false },
+      });
+      return { success: true, message: genericMessage };
+    }
+
+    // 1. Gera token criptograficamente seguro (32 bytes = 64 chars hex)
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(rawToken);
+
+    // 2. Se já existia um token ativo para este usuário, revoga o anterior no Redis
+    const previousTokenHash = await this.redisService.get(`user_pwd_reset:${user.id}`);
+    if (previousTokenHash) {
+      await this.redisService.del(`pwd_reset:${previousTokenHash}`);
+      await this.redisService.del(`user_pwd_reset:${user.id}`);
+    }
+
+    // 3. Armazena no Redis com expiração estrita de 1 hora (3600 segundos)
+    await this.redisService.set(
+      `pwd_reset:${tokenHash}`,
+      JSON.stringify({ userId: user.id, email: user.email }),
+      'EX',
+      3600,
+    );
+    await this.redisService.set(
+      `user_pwd_reset:${user.id}`,
+      tokenHash,
+      'EX',
+      3600,
+    );
+
+    // 4. Dispara e-mail oficial com o template AppFrame
+    await this.mailService.sendPasswordResetEmail(user.email, rawToken, user.name);
+
+    // 5. Registra log de auditoria
+    await this.auditService.logEvent({
+      userId: user.id,
+      action: SecurityAuditEvent.PASSWORD_RESET_REQUESTED,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      metadata: { email: user.email, userFound: true, expiresIn: 3600 },
+    });
+
+    return { success: true, message: genericMessage };
+  }
+
+  async resetPassword(
+    dto: ResetPasswordDto,
+    meta?: SessionMeta,
+  ): Promise<{ success: boolean; message: string }> {
+    const token = (dto.token || '').trim();
+    if (!token) {
+      throw new BadRequestException('Token de redefinição não fornecido.');
+    }
+
+    const tokenHash = this.hashToken(token);
+    const storedData = await this.redisService.get(`pwd_reset:${tokenHash}`);
+
+    if (!storedData) {
+      throw new BadRequestException(
+        'O link para redefinição de senha é inválido ou expirou (expiração de 1 hora). Solicite um novo link.',
+      );
+    }
+
+    let payload: { userId: string; email: string };
+    try {
+      payload = JSON.parse(storedData);
+    } catch {
+      throw new BadRequestException('Formato de dados do token corrompido.');
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: payload.userId } });
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado.');
+    }
+
+    // 1. Define a nova senha com hash forte
+    user.password_hash = this.hashPassword(dto.newPassword);
+    await this.userRepository.save(user);
+
+    // 2. Invalida imediatamente o token no Redis para impedir qualquer reutilização
+    await this.redisService.del(`pwd_reset:${tokenHash}`);
+    await this.redisService.del(`user_pwd_reset:${user.id}`);
+
+    // 3. Revoga todas as sessões ativas do usuário por segurança
+    await this.sessionRepository.update(
+      { user_id: user.id, is_revoked: false },
+      { is_revoked: true },
+    );
+
+    // 4. Registra nos logs de auditoria
+    await this.auditService.logEvent({
+      userId: user.id,
+      action: SecurityAuditEvent.PASSWORD_RESET_COMPLETED,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      metadata: { email: user.email },
+    });
+
+    await this.auditService.logEvent({
+      userId: user.id,
+      action: SecurityAuditEvent.ALL_SESSIONS_REVOKED,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      metadata: { reason: 'password_reset' },
+    });
+
+    return {
+      success: true,
+      message: 'Senha redefinida com sucesso. Todas as sessões anteriores foram desconectadas por segurança.',
+    };
   }
 }
 

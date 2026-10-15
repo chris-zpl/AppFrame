@@ -5,6 +5,7 @@ import { UserSession } from '../../modules/users/entities/user-session.entity';
 import { Watermark } from '../../modules/watermarks/entities/watermark.entity';
 import { VideoJob } from '../../modules/media/entities/video-job.entity';
 import { SystemSetting } from '../../modules/admin/entities/system-setting.entity';
+import { SecurityAuditLog } from '../security/entities/security-audit-log.entity';
 import { InitialAppFrameSchema1740000000000 } from './migrations/1740000000000-InitialAppFrameSchema';
 
 dotenv.config();
@@ -20,7 +21,7 @@ export const AppDataSource = new DataSource({
     process.env.DB_SSL === 'true'
       ? { rejectUnauthorized: false }
       : false,
-  entities: [User, UserSession, Watermark, VideoJob, SystemSetting],
+  entities: [User, UserSession, Watermark, VideoJob, SystemSetting, SecurityAuditLog],
   migrations: [InitialAppFrameSchema1740000000000],
   synchronize: false,
   logging: process.env.NODE_ENV !== 'production',

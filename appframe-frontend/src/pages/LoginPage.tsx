@@ -24,6 +24,8 @@ export const LoginPage: React.FC = () => {
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
 
   // Retorna usuário já autenticado para a tela em que estava, impedindo acesso ao login
   useEffect(() => {
@@ -330,10 +332,10 @@ export const LoginPage: React.FC = () => {
                   </span>
                 </div>
                 <p className="font-body-md text-body-md text-on-surface">
-                  Enviamos as instruções de recuperação para <strong>{forgotEmail}</strong>.
+                  Se o e-mail estiver cadastrado, enviamos as instruções de recuperação para <strong>{forgotEmail}</strong>.
                 </p>
                 <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  Verifique sua caixa de entrada e a pasta de spam.
+                  O link expira em 1 hora. Verifique sua caixa de entrada e a pasta de spam.
                 </p>
                 <Button
                   variant="primary"
@@ -341,6 +343,7 @@ export const LoginPage: React.FC = () => {
                   onClick={() => {
                     setShowForgotModal(false);
                     setForgotSubmitted(false);
+                    setForgotError(null);
                   }}
                 >
                   Voltar ao Login
@@ -348,15 +351,32 @@ export const LoginPage: React.FC = () => {
               </div>
             ) : (
               <form
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
-                  setForgotSubmitted(true);
+                  if (!forgotEmail) return;
+                  setForgotLoading(true);
+                  setForgotError(null);
+                  try {
+                    await authService.requestPasswordReset(forgotEmail);
+                    setForgotSubmitted(true);
+                  } catch (err: any) {
+                    setForgotError(
+                      err?.response?.data?.message || err?.message || 'Falha ao solicitar redefinição.',
+                    );
+                  } finally {
+                    setForgotLoading(false);
+                  }
                 }}
                 className="flex flex-col gap-4"
               >
                 <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  Digite seu e-mail cadastrado para receber um link seguro de redefinição de senha.
+                  Digite seu e-mail cadastrado para receber um link seguro de redefinição de senha (válido por 1 hora).
                 </p>
+                {forgotError && (
+                  <div className="p-3 bg-error/10 border border-error/20 rounded-lg text-error text-body-sm">
+                    {forgotError}
+                  </div>
+                )}
                 <Input
                   label="Seu E-mail"
                   placeholder="nome@empresa.com"
@@ -374,12 +394,16 @@ export const LoginPage: React.FC = () => {
                   <Button
                     variant="ghost"
                     type="button"
-                    onClick={() => setShowForgotModal(false)}
+                    disabled={forgotLoading}
+                    onClick={() => {
+                      setShowForgotModal(false);
+                      setForgotError(null);
+                    }}
                   >
                     Cancelar
                   </Button>
-                  <Button variant="primary" type="submit">
-                    Enviar Instruções
+                  <Button variant="primary" type="submit" disabled={forgotLoading}>
+                    {forgotLoading ? 'Enviando...' : 'Enviar Instruções'}
                   </Button>
                 </div>
               </form>

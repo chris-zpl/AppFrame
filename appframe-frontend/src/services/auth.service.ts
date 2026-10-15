@@ -132,4 +132,14 @@ export const authService = {
     const res = await api.delete<any>('/auth/account', { data });
     return res.data?.data || res.data;
   },
+
+  async requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
+    const res = await api.post<any>('/auth/forgot-password', { email });
+    return res.data?.data || res.data;
+  },
+
+  async resetPassword(data: { token: string; newPassword: string }): Promise<{ success: boolean; message: string }> {
+    const res = await api.post<any>('/auth/reset-password', data);
+    return res.data?.data || res.data;
+  },
 };

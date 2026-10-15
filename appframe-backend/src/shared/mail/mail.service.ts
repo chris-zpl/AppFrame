@@ -6,6 +6,7 @@ import * as nodemailer from 'nodemailer';
 import { SystemSetting } from '../../modules/admin/entities/system-setting.entity';
 import { EncryptionService } from '../../core/security/encryption.service';
 import { getWelcomeEmailHtml } from './templates/welcome-email.template';
+import { getResetPasswordEmailHtml } from './templates/reset-password-email.template';
 
 export interface SmtpConnectionConfig {
   host: string;
@@ -137,6 +138,72 @@ export class MailService {
     } catch (err: any) {
       this.logger.error(
         `Falha ao enviar e-mail de boas-vindas para ${cleanTo}: ${err.message}`,
+        err.stack,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Dispara o e-mail oficial com token para redefinição de senha (expiração de 1 hora).
+   */
+  async sendPasswordResetEmail(
+    toEmail: string,
+    resetToken: string,
+    userName?: string,
+  ): Promise<boolean> {
+    const cleanTo = (toEmail || '').trim().toLowerCase();
+    if (!cleanTo || !cleanTo.includes('@')) {
+      this.logger.warn(`E-mail de destino inválido: "${toEmail}". Envio abortado.`);
+      return false;
+    }
+
+    try {
+      const config = await this.getSmtpConfig();
+      if (!config || !config.host) {
+        this.logger.log(
+          `Servidor SMTP não configurado. E-mail de redefinição de senha não enviado para ${cleanTo}.`,
+        );
+        return false;
+      }
+
+      const transporter = nodemailer.createTransport({
+        host: config.host,
+        port: config.port,
+        secure: config.secure,
+        auth: config.user
+          ? {
+              user: config.user,
+              pass: config.pass,
+            }
+          : undefined,
+        tls: {
+          rejectUnauthorized: false,
+        },
+      });
+
+      const frontendUrl =
+        this.configService.get<string>('FRONTEND_URL') ||
+        'http://localhost:5173';
+
+      const html = getResetPasswordEmailHtml({
+        name: userName,
+        appUrl: frontendUrl,
+        resetToken,
+      });
+
+      await transporter.sendMail({
+        from: `"${config.fromName}" <${config.fromEmail || config.user}>`,
+        to: cleanTo,
+        subject: 'Redefinição de senha • AppFrame',
+        html,
+      });
+
+      this.logger.log(`E-mail de redefinição de senha enviado com sucesso para ${cleanTo}`);
+      return true;
+    } catch (err: any) {
+      this.logger.error(
+        `Falha ao enviar e-mail de redefinição de senha para ${cleanTo}: ${err.message}`,
         err.stack,
       );
       return false;

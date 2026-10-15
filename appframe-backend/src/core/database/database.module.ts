@@ -6,9 +6,11 @@ import { UserSession } from '../../modules/users/entities/user-session.entity';
 import { Watermark } from '../../modules/watermarks/entities/watermark.entity';
 import { VideoJob } from '../../modules/media/entities/video-job.entity';
 import { SystemSetting } from '../../modules/admin/entities/system-setting.entity';
+import { SecurityAuditLog } from '../security/entities/security-audit-log.entity';
 import { InitialAppFrameSchema1740000000000 } from './migrations/1740000000000-InitialAppFrameSchema';
 import { AddUserRoleAndStatus1740000000001 } from './migrations/1740000000001-AddUserRoleAndStatus';
 import { AddGoogleEmailAndEmailChangedAt1740000000002 } from './migrations/1740000000002-AddGoogleEmailAndEmailChangedAt';
+import { CreateSecurityAuditLogsTable1740000000003 } from './migrations/1740000000003-CreateSecurityAuditLogsTable';
 
 @Module({
   imports: [
@@ -22,13 +24,14 @@ import { AddGoogleEmailAndEmailChangedAt1740000000002 } from './migrations/17400
         username: configService.get<string>('DB_USERNAME', 'postgres'),
         password: configService.get<string>('DB_PASSWORD', 'postgres'),
         database: configService.get<string>('DB_DATABASE', 'appframe'),
-        entities: [User, UserSession, Watermark, VideoJob, SystemSetting],
+        entities: [User, UserSession, Watermark, VideoJob, SystemSetting, SecurityAuditLog],
         synchronize: configService.get<string>('DB_SYNCHRONIZE', 'true') === 'true',
         migrationsRun: configService.get<string>('DB_MIGRATIONS_RUN', 'true') === 'true',
         migrations: [
           InitialAppFrameSchema1740000000000,
           AddUserRoleAndStatus1740000000001,
           AddGoogleEmailAndEmailChangedAt1740000000002,
+          CreateSecurityAuditLogsTable1740000000003,
         ],
         logging: configService.get<string>('NODE_ENV') !== 'production',
         ssl:

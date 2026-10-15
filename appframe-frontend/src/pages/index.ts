@@ -9,3 +9,4 @@ export * from './WatermarksPage';
 export * from './HistoryPage';
 export * from './SettingsPage';
 export * from './AdminPage';
+export * from './ResetPasswordPage';

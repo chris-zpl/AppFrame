@@ -11,6 +11,7 @@ import { UserSession } from '../../users/entities/user-session.entity';
 import { VideoJob } from '../../media/entities/video-job.entity';
 import { UserRole } from '../../users/enums/user-role.enum';
 import { AuthenticatedUser } from '../../auth/interfaces/jwt-payload.interface';
+import { SecurityAuditService } from '../../../core/security/security-audit.service';
 
 export interface UserManagementItem {
   id: string;
@@ -48,7 +49,15 @@ export class AdminUsersService {
     private readonly sessionRepository: Repository<UserSession>,
     @InjectRepository(VideoJob)
     private readonly videoJobRepository: Repository<VideoJob>,
+    private readonly auditService: SecurityAuditService,
   ) {}
+
+  /**
+   * Obtém o histórico de logs de auditoria de segurança.
+   */
+  async getAuditLogs(userId?: string) {
+    return this.auditService.findLogs(userId);
+  }
 
   /**
    * Lista todos os usuários cadastrados com suas respectivas métricas.
