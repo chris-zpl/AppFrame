@@ -316,6 +316,13 @@ export const AdminPage: React.FC = () => {
     refetchInterval: activeTab === 'audit' ? 10000 : false,
   });
 
+  // Atualiza a lista de auditoria instantaneamente ao alternar para a aba de auditoria
+  useEffect(() => {
+    if (activeTab === 'audit') {
+      refetchAudit();
+    }
+  }, [activeTab, refetchAudit]);
+
   const { data: legalSettings } = useQuery({
     queryKey: ['admin-legal-settings'],
     queryFn: legalService.getAdminLegalSettings,
@@ -427,6 +434,7 @@ export const AdminPage: React.FC = () => {
       );
       await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       await queryClient.refetchQueries({ queryKey: ['admin-users'] });
+      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
       toast.success(`Papel do usuário ${targetUser.name} alterado para ${newRole}.`);
     } catch (err: any) {
       await queryClient.refetchQueries({ queryKey: ['admin-users'] });
@@ -450,6 +458,7 @@ export const AdminPage: React.FC = () => {
       );
       await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       await queryClient.refetchQueries({ queryKey: ['admin-users'] });
+      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
       toast.success(`Usuário ${targetUser.name} foi ${nextStatus ? 'ativado' : 'bloqueado'}.`);
     } catch (err: any) {
       await queryClient.refetchQueries({ queryKey: ['admin-users'] });
@@ -466,6 +475,7 @@ export const AdminPage: React.FC = () => {
       await adminService.revokeSession(sessionToRevoke.id);
       await queryClient.invalidateQueries({ queryKey: ['admin-sessions'] });
       await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
       toast.success('Sessão encerrada com sucesso. O dispositivo foi desconectado.');
       setSessionToRevoke(null);
     } catch (err: any) {
@@ -487,6 +497,7 @@ export const AdminPage: React.FC = () => {
     try {
       const res = await adminService.saveYoutubeCookies(cookiesInput);
       await queryClient.invalidateQueries({ queryKey: ['admin-youtube-cookies'] });
+      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
       setCookiesInput('');
       toast.success(res.message || 'Cookies do YouTube salvos com sucesso!');
     } catch (err: any) {
@@ -513,6 +524,7 @@ export const AdminPage: React.FC = () => {
     try {
       const res = await adminService.deleteYoutubeCookies();
       await queryClient.invalidateQueries({ queryKey: ['admin-youtube-cookies'] });
+      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
       toast.success(res.message || 'Cookies removidos com sucesso.');
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Falha ao remover cookies.';
@@ -534,6 +546,7 @@ export const AdminPage: React.FC = () => {
     try {
       const res = await adminService.saveGeminiApiKey(clean);
       await queryClient.invalidateQueries({ queryKey: ['admin-gemini-status'] });
+      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
       setGeminiKeyInput('');
       toast.success(res.message || 'Chave do Gemini salva com sucesso!');
     } catch (err: any) {
@@ -562,6 +575,7 @@ export const AdminPage: React.FC = () => {
     try {
       const res = await adminService.deleteGeminiApiKey();
       await queryClient.invalidateQueries({ queryKey: ['admin-gemini-status'] });
+      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
       toast.success(res.message || 'Chave global do Gemini removida.');
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Falha ao remover chave.';
