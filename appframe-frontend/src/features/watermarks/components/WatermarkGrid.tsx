@@ -2,7 +2,7 @@ import React from 'react';
 import { Card } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import type { WatermarkItem } from '../interfaces';
-import { formatFileSize } from '../constants';
+import { formatFileSize } from '../utils';
 import { watermarksService } from '../services';
 
 interface WatermarkGridProps {

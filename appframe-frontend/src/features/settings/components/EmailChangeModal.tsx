@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Button } from '../../../components/ui';
-import { calculateNextEmailChangeDate } from '../constants';
+import { calculateNextEmailChangeDate } from '../utils';
 
 interface EmailChangeModalProps {
   isOpen: boolean;

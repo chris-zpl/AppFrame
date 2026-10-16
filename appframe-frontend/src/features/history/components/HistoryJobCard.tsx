@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { cn } from '../../../lib/utils';
 import type { VideoJobItem } from '../interfaces';
-import { formatDuration, getThumbnailUrl } from '../constants';
+import { formatDuration, getThumbnailUrl } from '../utils';
 
 interface HistoryJobCardProps {
   job: VideoJobItem;
