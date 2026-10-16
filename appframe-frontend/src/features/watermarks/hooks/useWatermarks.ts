@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { watermarksService } from '../services';
@@ -8,6 +8,9 @@ export const useWatermarks = () => {
   const queryClient = useQueryClient();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [defaultWatermarkId, setDefaultWatermarkId] = useState<string | null>(() => {
     return localStorage.getItem('appframe_default_watermark_id');
   });
@@ -71,6 +74,35 @@ export const useWatermarks = () => {
     deleteMutation.mutate(id);
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      uploadFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      uploadFile(e.target.files[0]);
+      e.target.value = '';
+    }
+  };
+
+  const openFileDialog = () => {
+    fileInputRef.current?.click();
+  };
+
   return {
     watermarks,
     isLoading,
@@ -85,5 +117,13 @@ export const useWatermarks = () => {
     isUploading: uploadMutation.isPending,
     isDeleting: deleteMutation.isPending,
     refetch,
+    // Upload & Drag-and-Drop state and handlers
+    isDragging,
+    fileInputRef,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handleFileChange,
+    openFileDialog,
   };
 };

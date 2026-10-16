@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../../lib/utils';
 
-interface WatermarkUploadDropzoneProps {
+export interface WatermarkUploadDropzoneProps {
   isDragging: boolean;
   isPending: boolean;
   errorMessage: string | null;
@@ -9,6 +9,8 @@ interface WatermarkUploadDropzoneProps {
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
   onClick: () => void;
+  fileInputRef?: React.RefObject<HTMLInputElement | null>;
+  onFileChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export const WatermarkUploadDropzone: React.FC<WatermarkUploadDropzoneProps> = ({
@@ -19,9 +21,21 @@ export const WatermarkUploadDropzone: React.FC<WatermarkUploadDropzoneProps> = (
   onDragLeave,
   onDrop,
   onClick,
+  fileInputRef,
+  onFileChange,
 }) => {
   return (
     <section className="mb-space-lg">
+      {fileInputRef && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png"
+          onChange={onFileChange}
+          className="hidden"
+        />
+      )}
+
       <div
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
