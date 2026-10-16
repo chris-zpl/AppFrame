@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -358,6 +358,13 @@ export const AdminPage: React.FC = () => {
   // ================= ESTADOS DO TAB AUDITORIA =================
   const [auditSearch, setAuditSearch] = useState('');
   const [auditActionFilter, setAuditActionFilter] = useState('ALL');
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditPageSize, setAuditPageSize] = useState<number>(10);
+
+  // Reseta para a primeira página ao alterar busca, filtro ou tamanho da página
+  useEffect(() => {
+    setAuditPage(1);
+  }, [auditSearch, auditActionFilter, auditPageSize]);
 
   // ================= ESTADOS DO TAB YOUTUBE =================
   const [cookiesInput, setCookiesInput] = useState('');
@@ -683,6 +690,37 @@ export const AdminPage: React.FC = () => {
       ua.includes(term)
     );
   });
+
+  // Paginação dos Registros de Auditoria
+  const totalAuditPages = Math.max(1, Math.ceil(filteredAuditLogs.length / auditPageSize));
+  const safeAuditPage = Math.min(Math.max(1, auditPage), totalAuditPages);
+
+  const paginatedAuditLogs = useMemo(() => {
+    const startIndex = (safeAuditPage - 1) * auditPageSize;
+    return filteredAuditLogs.slice(startIndex, startIndex + auditPageSize);
+  }, [filteredAuditLogs, safeAuditPage, auditPageSize]);
+
+  const auditStartRecord = filteredAuditLogs.length > 0 ? (safeAuditPage - 1) * auditPageSize + 1 : 0;
+  const auditEndRecord = Math.min(safeAuditPage * auditPageSize, filteredAuditLogs.length);
+
+  const auditPageNumbers = useMemo(() => {
+    const pages: (number | 'ellipsis-start' | 'ellipsis-end')[] = [];
+    if (totalAuditPages <= 7) {
+      for (let i = 1; i <= totalAuditPages; i++) pages.push(i);
+      return pages;
+    }
+
+    pages.push(1);
+    const start = Math.max(2, safeAuditPage - 1);
+    const end = Math.min(totalAuditPages - 1, safeAuditPage + 1);
+
+    if (start > 2) pages.push('ellipsis-start');
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < totalAuditPages - 1) pages.push('ellipsis-end');
+
+    pages.push(totalAuditPages);
+    return pages;
+  }, [totalAuditPages, safeAuditPage]);
 
   return (
     <AppShell
@@ -1648,7 +1686,7 @@ export const AdminPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <select
                     value={auditActionFilter}
                     onChange={(e) => setAuditActionFilter(e.target.value)}
@@ -1673,6 +1711,18 @@ export const AdminPage: React.FC = () => {
                     <option value="TWO_FACTOR_DISABLED">2FA Desativado</option>
                     <option value="SESSION_REVOKED">Sessão Encerrada</option>
                     <option value="ALL_SESSIONS_REVOKED">Todas Sessões Encerradas</option>
+                  </select>
+
+                  <select
+                    value={auditPageSize}
+                    onChange={(e) => setAuditPageSize(Number(e.target.value))}
+                    className="bg-surface-container border border-surface-container-highest rounded-xl px-3 py-2 text-body-sm text-on-surface outline-none focus:border-primary cursor-pointer font-medium"
+                    title="Quantidade de registros exibidos por página"
+                  >
+                    <option value={10}>10 por página</option>
+                    <option value={25}>25 por página</option>
+                    <option value={50}>50 por página</option>
+                    <option value={100}>100 por página</option>
                   </select>
                 </div>
               </div>
@@ -1709,7 +1759,7 @@ export const AdminPage: React.FC = () => {
                         </td>
                       </tr>
                     ) : (
-                      filteredAuditLogs.map((log) => {
+                      paginatedAuditLogs.map((log) => {
                         const badgeInfo = getAuditEventBadge(log.action);
                         const matchedUser = log.user_id ? users.find((u) => u.id === log.user_id) : null;
                         const deviceName = parseDevice(log.user_agent);
@@ -1813,6 +1863,109 @@ export const AdminPage: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* Barra de Paginação */}
+              {filteredAuditLogs.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-surface-container-highest">
+                  {/* Informações de Registros e Seletor de Itens por Página */}
+                  <div className="flex items-center gap-4 flex-wrap text-body-sm text-outline">
+                    <span>
+                      Mostrando <strong className="text-on-surface">{auditStartRecord}</strong> a{' '}
+                      <strong className="text-on-surface">{auditEndRecord}</strong> de{' '}
+                      <strong className="text-on-surface">{filteredAuditLogs.length}</strong> eventos
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs">Exibir:</span>
+                      <select
+                        value={auditPageSize}
+                        onChange={(e) => setAuditPageSize(Number(e.target.value))}
+                        className="bg-surface-container border border-surface-container-highest rounded-lg px-2.5 py-1 text-xs text-on-surface outline-none focus:border-primary cursor-pointer font-medium"
+                      >
+                        <option value={10}>10 por página</option>
+                        <option value={25}>25 por página</option>
+                        <option value={50}>50 por página</option>
+                        <option value={100}>100 por página</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Controles de Navegação de Página */}
+                  {totalAuditPages > 1 && (
+                    <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                      <button
+                        type="button"
+                        disabled={safeAuditPage <= 1}
+                        onClick={() => setAuditPage(1)}
+                        title="Primeira Página"
+                        className="p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center justify-center cursor-pointer border border-surface-container-highest"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">first_page</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={safeAuditPage <= 1}
+                        onClick={() => setAuditPage((prev) => Math.max(1, prev - 1))}
+                        className="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs font-medium text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-surface-container-highest"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                        <span>Anterior</span>
+                      </button>
+
+                      {auditPageNumbers.map((pageItem) => {
+                        if (pageItem === 'ellipsis-start' || pageItem === 'ellipsis-end') {
+                          return (
+                            <span
+                              key={pageItem}
+                              className="px-2 py-1 text-outline font-mono select-none text-xs"
+                            >
+                              ...
+                            </span>
+                          );
+                        }
+
+                        const isActive = pageItem === safeAuditPage;
+                        return (
+                          <button
+                            key={pageItem}
+                            type="button"
+                            onClick={() => setAuditPage(pageItem)}
+                            className={cn(
+                              'min-w-[32px] h-8 px-2 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-center font-medium',
+                              isActive
+                                ? 'bg-primary text-neutral-950 font-bold shadow-sm'
+                                : 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-surface-container-highest'
+                            )}
+                          >
+                            {pageItem}
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        disabled={safeAuditPage >= totalAuditPages}
+                        onClick={() => setAuditPage((prev) => Math.min(totalAuditPages, prev + 1))}
+                        className="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs font-medium text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-surface-container-highest"
+                      >
+                        <span>Próxima</span>
+                        <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={safeAuditPage >= totalAuditPages}
+                        onClick={() => setAuditPage(totalAuditPages)}
+                        title="Última Página"
+                        className="p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center justify-center cursor-pointer border border-surface-container-highest"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">last_page</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </Card>
           </div>
         )}

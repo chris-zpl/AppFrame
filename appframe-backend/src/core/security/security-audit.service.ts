@@ -61,7 +61,7 @@ export class SecurityAuditService {
   /**
    * Consulta os últimos registros de auditoria por usuário ou geral
    */
-  async findLogs(userId?: string, limit: number = 50): Promise<SecurityAuditLog[]> {
+  async findLogs(userId?: string, limit: number = 500): Promise<SecurityAuditLog[]> {
     const where = userId ? { user_id: userId } : {};
     return this.auditRepository.find({
       where,
