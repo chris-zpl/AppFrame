@@ -269,6 +269,7 @@ export const AdminPage: React.FC = () => {
   const [activePrivacyMode, setActivePrivacyMode] = useState<'edit' | 'preview'>('edit');
   const [isSavingLegal, setIsSavingLegal] = useState(false);
   const [isResettingLegal, setIsResettingLegal] = useState(false);
+  const [showResetLegalModal, setShowResetLegalModal] = useState(false);
 
   useEffect(() => {
     if (legalSettings) {
@@ -550,20 +551,18 @@ export const AdminPage: React.FC = () => {
     }
   };
 
-  const handleResetLegal = async () => {
-    if (
-      !window.confirm(
-        'Deseja realmente restaurar os Termos de Serviço e Política de Privacidade para a minuta oficial padrão? Todas as edições manuais no texto serão substituídas pela minuta de lançamento.'
-      )
-    ) {
-      return;
-    }
+  const handleResetLegal = () => {
+    setShowResetLegalModal(true);
+  };
+
+  const handleConfirmResetLegal = async () => {
     setIsResettingLegal(true);
     try {
       const res = await legalService.resetAdminLegalSettings();
       await queryClient.invalidateQueries({ queryKey: ['admin-legal-settings'] });
       await queryClient.invalidateQueries({ queryKey: ['public-legal-documents'] });
       await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
+      setShowResetLegalModal(false);
       toast.success(res.message || 'Termos e Política de Privacidade restaurados para a minuta oficial padrão!');
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Falha ao restaurar documentos legais.';
@@ -2027,6 +2026,23 @@ export const AdminPage: React.FC = () => {
         confirmText="Desconectar Agora"
         isLoading={isRevokingSession}
         variant="danger"
+      />
+
+      {/* Modal de Confirmação para Restaurar Documentos Legais Padrão */}
+      <ConfirmModal
+        isOpen={showResetLegalModal}
+        onClose={() => setShowResetLegalModal(false)}
+        onConfirm={handleConfirmResetLegal}
+        title="Restaurar Minuta Padrão"
+        icon="restart_alt"
+        message="Deseja realmente restaurar os Termos de Serviço e a Política de Privacidade para a minuta oficial padrão?"
+        itemTitle="Termos de Serviço & Política de Privacidade"
+        itemSubtitle="Minuta Contratual Oficial • AppFrame 2026"
+        warningText="Atenção: Todas as edições e alterações manuais de texto serão substituídas pela versão original de lançamento."
+        confirmText="Restaurar Padrão"
+        cancelText="Voltar"
+        isLoading={isResettingLegal}
+        variant="warning"
       />
     </AppShell>
   );
