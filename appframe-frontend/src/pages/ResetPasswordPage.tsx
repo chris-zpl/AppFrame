@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth.service';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
@@ -15,9 +15,33 @@ export const ResetPasswordPage: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Análise determinística de força de senha (idêntica ao cadastro)
+  const passwordStrength = useMemo(() => {
+    if (!newPassword) return { score: 0, label: 'Vazia', colorClass: 'bg-surface-container-highest', isStrong: false };
+    
+    let score = 0;
+    if (newPassword.length >= 8) score += 1;
+    if (/[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword)) score += 1;
+    if (/\d/.test(newPassword)) score += 1;
+    if (/[^a-zA-Z0-9]/.test(newPassword)) score += 1;
+
+    switch (score) {
+      case 1:
+        return { score: 1, label: 'Muito Fraca', colorClass: 'bg-error', isStrong: false };
+      case 2:
+        return { score: 2, label: 'Razoável', colorClass: 'bg-tertiary', isStrong: false };
+      case 3:
+        return { score: 3, label: 'Forte', colorClass: 'bg-primary', isStrong: true };
+      case 4:
+      default:
+        return { score: 4, label: 'Excelente', colorClass: 'bg-primary shadow-[0_0_8px_rgba(242,190,94,0.4)]', isStrong: true };
+    }
+  }, [newPassword]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,8 +52,13 @@ export const ResetPasswordPage: React.FC = () => {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setErrorMessage('A nova senha deve ter no mínimo 6 caracteres.');
+    if (newPassword.length < 8) {
+      setErrorMessage('A nova senha deve ter no mínimo 8 caracteres.');
+      return;
+    }
+
+    if (!passwordStrength.isStrong) {
+      setErrorMessage('Por favor, crie uma senha mais forte com no mínimo 8 caracteres, números e símbolos.');
       return;
     }
 
@@ -154,44 +183,108 @@ export const ResetPasswordPage: React.FC = () => {
                 )}
 
                 <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Input
+                      label="Nova Senha"
+                      placeholder="Mínimo de 8 caracteres"
+                      type={showPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        if (errorMessage) setErrorMessage(null);
+                      }}
+                      required
+                      minLength={8}
+                      leftIcon={
+                        <span className="material-symbols-outlined text-[18px]">
+                          lock
+                        </span>
+                      }
+                      rightElement={
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          aria-label="Mostrar ou ocultar senha"
+                          className="text-on-surface-variant hover:text-on-surface p-1 transition-colors flex items-center justify-center cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">
+                            {showPassword ? 'visibility_off' : 'visibility'}
+                          </span>
+                        </button>
+                      }
+                    />
+
+                    {/* Indicador Visual Dinâmico de Força de Senha (4 barras) */}
+                    <div className="flex flex-col gap-1.5 mt-1">
+                      <div className="grid grid-cols-4 gap-1.5">
+                        <div
+                          className={`h-1 rounded-full transition-all duration-300 ${
+                            passwordStrength.score >= 1 ? passwordStrength.colorClass : 'bg-surface-container-highest'
+                          }`}
+                        />
+                        <div
+                          className={`h-1 rounded-full transition-all duration-300 ${
+                            passwordStrength.score >= 2 ? passwordStrength.colorClass : 'bg-surface-container-highest'
+                          }`}
+                        />
+                        <div
+                          className={`h-1 rounded-full transition-all duration-300 ${
+                            passwordStrength.score >= 3 ? passwordStrength.colorClass : 'bg-surface-container-highest'
+                          }`}
+                        />
+                        <div
+                          className={`h-1 rounded-full transition-all duration-300 ${
+                            passwordStrength.score >= 4 ? passwordStrength.colorClass : 'bg-surface-container-highest'
+                          }`}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-neutral-600 dark:text-on-surface-variant">
+                          <span className="material-symbols-outlined text-[14px] text-primary">
+                            verified_user
+                          </span>
+                          <span className="font-label-sm text-label-sm">
+                            Mínimo de 8 caracteres, números e símbolos
+                          </span>
+                        </div>
+                        <span
+                          className={`font-label-sm text-label-sm font-semibold transition-colors ${
+                            passwordStrength.score >= 3 ? 'text-[#B8851B] dark:text-primary' : 'text-neutral-600 dark:text-on-surface-variant'
+                          }`}
+                        >
+                          {passwordStrength.label}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                   <Input
-                    label="Nova Senha"
-                    placeholder="Mínimo de 6 caracteres"
-                    type={showPassword ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    label="Confirmar Nova Senha"
+                    placeholder="Repita a nova senha"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (errorMessage) setErrorMessage(null);
+                    }}
                     required
-                    minLength={6}
+                    minLength={8}
                     leftIcon={
                       <span className="material-symbols-outlined text-[18px]">
-                        lock
+                        lock_clock
                       </span>
                     }
                     rightElement={
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="text-on-surface-variant hover:text-on-surface p-1 transition-colors"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        aria-label="Mostrar ou ocultar confirmação de senha"
+                        className="text-on-surface-variant hover:text-on-surface p-1 transition-colors flex items-center justify-center cursor-pointer"
                       >
                         <span className="material-symbols-outlined text-[18px]">
-                          {showPassword ? 'visibility_off' : 'visibility'}
+                          {showConfirmPassword ? 'visibility_off' : 'visibility'}
                         </span>
                       </button>
-                    }
-                  />
-
-                  <Input
-                    label="Confirmar Nova Senha"
-                    placeholder="Repita a nova senha"
-                    type={showPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    leftIcon={
-                      <span className="material-symbols-outlined text-[18px]">
-                        lock_clock
-                      </span>
                     }
                   />
                 </div>
