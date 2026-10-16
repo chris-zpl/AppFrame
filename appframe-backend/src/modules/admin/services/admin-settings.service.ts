@@ -109,12 +109,43 @@ export class AdminSettingsService {
     };
   }
 
-  saveYouTubeCookies(cookies: any) {
-    return this.downloadService.saveCookies(cookies);
+  async saveYouTubeCookies(
+    cookies: any,
+    auditContext?: { userId?: string; userEmail?: string; ipAddress?: string; userAgent?: string },
+  ) {
+    const res = this.downloadService.saveCookies(cookies);
+    if (this.auditService) {
+      const status = this.getYouTubeCookiesStatus();
+      await this.auditService.logEvent({
+        userId: auditContext?.userId || null,
+        action: SecurityAuditEvent.YOUTUBE_COOKIES_SAVED,
+        ipAddress: auditContext?.ipAddress,
+        userAgent: auditContext?.userAgent,
+        metadata: {
+          performedBy: auditContext?.userEmail,
+          sizeBytes: status.sizeBytes,
+        },
+      });
+    }
+    return res;
   }
 
-  deleteYouTubeCookies() {
-    return this.downloadService.deleteCookies();
+  async deleteYouTubeCookies(
+    auditContext?: { userId?: string; userEmail?: string; ipAddress?: string; userAgent?: string },
+  ) {
+    const res = this.downloadService.deleteCookies();
+    if (this.auditService) {
+      await this.auditService.logEvent({
+        userId: auditContext?.userId || null,
+        action: SecurityAuditEvent.YOUTUBE_COOKIES_DELETED,
+        ipAddress: auditContext?.ipAddress,
+        userAgent: auditContext?.userAgent,
+        metadata: {
+          performedBy: auditContext?.userEmail,
+        },
+      });
+    }
+    return res;
   }
 
   // --- Google Gemini Global ---
@@ -151,7 +182,11 @@ export class AdminSettingsService {
     return { configured: false, hasKey: false, maskedKey: null, model, source: 'none' };
   }
 
-  async saveGeminiApiKey(apiKey: string, modelName?: string): Promise<{ success: boolean; message: string }> {
+  async saveGeminiApiKey(
+    apiKey: string,
+    modelName?: string,
+    auditContext?: { userId?: string; userEmail?: string; ipAddress?: string; userAgent?: string },
+  ): Promise<{ success: boolean; message: string }> {
     const cleanKey = (apiKey || '').trim();
     if (!cleanKey || cleanKey.length < 15) {
       throw new BadRequestException('Informe uma chave de API válida do Google AI Studio.');
@@ -225,6 +260,25 @@ export class AdminSettingsService {
     await this.saveSetting('GEMINI_API_KEY', cleanKey, true);
     await this.saveSetting('GEMINI_MODEL', validatedModel, false);
 
+    const maskedKey =
+      cleanKey.length > 8
+        ? `${cleanKey.slice(0, 4)}••••••••${cleanKey.slice(-4)}`
+        : '••••••••';
+
+    if (this.auditService) {
+      await this.auditService.logEvent({
+        userId: auditContext?.userId || null,
+        action: SecurityAuditEvent.GEMINI_KEY_SAVED,
+        ipAddress: auditContext?.ipAddress,
+        userAgent: auditContext?.userAgent,
+        metadata: {
+          performedBy: auditContext?.userEmail,
+          model: validatedModel,
+          maskedKey,
+        },
+      });
+    }
+
     return {
       success: true,
       message: `Chave global do Google Gemini validada e salva com sucesso (modelo: ${validatedModel})!`,
@@ -289,8 +343,21 @@ export class AdminSettingsService {
     };
   }
 
-  async deleteGeminiApiKey(): Promise<{ success: boolean; message: string }> {
+  async deleteGeminiApiKey(
+    auditContext?: { userId?: string; userEmail?: string; ipAddress?: string; userAgent?: string },
+  ): Promise<{ success: boolean; message: string }> {
     await this.deleteSetting('GEMINI_API_KEY');
+    if (this.auditService) {
+      await this.auditService.logEvent({
+        userId: auditContext?.userId || null,
+        action: SecurityAuditEvent.GEMINI_KEY_DELETED,
+        ipAddress: auditContext?.ipAddress,
+        userAgent: auditContext?.userAgent,
+        metadata: {
+          performedBy: auditContext?.userEmail,
+        },
+      });
+    }
     return {
       success: true,
       message: 'Chave global do Google Gemini removida do servidor.',

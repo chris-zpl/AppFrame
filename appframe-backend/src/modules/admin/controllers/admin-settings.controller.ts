@@ -24,6 +24,22 @@ import {
 export class AdminSettingsController {
   constructor(private readonly settingsService: AdminSettingsService) {}
 
+  private getAuditContext(req: Request) {
+    const user = (req as any).user;
+    const ip =
+      (req.headers['x-forwarded-for'] as string) ||
+      req.ip ||
+      req.socket?.remoteAddress ||
+      undefined;
+    const userAgent = (req.headers['user-agent'] as string) || undefined;
+    return {
+      userId: user?.userId || user?.id || undefined,
+      userEmail: user?.email || undefined,
+      ipAddress: ip,
+      userAgent,
+    };
+  }
+
   // --- YouTube Cookies Globais ---
 
   @Get('youtube-cookies')
@@ -32,14 +48,17 @@ export class AdminSettingsController {
   }
 
   @Post('youtube-cookies')
-  async saveYouTubeCookies(@Body() body: { cookies?: any; content?: any }) {
+  async saveYouTubeCookies(
+    @Body() body: { cookies?: any; content?: any },
+    @Req() req: Request,
+  ) {
     const raw = body?.cookies !== undefined ? body.cookies : body?.content;
-    return this.settingsService.saveYouTubeCookies(raw);
+    return this.settingsService.saveYouTubeCookies(raw, this.getAuditContext(req));
   }
 
   @Delete('youtube-cookies')
-  async deleteYouTubeCookies() {
-    return this.settingsService.deleteYouTubeCookies();
+  async deleteYouTubeCookies(@Req() req: Request) {
+    return this.settingsService.deleteYouTubeCookies(this.getAuditContext(req));
   }
 
   // --- Google Gemini AI Global ---
@@ -50,8 +69,15 @@ export class AdminSettingsController {
   }
 
   @Post('gemini')
-  async saveGeminiApiKey(@Body() body: { apiKey: string; model?: string }) {
-    return this.settingsService.saveGeminiApiKey(body?.apiKey, body?.model);
+  async saveGeminiApiKey(
+    @Body() body: { apiKey: string; model?: string },
+    @Req() req: Request,
+  ) {
+    return this.settingsService.saveGeminiApiKey(
+      body?.apiKey,
+      body?.model,
+      this.getAuditContext(req),
+    );
   }
 
   @Post('gemini/test')
@@ -60,8 +86,8 @@ export class AdminSettingsController {
   }
 
   @Delete('gemini')
-  async deleteGeminiApiKey() {
-    return this.settingsService.deleteGeminiApiKey();
+  async deleteGeminiApiKey(@Req() req: Request) {
+    return this.settingsService.deleteGeminiApiKey(this.getAuditContext(req));
   }
 
   // --- SMTP / Email ---
@@ -90,27 +116,11 @@ export class AdminSettingsController {
 
   @Post('legal')
   async saveLegalSettings(@Body() dto: LegalDocumentsDto, @Req() req: Request) {
-    const user = (req as any).user;
-    const ip = (req.headers['x-forwarded-for'] as string) || req.ip || req.socket?.remoteAddress || null;
-    const userAgent = req.headers['user-agent'] || null;
-
-    return this.settingsService.saveLegalDocuments(dto, {
-      userId: user?.id,
-      ipAddress: ip,
-      userAgent,
-    });
+    return this.settingsService.saveLegalDocuments(dto, this.getAuditContext(req));
   }
 
   @Post('legal/reset')
   async resetLegalSettings(@Req() req: Request) {
-    const user = (req as any).user;
-    const ip = (req.headers['x-forwarded-for'] as string) || req.ip || req.socket?.remoteAddress || null;
-    const userAgent = req.headers['user-agent'] || null;
-
-    return this.settingsService.resetLegalDocumentsToDefault({
-      userId: user?.id,
-      ipAddress: ip,
-      userAgent,
-    });
+    return this.settingsService.resetLegalDocumentsToDefault(this.getAuditContext(req));
   }
 }

@@ -29,6 +29,42 @@ const getAuditEventBadge = (action: string) => {
         icon: 'gavel',
         className: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
       };
+    case 'USER_BLOCKED':
+      return {
+        label: 'Usuário Bloqueado',
+        icon: 'block',
+        className: 'bg-red-500/20 text-red-400 border border-red-500/40',
+      };
+    case 'USER_UNBLOCKED':
+      return {
+        label: 'Usuário Desbloqueado',
+        icon: 'check_circle',
+        className: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
+      };
+    case 'GEMINI_KEY_SAVED':
+      return {
+        label: 'Chave Gemini Salva',
+        icon: 'auto_awesome',
+        className: 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30',
+      };
+    case 'GEMINI_KEY_DELETED':
+      return {
+        label: 'Chave Gemini Removida',
+        icon: 'delete_forever',
+        className: 'bg-rose-500/15 text-rose-400 border border-rose-500/30',
+      };
+    case 'YOUTUBE_COOKIES_SAVED':
+      return {
+        label: 'Cookies YouTube Salvos',
+        icon: 'cookie',
+        className: 'bg-amber-500/15 text-amber-400 border border-amber-500/30',
+      };
+    case 'YOUTUBE_COOKIES_DELETED':
+      return {
+        label: 'Cookies YouTube Removidos',
+        icon: 'delete',
+        className: 'bg-rose-500/15 text-rose-400 border border-rose-500/30',
+      };
     case 'PASSWORD_RESET_REQUESTED':
       return {
         label: 'Redefinição Solicitada',
@@ -146,6 +182,31 @@ const renderMetadata = (meta: Record<string, any> | null) => {
           E-mail não cadastrado
         </span>
       )}
+      {meta.performedBy && (
+        <span className="px-2 py-0.5 rounded text-[11px] bg-primary/10 text-primary font-medium border border-primary/20">
+          Admin: {meta.performedBy}
+        </span>
+      )}
+      {meta.targetUserEmail && (
+        <span className="px-2 py-0.5 rounded text-[11px] bg-rose-500/10 text-rose-300 font-mono border border-rose-500/20">
+          Alvo: {meta.targetUserEmail}
+        </span>
+      )}
+      {meta.maskedKey && (
+        <span className="px-2 py-0.5 rounded text-[11px] bg-indigo-500/10 text-indigo-300 font-mono border border-indigo-500/20">
+          Chave: {meta.maskedKey}
+        </span>
+      )}
+      {meta.model && (
+        <span className="px-2 py-0.5 rounded text-[11px] bg-cyan-500/10 text-cyan-300 font-mono border border-cyan-500/20">
+          Modelo: {meta.model}
+        </span>
+      )}
+      {meta.sizeBytes !== undefined && (
+        <span className="px-2 py-0.5 rounded text-[11px] bg-amber-500/10 text-amber-300 font-mono border border-amber-500/20">
+          Tamanho: {meta.sizeBytes} B
+        </span>
+      )}
       {meta.reason && (
         <span className="px-2 py-0.5 rounded text-[11px] bg-surface-container-high text-on-surface-variant">
           Motivo: {meta.reason}
@@ -164,6 +225,14 @@ const renderMetadata = (meta: Record<string, any> | null) => {
               'userFound',
               'reason',
               'googleId',
+              'performedBy',
+              'targetUserEmail',
+              'targetUserName',
+              'adminId',
+              'status',
+              'maskedKey',
+              'model',
+              'sizeBytes',
             ].includes(k)
         )
         .map(([k, v]) => (
@@ -1586,6 +1655,13 @@ export const AdminPage: React.FC = () => {
                     className="bg-surface-container border border-surface-container-highest rounded-xl px-3 py-2 text-body-sm text-on-surface outline-none focus:border-primary cursor-pointer"
                   >
                     <option value="ALL">Todas as Ações</option>
+                    <option value="USER_BLOCKED">Usuário Bloqueado</option>
+                    <option value="USER_UNBLOCKED">Usuário Desbloqueado</option>
+                    <option value="GEMINI_KEY_SAVED">Chave Gemini Salva</option>
+                    <option value="GEMINI_KEY_DELETED">Chave Gemini Removida</option>
+                    <option value="YOUTUBE_COOKIES_SAVED">Cookies YouTube Salvos</option>
+                    <option value="YOUTUBE_COOKIES_DELETED">Cookies YouTube Removidos</option>
+                    <option value="LEGAL_DOCUMENTS_UPDATED">Termos & Privacidade Atualizados</option>
                     <option value="PASSWORD_RESET_REQUESTED">Redefinição Solicitada</option>
                     <option value="PASSWORD_RESET_COMPLETED">Senha Redefinida (Link)</option>
                     <option value="PASSWORD_CHANGED">Senha Alterada (Logado)</option>
@@ -1693,6 +1769,15 @@ export const AdminPage: React.FC = () => {
                                   </span>
                                   <span className="text-[10px] text-outline">
                                     (Identificado por e-mail)
+                                  </span>
+                                </div>
+                              ) : log.metadata?.performedBy ? (
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-on-surface">
+                                    {log.metadata.performedBy}
+                                  </span>
+                                  <span className="text-[10px] text-primary">
+                                    (Administrador)
                                   </span>
                                 </div>
                               ) : (

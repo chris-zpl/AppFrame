@@ -8,7 +8,9 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -53,19 +55,31 @@ export class AdminUsersController {
     @CurrentUser() adminUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) targetUserId: string,
     @Body() body: any,
+    @Req() req: Request,
   ) {
     const isActive =
       body?.is_active !== undefined
         ? Boolean(body.is_active)
         : Boolean(body?.isActive);
-    return this.usersService.updateUserStatus(adminUser, targetUserId, isActive);
+    const ip = (req.headers['x-forwarded-for'] as string) || req.ip || req.socket?.remoteAddress || undefined;
+    const userAgent = (req.headers['user-agent'] as string) || undefined;
+    return this.usersService.updateUserStatus(adminUser, targetUserId, isActive, {
+      ipAddress: ip,
+      userAgent: userAgent,
+    });
   }
 
   @Delete('sessions/:id')
   async revokeSession(
     @CurrentUser() adminUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) sessionId: string,
+    @Req() req: Request,
   ) {
-    return this.usersService.revokeSession(adminUser, sessionId);
+    const ip = (req.headers['x-forwarded-for'] as string) || req.ip || req.socket?.remoteAddress || undefined;
+    const userAgent = (req.headers['user-agent'] as string) || undefined;
+    return this.usersService.revokeSession(adminUser, sessionId, {
+      ipAddress: ip,
+      userAgent: userAgent,
+    });
   }
 }

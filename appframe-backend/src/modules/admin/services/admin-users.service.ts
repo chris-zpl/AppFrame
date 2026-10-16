@@ -12,6 +12,7 @@ import { VideoJob } from '../../media/entities/video-job.entity';
 import { UserRole } from '../../users/enums/user-role.enum';
 import { AuthenticatedUser } from '../../auth/interfaces/jwt-payload.interface';
 import { SecurityAuditService } from '../../../core/security/security-audit.service';
+import { SecurityAuditEvent } from '../../../core/security/entities/security-audit-log.entity';
 
 export interface UserManagementItem {
   id: string;
@@ -156,6 +157,7 @@ export class AdminUsersService {
     adminUser: AuthenticatedUser,
     targetUserId: string,
     isActive: boolean,
+    auditContext?: { ipAddress?: string; userAgent?: string },
   ): Promise<{ success: boolean; message: string }> {
     const targetUser = await this.userRepository.findOne({ where: { id: targetUserId } });
     if (!targetUser) {
@@ -184,6 +186,23 @@ export class AdminUsersService {
         { user_id: targetUserId, is_revoked: false },
         { is_revoked: true },
       );
+    }
+
+    // Registra evento de auditoria para bloqueio / desbloqueio de usuário
+    if (this.auditService) {
+      await this.auditService.logEvent({
+        userId: targetUserId,
+        action: isActive ? SecurityAuditEvent.USER_UNBLOCKED : SecurityAuditEvent.USER_BLOCKED,
+        ipAddress: auditContext?.ipAddress,
+        userAgent: auditContext?.userAgent,
+        metadata: {
+          targetUserEmail: targetUser.email,
+          targetUserName: targetUser.name,
+          status: isActive ? 'unblocked' : 'blocked',
+          performedBy: adminUser.email,
+          adminId: adminUser.userId,
+        },
+      });
     }
 
     return {
@@ -241,6 +260,7 @@ export class AdminUsersService {
   async revokeSession(
     adminUser: AuthenticatedUser,
     sessionId: string,
+    auditContext?: { ipAddress?: string; userAgent?: string },
   ): Promise<{ success: boolean; message: string }> {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId },
@@ -267,6 +287,21 @@ export class AdminUsersService {
 
     session.is_revoked = true;
     await this.sessionRepository.save(session);
+
+    if (this.auditService) {
+      await this.auditService.logEvent({
+        userId: session.user_id,
+        action: SecurityAuditEvent.SESSION_REVOKED,
+        ipAddress: auditContext?.ipAddress || session.ip_address,
+        userAgent: auditContext?.userAgent || session.user_agent,
+        metadata: {
+          sessionId: session.id,
+          targetUserEmail: session.user?.email,
+          targetUserName: session.user?.name,
+          performedBy: adminUser.email,
+        },
+      });
+    }
 
     return {
       success: true,

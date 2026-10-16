@@ -106,8 +106,10 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
     let mockUserRepo: any;
     let mockSessionRepo: any;
     let mockJobRepo: any;
+    let mockAuditService: any;
 
     beforeEach(async () => {
+      mockAuditService = { logEvent: jest.fn().mockResolvedValue({}), findLogs: jest.fn() };
       mockUserRepo = {
         find: jest.fn(),
         findOne: jest.fn(),
@@ -130,7 +132,7 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
           { provide: getRepositoryToken(User), useValue: mockUserRepo },
           { provide: getRepositoryToken(UserSession), useValue: mockSessionRepo },
           { provide: getRepositoryToken(VideoJob), useValue: mockJobRepo },
-          { provide: SecurityAuditService, useValue: { logEvent: jest.fn(), findLogs: jest.fn() } },
+          { provide: SecurityAuditService, useValue: mockAuditService },
         ],
       }).compile();
 
@@ -143,6 +145,49 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       role: UserRole.SUPER_ADMIN,
       sessionId: 'sess-super',
     };
+
+    it('deve registrar eventos de auditoria ao bloquear e desbloquear um usuário', async () => {
+      const normalUser = {
+        id: 'user-id-456',
+        name: 'Usuário Alvo',
+        email: 'alvo@empresa.com',
+        role: UserRole.USER,
+        is_active: true,
+      };
+      mockUserRepo.findOne.mockResolvedValue(normalUser);
+
+      // Bloquear usuário
+      await adminUsersService.updateUserStatus(superAdminActor, 'user-id-456', false, {
+        ipAddress: '192.168.1.10',
+        userAgent: 'Admin-Browser',
+      });
+      expect(mockAuditService.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-id-456',
+          action: SecurityAuditEvent.USER_BLOCKED,
+          metadata: expect.objectContaining({
+            performedBy: superAdminActor.email,
+            status: 'blocked',
+          }),
+        }),
+      );
+
+      // Desbloquear usuário
+      await adminUsersService.updateUserStatus(superAdminActor, 'user-id-456', true, {
+        ipAddress: '192.168.1.10',
+        userAgent: 'Admin-Browser',
+      });
+      expect(mockAuditService.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-id-456',
+          action: SecurityAuditEvent.USER_UNBLOCKED,
+          metadata: expect.objectContaining({
+            performedBy: superAdminActor.email,
+            status: 'unblocked',
+          }),
+        }),
+      );
+    });
 
     it('deve impedir que christian.zimpel@gmail.com seja rebaixado para outro papel', async () => {
       mockUserRepo.findOne.mockResolvedValue({
@@ -937,6 +982,81 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       await settingsService.resetLegalDocumentsToDefault({ userId: 'admin-id' });
       expect(mockSettingRepo.delete).toHaveBeenCalledWith({ key: 'LEGAL_TERMS_OF_SERVICE' });
       expect(mockSettingRepo.delete).toHaveBeenCalledWith({ key: 'LEGAL_PRIVACY_POLICY' });
+    });
+
+    it('deve registrar eventos de auditoria ao adicionar ou remover cookies do YouTube e chaves do Gemini', async () => {
+      const mockSettingRepo: any = {
+        findOne: jest.fn().mockResolvedValue(null),
+        create: jest.fn((val) => val),
+        save: jest.fn(async (val) => val),
+        delete: jest.fn(),
+      };
+      const mockEncryptionService: any = {
+        encrypt: jest.fn((v) => v),
+        decrypt: jest.fn((v) => v),
+      };
+      const mockDownloadService: any = {
+        getCookiesStatus: jest.fn().mockReturnValue({ configured: true, sizeBytes: 256 }),
+        saveCookies: jest.fn().mockReturnValue({ success: true, message: 'Cookies salvos' }),
+        deleteCookies: jest.fn().mockReturnValue({ success: true, message: 'Cookies removidos' }),
+      };
+      const mockConfigService: any = {
+        get: jest.fn().mockReturnValue('https://appframe.io'),
+      };
+      const mockAuditService: any = {
+        logEvent: jest.fn().mockResolvedValue({}),
+      };
+
+      const settingsService = new AdminSettingsService(
+        mockSettingRepo,
+        mockEncryptionService,
+        mockDownloadService,
+        mockConfigService,
+        mockAuditService,
+      );
+
+      const auditCtx = {
+        userId: 'admin-super-1',
+        userEmail: 'christian.zimpel@gmail.com',
+        ipAddress: '192.168.1.50',
+        userAgent: 'Jest-Test-Agent',
+      };
+
+      // 1. YouTube Cookies Salvos
+      await settingsService.saveYouTubeCookies('dummy_cookie_content', auditCtx);
+      expect(mockAuditService.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'admin-super-1',
+          action: SecurityAuditEvent.YOUTUBE_COOKIES_SAVED,
+          metadata: expect.objectContaining({
+            performedBy: 'christian.zimpel@gmail.com',
+          }),
+        }),
+      );
+
+      // 2. YouTube Cookies Removidos
+      await settingsService.deleteYouTubeCookies(auditCtx);
+      expect(mockAuditService.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'admin-super-1',
+          action: SecurityAuditEvent.YOUTUBE_COOKIES_DELETED,
+          metadata: expect.objectContaining({
+            performedBy: 'christian.zimpel@gmail.com',
+          }),
+        }),
+      );
+
+      // 3. Gemini API Key Removida
+      await settingsService.deleteGeminiApiKey(auditCtx);
+      expect(mockAuditService.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'admin-super-1',
+          action: SecurityAuditEvent.GEMINI_KEY_DELETED,
+          metadata: expect.objectContaining({
+            performedBy: 'christian.zimpel@gmail.com',
+          }),
+        }),
+      );
     });
   });
 });
