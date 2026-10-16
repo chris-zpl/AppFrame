@@ -9,7 +9,7 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Checkbox } from '../components/ui/Checkbox';
-import { API_BASE_URL } from '../services/api';
+import { API_BASE_URL } from '../lib/api';
 import { LegalModal } from '../components/legal';
 
 export const LoginPage: React.FC = () => {

@@ -8,7 +8,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { cn } from '../lib/utils';
-import { API_BASE_URL } from '../services/api';
+import { API_BASE_URL } from '../lib/api';
 import { watermarksService } from '../features/watermarks';
 import {
   mediaService,

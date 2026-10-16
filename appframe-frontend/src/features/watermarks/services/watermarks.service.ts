@@ -1,4 +1,4 @@
-import api, { API_BASE_URL } from '../../../services/api';
+import api, { API_BASE_URL } from '../../../lib/api';
 
 export interface WatermarkItem {
   id: string;
