@@ -611,10 +611,11 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       });
 
       // 1. Identidade Visual e Header
+      expect(html).toContain('AppFrame');
       expect(html).toContain('appframe-amber-grad-reset');
 
       // 2. Saudação com Nome
-      expect(html).toContain('Christian,');
+      expect(html).toContain('Olá, Christian!');
 
       // 3. Frase de solicitação (adaptada em português)
       expect(html).toContain('Alguém solicitou a redefinição de senha da sua conta no AppFrame.');

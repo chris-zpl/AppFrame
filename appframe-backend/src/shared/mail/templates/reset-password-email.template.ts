@@ -7,7 +7,7 @@ export interface ResetPasswordEmailOptions {
 export function getResetPasswordEmailHtml(options: ResetPasswordEmailOptions): string {
   const appUrl = (options.appUrl || 'http://localhost:5173').replace(/\/+$/, '');
   const resetLink = `${appUrl}/reset-password?token=${encodeURIComponent(options.resetToken)}`;
-  const salutation = options.name?.trim() ? `${options.name.trim()},` : 'Olá,';
+  const salutation = options.name?.trim() ? `Olá, ${options.name.trim()}!` : 'Olá,';
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -44,7 +44,7 @@ export function getResetPasswordEmailHtml(options: ResetPasswordEmailOptions): s
           <tr>
             <td align="center" valign="middle">
               <!-- SVG do Ícone em Camadas AppFrame -->
-              <svg width="42" height="42" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: block; vertical-align: middle;">
+              <svg width="36" height="36" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: block; vertical-align: middle;">
                 <path d="M24 32L6 22.5L24 13L42 22.5L24 32Z" fill="#1D2027" fill-opacity="0.9" stroke="#4F4537" stroke-linejoin="round" stroke-width="1.2"/>
                 <path d="M24 26L8 17.5L24 9L40 17.5L24 26Z" fill="#272A31" fill-opacity="0.85" stroke="#9B8F7D" stroke-linejoin="round" stroke-opacity="0.7" stroke-width="1.2"/>
                 <path d="M24 20L10 12.5L24 5L38 12.5L24 20Z" fill="url(#appframe-amber-grad-reset)" stroke="#FFDEA8" stroke-linejoin="round" stroke-width="1.4"/>
@@ -55,6 +55,9 @@ export function getResetPasswordEmailHtml(options: ResetPasswordEmailOptions): s
                   </linearGradient>
                 </defs>
               </svg>
+            </td>
+            <td align="left" valign="middle" style="padding-left: 12px;">
+              <span style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 26px; font-weight: 800; color: #111827; letter-spacing: -0.5px;">AppFrame</span>
             </td>
           </tr>
         </table>
