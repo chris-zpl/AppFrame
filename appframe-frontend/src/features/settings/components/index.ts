@@ -9,3 +9,6 @@ export * from './TwoFactorRecoveryModal';
 export * from './TwoFactorDisableModal';
 export * from './RevokeAllSessionsModal';
 export * from './DeleteAccountModal';
+export * from './SettingsHeader';
+export * from './SettingsNavigationTabs';
+export * from './SettingsModals';

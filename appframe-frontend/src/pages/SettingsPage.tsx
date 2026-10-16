@@ -2,22 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AppShell } from '../components/layout/AppShell';
-import { Badge } from '../components/ui';
-import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import {
   type SettingsSection,
+  SettingsHeader,
+  SettingsNavigationTabs,
   SettingsProfileSection,
   SettingsSecuritySection,
   SettingsSessionsSection,
   SettingsDangerSection,
-  EmailChangeModal,
-  EmailChangeBlockedModal,
-  TwoFactorSetupModal,
-  TwoFactorRecoveryModal,
-  TwoFactorDisableModal,
-  RevokeAllSessionsModal,
-  DeleteAccountModal,
+  SettingsModals,
   useSettings,
 } from '../features/settings';
 
@@ -149,6 +143,13 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleSelectSection = (section: SettingsSection) => {
+    setActiveSection(section);
+    if (section === 'sessions') {
+      fetchSessions();
+    }
+  };
+
   return (
     <AppShell
       currentPath="configuracoes"
@@ -158,82 +159,14 @@ export const SettingsPage: React.FC = () => {
     >
       <div className="flex flex-col w-full text-on-surface pb-16">
         {/* ================= HEADER ================= */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-space-lg">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-space-sm mb-1 flex-wrap">
-              <h1 className="font-headline-md md:font-headline-lg text-headline-md md:text-headline-lg font-bold text-on-surface tracking-tight">
-                Configurações e Segurança
-              </h1>
-              <Badge variant="status-live">Proteção Criptografada</Badge>
-            </div>
-            <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl">
-              Gerencie seus dados de acesso, credenciais Google OAuth, autenticação em duas etapas (2FA) e dispositivos conectados.
-            </p>
-          </div>
-        </header>
+        <SettingsHeader />
 
         {/* ================= NAVEGAÇÃO DE SEÇÕES ================= */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-space-md border-b border-surface-container-high/80">
-          <button
-            type="button"
-            onClick={() => setActiveSection('profile')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-xl font-title-sm text-title-sm transition-all cursor-pointer whitespace-nowrap',
-              activeSection === 'profile'
-                ? 'bg-primary text-on-primary font-bold shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
-            )}
-          >
-            <span className="material-symbols-outlined text-[18px]">person</span>
-            <span>Perfil & Conta</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSection('security')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-xl font-title-sm text-title-sm transition-all cursor-pointer whitespace-nowrap',
-              activeSection === 'security'
-                ? 'bg-primary text-on-primary font-bold shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
-            )}
-          >
-            <span className="material-symbols-outlined text-[18px]">shield</span>
-            <span>Segurança & 2FA</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveSection('sessions');
-              fetchSessions();
-            }}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-xl font-title-sm text-title-sm transition-all cursor-pointer whitespace-nowrap',
-              activeSection === 'sessions'
-                ? 'bg-primary text-on-primary font-bold shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
-            )}
-          >
-            <span className="material-symbols-outlined text-[18px]">devices</span>
-            <span>Dispositivos Conectados</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-surface-container-highest text-label-sm font-label-sm font-mono">
-              {sessions.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSection('danger')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-xl font-title-sm text-title-sm transition-all cursor-pointer whitespace-nowrap text-error hover:bg-error-container/20',
-              activeSection === 'danger' && 'bg-error-container/40 text-error font-bold border border-error/40'
-            )}
-          >
-            <span className="material-symbols-outlined text-[18px]">warning</span>
-            <span>Zona de Perigo</span>
-          </button>
-        </div>
+        <SettingsNavigationTabs
+          activeSection={activeSection}
+          onSelectSection={handleSelectSection}
+          sessionsCount={sessions.length}
+        />
 
         {/* 1. SEÇÃO PERFIL */}
         {activeSection === 'profile' && (
@@ -299,76 +232,55 @@ export const SettingsPage: React.FC = () => {
           />
         )}
 
-        {/* Modais de 2FA e Segurança */}
-        <TwoFactorSetupModal
-          isOpen={show2faActivationModal}
-          step={twoFactorStep}
-          qrCodeUrl={twoFactorQrCodeUrl}
-          secret={twoFactorSecret}
-          code={twoFactorCode}
-          setCode={setTwoFactorCode}
+        {/* Modais de 2FA, Sessões, Exclusão de Conta e Alteração de E-mail */}
+        <SettingsModals
+          show2faActivationModal={show2faActivationModal}
+          twoFactorStep={twoFactorStep}
+          twoFactorQrCodeUrl={twoFactorQrCodeUrl}
+          twoFactorSecret={twoFactorSecret}
+          twoFactorCode={twoFactorCode}
+          setTwoFactorCode={setTwoFactorCode}
           recoveryCodes={recoveryCodes}
-          isSubmitting={isSubmitting2fa}
-          onClose={() => setShow2faActivationModal(false)}
-          onConfirm={handleConfirm2FA}
-        />
-
-        <TwoFactorRecoveryModal
-          isOpen={showRecoveryCodesModal}
-          recoveryCodes={recoveryCodes}
-          onClose={() => setShowRecoveryCodesModal(false)}
-        />
-
-        <TwoFactorDisableModal
-          isOpen={showDisable2faModal}
-          code={disable2faCode}
-          setCode={setDisable2faCode}
-          isDisabling={isDisabling2fa}
-          onClose={() => setShowDisable2faModal(false)}
-          onConfirm={handleDisable2FA}
-        />
-
-        <RevokeAllSessionsModal
-          isOpen={revokeAllModal}
-          isLoading={isRevokingOthers}
-          onClose={() => setRevokeAllModal(false)}
-          onConfirm={handleConfirmRevokeAll}
-        />
-
-        <DeleteAccountModal
-          isOpen={deleteAccountModal}
-          password={deletePassword}
-          setPassword={setDeletePassword}
-          confirmationText={deleteConfirmationText}
-          setConfirmationText={setDeleteConfirmationText}
-          isDeleting={isDeletingAccount}
-          onClose={() => {
+          isSubmitting2fa={isSubmitting2fa}
+          onClose2faActivation={() => setShow2faActivationModal(false)}
+          onConfirm2FA={handleConfirm2FA}
+          showRecoveryCodesModal={showRecoveryCodesModal}
+          onCloseRecoveryCodesModal={() => setShowRecoveryCodesModal(false)}
+          showDisable2faModal={showDisable2faModal}
+          disable2faCode={disable2faCode}
+          setDisable2faCode={setDisable2faCode}
+          isDisabling2fa={isDisabling2fa}
+          onCloseDisable2faModal={() => setShowDisable2faModal(false)}
+          onConfirmDisable2FA={handleDisable2FA}
+          revokeAllModal={revokeAllModal}
+          isRevokingOthers={isRevokingOthers}
+          onCloseRevokeAllModal={() => setRevokeAllModal(false)}
+          onConfirmRevokeAll={handleConfirmRevokeAll}
+          deleteAccountModal={deleteAccountModal}
+          deletePassword={deletePassword}
+          setDeletePassword={setDeletePassword}
+          deleteConfirmationText={deleteConfirmationText}
+          setDeleteConfirmationText={setDeleteConfirmationText}
+          isDeletingAccount={isDeletingAccount}
+          onCloseDeleteAccountModal={() => {
             setDeleteAccountModal(false);
             setDeleteConfirmationText('');
             setDeletePassword('');
           }}
-          onConfirm={handleDeleteAccountPermanent}
-        />
-
-        <EmailChangeModal
-          isOpen={showEmailChangeModal}
+          onConfirmDeleteAccount={handleDeleteAccountPermanent}
+          showEmailChangeModal={showEmailChangeModal}
           currentEmail={user?.email}
           newEmail={email}
-          isSaving={isSavingProfile}
-          onClose={() => setShowEmailChangeModal(false)}
-          onConfirm={async () => {
+          isSavingProfile={isSavingProfile}
+          onCloseEmailChangeModal={() => setShowEmailChangeModal(false)}
+          onConfirmEmailChange={async () => {
             const success = await executeSaveProfile(name, email);
             if (success) {
               setShowEmailChangeModal(false);
             }
           }}
-        />
-
-        <EmailChangeBlockedModal
-          isOpen={emailChangeBlockedModal.isOpen}
-          lastChanged={emailChangeBlockedModal.lastChanged}
-          nextAllowed={emailChangeBlockedModal.nextAllowed}
-          onClose={() => {
+          emailChangeBlockedModal={emailChangeBlockedModal}
+          onCloseEmailChangeBlockedModal={() => {
             setEmailChangeBlockedModal({ isOpen: false, lastChanged: '', nextAllowed: '' });
             if (user?.email) setEmail(user.email);
           }}
