@@ -235,6 +235,16 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       const roleResult = await adminUsersService.updateUserRole(superAdminActor, 'user-id-123', UserRole.ADMIN);
       expect(roleResult.role).toBe(UserRole.ADMIN);
       expect(mockUserRepo.save).toHaveBeenCalled();
+      expect(mockAuditService.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-id-123',
+          action: SecurityAuditEvent.USER_ROLE_CHANGED,
+          metadata: expect.objectContaining({
+            previousRole: UserRole.USER,
+            newRole: UserRole.ADMIN,
+          }),
+        }),
+      );
 
       const statusResult = await adminUsersService.updateUserStatus(superAdminActor, 'user-id-123', false);
       expect(statusResult.success).toBe(true);

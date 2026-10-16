@@ -46,8 +46,14 @@ export class AdminUsersController {
     @CurrentUser() adminUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) targetUserId: string,
     @Body('role') role: UserRole,
+    @Req() req: Request,
   ) {
-    return this.usersService.updateUserRole(adminUser, targetUserId, role);
+    const ip = (req.headers['x-forwarded-for'] as string) || req.ip || req.socket?.remoteAddress || undefined;
+    const userAgent = (req.headers['user-agent'] as string) || undefined;
+    return this.usersService.updateUserRole(adminUser, targetUserId, role, {
+      ipAddress: ip,
+      userAgent: userAgent,
+    });
   }
 
   @Patch(':id/status')

@@ -25,6 +25,7 @@ export enum SecurityAuditEvent {
   YOUTUBE_COOKIES_DELETED = 'YOUTUBE_COOKIES_DELETED',
   USER_BLOCKED = 'USER_BLOCKED',
   USER_UNBLOCKED = 'USER_UNBLOCKED',
+  USER_ROLE_CHANGED = 'USER_ROLE_CHANGED',
 }
 
 @Entity('security_audit_logs')

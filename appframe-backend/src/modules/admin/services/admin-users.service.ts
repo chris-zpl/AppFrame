@@ -115,6 +115,7 @@ export class AdminUsersService {
     adminUser: AuthenticatedUser,
     targetUserId: string,
     newRole: UserRole,
+    auditContext?: { ipAddress?: string; userAgent?: string },
   ): Promise<{ success: boolean; message: string; role: UserRole }> {
     const isSuperAdmin =
       adminUser.role === UserRole.SUPER_ADMIN ||
@@ -139,8 +140,27 @@ export class AdminUsersService {
       throw new BadRequestException('Apenas christian.zimpel@gmail.com pode deter o perfil Super Admin.');
     }
 
+    const previousRole = targetUser.role || UserRole.USER;
     targetUser.role = newRole;
     await this.userRepository.save(targetUser);
+
+    // Registra evento de auditoria para alteração de função / perfil do usuário
+    if (this.auditService) {
+      await this.auditService.logEvent({
+        userId: targetUserId,
+        action: SecurityAuditEvent.USER_ROLE_CHANGED,
+        ipAddress: auditContext?.ipAddress,
+        userAgent: auditContext?.userAgent,
+        metadata: {
+          targetUserEmail: targetUser.email,
+          targetUserName: targetUser.name,
+          previousRole,
+          newRole,
+          performedBy: adminUser.email,
+          adminId: adminUser.userId,
+        },
+      });
+    }
 
     return {
       success: true,

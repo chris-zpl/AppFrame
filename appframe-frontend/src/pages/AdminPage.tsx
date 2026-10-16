@@ -29,6 +29,12 @@ const getAuditEventBadge = (action: string) => {
         icon: 'gavel',
         className: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
       };
+    case 'USER_ROLE_CHANGED':
+      return {
+        label: 'Perfil / Função Alterada',
+        icon: 'admin_panel_settings',
+        className: 'bg-purple-500/20 text-purple-400 border border-purple-500/40',
+      };
     case 'USER_BLOCKED':
       return {
         label: 'Usuário Bloqueado',
@@ -157,6 +163,11 @@ const renderMetadata = (meta: Record<string, any> | null) => {
   }
   return (
     <div className="flex flex-wrap gap-1.5 max-w-md">
+      {meta.previousRole && meta.newRole && (
+        <span className="px-2 py-0.5 rounded text-[11px] bg-purple-500/15 text-purple-300 font-mono border border-purple-500/30 font-semibold">
+          Função: {meta.previousRole} ➔ {meta.newRole}
+        </span>
+      )}
       {meta.oldEmail && meta.newEmail && (
         <span className="px-2 py-0.5 rounded text-[11px] bg-purple-500/10 text-purple-300 font-mono border border-purple-500/20">
           {meta.oldEmail} ➔ {meta.newEmail}
@@ -233,6 +244,8 @@ const renderMetadata = (meta: Record<string, any> | null) => {
               'maskedKey',
               'model',
               'sizeBytes',
+              'previousRole',
+              'newRole',
             ].includes(k)
         )
         .map(([k, v]) => (
@@ -1707,6 +1720,7 @@ export const AdminPage: React.FC = () => {
                     className="bg-surface-container border border-surface-container-highest rounded-xl px-3 py-2 text-body-sm text-on-surface outline-none focus:border-primary cursor-pointer"
                   >
                     <option value="ALL">Todas as Ações</option>
+                    <option value="USER_ROLE_CHANGED">Perfil / Função Alterada</option>
                     <option value="USER_BLOCKED">Usuário Bloqueado</option>
                     <option value="USER_UNBLOCKED">Usuário Desbloqueado</option>
                     <option value="GEMINI_KEY_SAVED">Chave Gemini Salva</option>
