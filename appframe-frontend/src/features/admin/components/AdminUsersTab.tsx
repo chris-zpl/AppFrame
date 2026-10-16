@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, Badge, Button } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import type { AdminUser, AdminSession } from '../interfaces';
+import { isSuperAdminUser } from '../../auth';
 import { AdminSessionsList } from './AdminSessionsList';
 
 interface AdminUsersTabProps {
@@ -101,9 +102,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
             </thead>
             <tbody className="divide-y divide-surface-container-highest">
               {users.map((u) => {
-                const isTargetSuper =
-                  u.email === 'christian.zimpel@gmail.com' ||
-                  u.role === 'SUPER_ADMIN';
+                const isTargetSuper = isSuperAdminUser(u);
                 const isSelf = u.id === currentUser?.id || u.email === currentUser?.email;
                 const canChangeRole = isAdmin && !isTargetSuper && !isSelf;
 

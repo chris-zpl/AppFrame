@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { isAdminUser } from '../../features/auth';
 
 export const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -17,10 +18,7 @@ export const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }
     return <Navigate to="/login" replace />;
   }
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.email === 'christian.zimpel@gmail.com';
-  const isAdmin = isSuperAdmin || user?.role === 'ADMIN';
-
-  if (!isAdmin) {
+  if (!isAdminUser(user)) {
     return <Navigate to="/varredura" replace />;
   }
 

@@ -24,14 +24,15 @@ import {
   ResetLegalModal,
   useAdminData,
 } from '../features/admin';
+import { isSuperAdminUser, isAdminUser } from '../features/auth';
 
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.email === 'christian.zimpel@gmail.com';
-  const isAdmin = isSuperAdmin || user?.role === 'ADMIN';
+  const isSuperAdmin = isSuperAdminUser(user);
+  const isAdmin = isAdminUser(user);
 
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
 
@@ -155,7 +156,7 @@ export const AdminPage: React.FC = () => {
 
   // ================= AÇÕES: GESTÃO DE USUÁRIOS =================
   const handleRoleChange = async (targetUser: AdminUser, newRole: 'SUPER_ADMIN' | 'ADMIN' | 'USER') => {
-    if (targetUser.email === 'christian.zimpel@gmail.com' || targetUser.role === 'SUPER_ADMIN') {
+    if (isSuperAdminUser(targetUser)) {
       toast.error('O Super-Administrador da plataforma não pode ter seu papel alterado.');
       return;
     }
@@ -185,7 +186,7 @@ export const AdminPage: React.FC = () => {
   };
 
   const handleStatusToggle = async (targetUser: AdminUser) => {
-    if (targetUser.email === 'christian.zimpel@gmail.com') {
+    if (isSuperAdminUser(targetUser)) {
       toast.error('O Super-Administrador fundador não pode ser desativado.');
       return;
     }

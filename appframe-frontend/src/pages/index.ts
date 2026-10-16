@@ -4,11 +4,9 @@ export * from './AuthCallbackPage';
 export * from './TwoFactorChallengePage';
 export * from './ScraperPage';
 export * from './StudioPage';
-export * from './HistoricoPage';
 export * from './WatermarksPage';
 export * from './HistoryPage';
 export * from './SettingsPage';
 export * from './AdminPage';
 export * from './ResetPasswordPage';
 export * from './LegalPage';
-

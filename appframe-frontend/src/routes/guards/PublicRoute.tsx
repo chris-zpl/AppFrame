@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth, isPublicAuthRoute } from '../../contexts/AuthContext';
+import { isAdminUser } from '../../features/auth';
 
 export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -31,10 +32,7 @@ export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children 
         ? lastActive
         : '/varredura';
 
-    const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.email === 'christian.zimpel@gmail.com';
-    const isAdmin = isSuperAdmin || user?.role === 'ADMIN';
-
-    if (target.startsWith('/admin') && !isAdmin) {
+    if (target.startsWith('/admin') && !isAdminUser(user)) {
       target = '/varredura';
     }
 
