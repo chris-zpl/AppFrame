@@ -76,7 +76,7 @@ export const AuthCallbackPage: React.FC = () => {
   }, [navigate, handleOAuthCallback]);
 
   return (
-    <div className="min-h-screen w-full bg-surface text-on-surface flex flex-col justify-center items-center p-4 relative overflow-hidden select-none">
+    <div className="min-h-screen w-full bg-surface text-on-surface flex flex-col justify-center items-center p-4 relative overflow-hidden">
       {/* Botão Fixo de Alternância de Tema */}
       <ThemeToggle variant="auth" className="fixed top-6 right-6 z-50" />
 

@@ -28,7 +28,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       className={cn(
         'flex flex-col items-center justify-center p-6 md:p-space-xl my-6 rounded-2xl',
         'bg-white dark:bg-surface-container-low border border-neutral-200 dark:border-primary/20 shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)]',
-        'text-center relative overflow-hidden select-none transition-colors',
+        'text-center relative overflow-hidden transition-colors',
         className,
       )}
     >

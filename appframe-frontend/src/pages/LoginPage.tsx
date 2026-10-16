@@ -149,7 +149,7 @@ export const LoginPage: React.FC = () => {
 
       {/* Conteúdo Central */}
       <main className="flex-1 flex items-center justify-center py-6 sm:py-10 z-10 w-full">
-        <div className="relative flex flex-col items-center justify-center w-full max-w-[440px] mx-auto select-none">
+        <div className="relative flex flex-col items-center justify-center w-full max-w-[440px] mx-auto">
           <Card
             variant="auth"
             className="w-full p-6 md:p-space-lg relative overflow-hidden transition-all duration-300 shadow-[0_16px_40px_rgba(0,0,0,0.5)] border border-surface-container-high/80"

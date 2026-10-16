@@ -48,7 +48,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       className={cn(
         'group relative flex flex-col rounded-2xl bg-surface-container overflow-hidden',
         'transition-all duration-300 hover:-translate-y-1 shadow-[0_8px_24px_rgba(0,0,0,0.25)]',
-        'hover:shadow-[0_12px_32px_rgba(0,0,0,0.45)] cursor-pointer select-none border border-outline/10',
+        'hover:shadow-[0_12px_32px_rgba(0,0,0,0.45)] cursor-pointer border border-outline/10',
         isSelected && 'ring-1 ring-primary/40 shadow-[0_8px_24px_rgba(212,163,70,0.15)]',
         className,
       )}

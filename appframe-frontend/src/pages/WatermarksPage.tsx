@@ -126,7 +126,7 @@ export const WatermarksPage: React.FC = () => {
       onNavigate={(path) => navigate(path)}
       onUserAvatarClick={() => navigate('settings')}
     >
-      <div className="flex flex-col w-full text-on-surface select-none pb-12">
+      <div className="flex flex-col w-full text-on-surface pb-12">
         {/* ================= HEADER ================= */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-space-lg">
           <div className="flex flex-col">

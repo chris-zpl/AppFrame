@@ -170,7 +170,7 @@ export const ChannelScannerView: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col w-full text-on-surface select-none">
+    <div className="flex flex-col w-full text-on-surface">
       {/* ================= CONTROLES SUPERIORES & HERO ================= */}
       <section className="flex flex-col gap-space-md mb-space-lg">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">

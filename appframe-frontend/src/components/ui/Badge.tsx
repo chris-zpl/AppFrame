@@ -52,7 +52,7 @@ export const Badge: React.FC<BadgeProps> = ({
   return (
     <span
       className={cn(
-        'inline-flex items-center select-none',
+        'inline-flex items-center',
         variantStyles[variant],
         className,
       )}

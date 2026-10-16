@@ -1127,7 +1127,7 @@ export const StudioPage: React.FC = () => {
       userName={user?.name || ''}
       onUserAvatarClick={() => navigate('configuracoes')}
     >
-      <div className="flex flex-col w-full text-on-surface select-none pb-8">
+      <div className="flex flex-col w-full text-on-surface pb-8">
         {/* ================= BARRA SUPERIOR DE CONTROLE DO STUDIO ================= */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-space-md p-3.5 rounded-2xl bg-surface-container-low border border-surface-container-high/80 shadow-sm">
           <div className="flex items-center gap-3">

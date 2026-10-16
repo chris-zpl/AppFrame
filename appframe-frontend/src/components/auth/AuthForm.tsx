@@ -42,7 +42,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   };
 
   return (
-    <div className={cn('relative flex flex-col items-center justify-center w-full max-w-[440px] mx-auto select-none', className)}>
+    <div className={cn('relative flex flex-col items-center justify-center w-full max-w-[440px] mx-auto', className)}>
       {/* Halos Luminosos Ambientais no Fundo */}
       <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] md:w-[620px] h-[300px] md:h-[340px] bg-primary/10 rounded-full blur-[110px] pointer-events-none -z-10" />
       <div className="absolute -bottom-24 -right-16 w-64 md:w-80 h-64 md:h-80 bg-secondary-container/20 rounded-full blur-[90px] pointer-events-none -z-10" />

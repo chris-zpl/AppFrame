@@ -468,7 +468,7 @@ export const SettingsPage: React.FC = () => {
       userName={user?.name || name}
       onUserAvatarClick={() => setActiveSection('profile')}
     >
-      <div className="flex flex-col w-full text-on-surface select-none pb-16">
+      <div className="flex flex-col w-full text-on-surface pb-16">
         {/* ================= HEADER ================= */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-space-lg">
           <div className="flex flex-col">

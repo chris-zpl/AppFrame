@@ -104,7 +104,7 @@ export const HistoricoPage: React.FC = () => {
       userName="Christian"
       onUserAvatarClick={() => navigate('login')}
     >
-      <div className="flex flex-col w-full text-on-surface select-none pb-8">
+      <div className="flex flex-col w-full text-on-surface pb-8">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-space-lg">
           <div className="flex flex-col">
