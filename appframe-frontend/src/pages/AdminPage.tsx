@@ -21,7 +21,8 @@ import { cn } from '../lib/utils';
 
 type AdminTab = 'users' | 'youtube' | 'gemini' | 'smtp' | 'audit' | 'legal';
 
-const getAuditEventBadge = (action: string) => {
+const getAuditEventBadge = (rawAction: string) => {
+  const action = (rawAction || '').trim().toUpperCase();
   switch (action) {
     case 'LEGAL_DOCUMENTS_UPDATED':
       return {
@@ -30,6 +31,7 @@ const getAuditEventBadge = (action: string) => {
         className: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
       };
     case 'USER_ROLE_CHANGED':
+    case 'ROLE_CHANGED':
       return {
         label: 'Perfil / Função Alterada',
         icon: 'admin_panel_settings',
@@ -434,8 +436,12 @@ export const AdminPage: React.FC = () => {
 
   // ================= AÇÕES: GESTÃO DE USUÁRIOS =================
   const handleRoleChange = async (targetUser: AdminUser, newRole: 'SUPER_ADMIN' | 'ADMIN' | 'USER') => {
-    if (targetUser.email === 'christian.zimpel@gmail.com') {
-      toast.error('O Super-Administrador fundador não pode ter seu papel alterado.');
+    if (targetUser.email === 'christian.zimpel@gmail.com' || targetUser.role === 'SUPER_ADMIN') {
+      toast.error('O Super-Administrador da plataforma não pode ter seu papel alterado.');
+      return;
+    }
+    if (targetUser.id === user?.id || targetUser.email === user?.email) {
+      toast.error('Você não pode alterar seu próprio papel de acesso.');
       return;
     }
     try {
@@ -448,7 +454,10 @@ export const AdminPage: React.FC = () => {
       await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       await queryClient.refetchQueries({ queryKey: ['admin-users'] });
       await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
-      toast.success(`Papel do usuário ${targetUser.name} alterado para ${newRole}.`);
+      await queryClient.refetchQueries({ queryKey: ['admin-audit-logs'] });
+      toast.success(
+        `Papel do usuário ${targetUser.name} alterado para ${newRole === 'ADMIN' ? 'Administrador' : 'Usuário Comum'}.`
+      );
     } catch (err: any) {
       await queryClient.refetchQueries({ queryKey: ['admin-users'] });
       const msg = err?.response?.data?.message || 'Falha ao alterar papel do usuário.';
@@ -956,7 +965,12 @@ export const AdminPage: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-surface-container-highest">
                     {users.map((u) => {
-                      const isTargetSuper = u.email === 'christian.zimpel@gmail.com';
+                      const isTargetSuper =
+                        u.email === 'christian.zimpel@gmail.com' ||
+                        u.role === 'SUPER_ADMIN';
+                      const isSelf = u.id === user?.id || u.email === user?.email;
+                      const canChangeRole = isAdmin && !isTargetSuper && !isSelf;
+
                       return (
                         <tr
                           key={u.id}
@@ -980,7 +994,7 @@ export const AdminPage: React.FC = () => {
                               <Badge variant="primary" className="font-extrabold text-[10px]">
                                 SUPER ADMIN
                               </Badge>
-                            ) : isSuperAdmin ? (
+                            ) : canChangeRole ? (
                               <select
                                 value={u.role}
                                 onChange={(e) =>
@@ -995,12 +1009,19 @@ export const AdminPage: React.FC = () => {
                                 <option value="ADMIN">Administrador</option>
                               </select>
                             ) : (
-                              <Badge
-                                variant={u.role === 'ADMIN' ? 'primary' : 'neutral'}
-                                className="text-[10px]"
-                              >
-                                {u.role === 'ADMIN' ? 'ADMIN' : 'USUÁRIO'}
-                              </Badge>
+                              <div className="flex items-center gap-1.5">
+                                <Badge
+                                  variant={u.role === 'ADMIN' ? 'primary' : 'neutral'}
+                                  className="text-[10px]"
+                                >
+                                  {u.role === 'ADMIN' ? 'ADMIN' : 'USUÁRIO'}
+                                </Badge>
+                                {isSelf && (
+                                  <span className="text-[10px] text-outline font-medium italic">
+                                    (Você)
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </td>
 

@@ -41,7 +41,7 @@ export class AdminUsersController {
   }
 
   @Patch(':id/role')
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   async updateUserRole(
     @CurrentUser() adminUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) targetUserId: string,

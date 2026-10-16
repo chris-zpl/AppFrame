@@ -120,10 +120,11 @@ export class AdminUsersService {
     const isSuperAdmin =
       adminUser.role === UserRole.SUPER_ADMIN ||
       adminUser.email.toLowerCase() === 'christian.zimpel@gmail.com';
+    const isAdmin = isSuperAdmin || adminUser.role === UserRole.ADMIN;
 
-    if (!isSuperAdmin) {
+    if (!isAdmin) {
       throw new ForbiddenException(
-        'Apenas o Super Admin pode alterar permissões e níveis de acesso de usuários.',
+        'Apenas administradores podem alterar permissões e níveis de acesso de usuários.',
       );
     }
 
@@ -132,8 +133,18 @@ export class AdminUsersService {
       throw new NotFoundException('Usuário não encontrado.');
     }
 
-    if (targetUser.email && targetUser.email.toLowerCase() === 'christian.zimpel@gmail.com') {
+    if (
+      (targetUser.email && targetUser.email.toLowerCase() === 'christian.zimpel@gmail.com') ||
+      targetUser.role === UserRole.SUPER_ADMIN
+    ) {
       throw new ForbiddenException('O perfil do Super Admin da plataforma não pode ser alterado.');
+    }
+
+    if (
+      targetUserId === adminUser.userId ||
+      (targetUser.email && targetUser.email.toLowerCase() === adminUser.email.toLowerCase())
+    ) {
+      throw new ForbiddenException('Você não pode alterar seu próprio perfil de acesso.');
     }
 
     if (newRole === UserRole.SUPER_ADMIN) {
