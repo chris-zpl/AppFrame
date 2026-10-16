@@ -10,6 +10,7 @@ import { Button } from '../components/ui/Button';
 import { Checkbox } from '../components/ui/Checkbox';
 import { API_BASE_URL } from '../services/api';
 import { toast } from 'sonner';
+import { LegalModal } from '../components/legal';
 
 export const RegisterPage: React.FC = () => {
   const { navigate } = useNavigation();
@@ -21,6 +22,8 @@ export const RegisterPage: React.FC = () => {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalModalDoc, setLegalModalDoc] = useState<'terms' | 'privacy'>('terms');
 
   // Retorna usuário já autenticado para a tela em que estava, impedindo acesso ao registro
   useEffect(() => {
@@ -318,13 +321,31 @@ export const RegisterPage: React.FC = () => {
                     label={
                       <span>
                         Li e concordo com os{' '}
-                        <a href="#termos" className="text-[#B8851B] dark:text-[#D4A346] hover:underline font-semibold">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setLegalModalDoc('terms');
+                            setLegalModalOpen(true);
+                          }}
+                          className="text-[#B8851B] dark:text-[#D4A346] hover:underline font-semibold cursor-pointer inline"
+                        >
                           Termos de Serviço
-                        </a>{' '}
+                        </button>{' '}
                         e a{' '}
-                        <a href="#privacidade" className="text-[#B8851B] dark:text-[#D4A346] hover:underline font-semibold">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setLegalModalDoc('privacy');
+                            setLegalModalOpen(true);
+                          }}
+                          className="text-[#B8851B] dark:text-[#D4A346] hover:underline font-semibold cursor-pointer inline"
+                        >
                           Política de Privacidade
-                        </a>{' '}
+                        </button>{' '}
                         do AppFrame.
                       </span>
                     }
@@ -367,9 +388,40 @@ export const RegisterPage: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="w-full text-center py-2 text-label-sm font-label-sm text-neutral-500 dark:text-[#949DAF] z-10">
-        AppFrame © 2026 • Executive Video Intelligence
+      <footer className="w-full text-center py-4 text-label-sm font-label-sm text-neutral-500 dark:text-[#949DAF] z-10 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+        <span>AppFrame © 2026 • Executive Video Intelligence</span>
+        <span className="hidden sm:inline">•</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setLegalModalDoc('terms');
+              setLegalModalOpen(true);
+            }}
+            className="hover:text-primary transition-colors cursor-pointer hover:underline"
+          >
+            Termos de Serviço
+          </button>
+          <span>•</span>
+          <button
+            type="button"
+            onClick={() => {
+              setLegalModalDoc('privacy');
+              setLegalModalOpen(true);
+            }}
+            className="hover:text-primary transition-colors cursor-pointer hover:underline"
+          >
+            Política de Privacidade
+          </button>
+        </div>
       </footer>
+
+      {/* Modal de Documentos Legais */}
+      <LegalModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        initialDoc={legalModalDoc}
+      />
     </div>
   );
 };

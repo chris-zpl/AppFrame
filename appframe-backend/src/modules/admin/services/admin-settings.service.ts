@@ -12,6 +12,14 @@ import { DownloadService } from '../../media/services/download.service';
 import { GoogleGenAI } from '@google/genai';
 import * as nodemailer from 'nodemailer';
 import * as fs from 'fs';
+import {
+  DEFAULT_LEGAL_CONFIG,
+  DEFAULT_TERMS_OF_SERVICE,
+  DEFAULT_PRIVACY_POLICY,
+  interpolateLegalDocument,
+} from '../constants/default-legal-documents';
+import { SecurityAuditService } from '../../../core/security/security-audit.service';
+import { SecurityAuditEvent } from '../../../core/security/entities/security-audit-log.entity';
 
 
 export interface SmtpConfigDto {
@@ -34,6 +42,7 @@ export class AdminSettingsService {
     private readonly encryptionService: EncryptionService,
     private readonly downloadService: DownloadService,
     private readonly configService: ConfigService,
+    private readonly auditService: SecurityAuditService,
   ) {}
 
   // --- Helper genérico de configurações ---
@@ -400,4 +409,183 @@ export class AdminSettingsService {
       throw new BadRequestException(`Erro ao conectar ao servidor SMTP: ${err.message}`);
     }
   }
+
+  // --- Documentos Legais: Termos de Serviço e Política de Privacidade ---
+
+  private formatDatePtBr(date?: Date | string | null): string {
+    const d = date ? new Date(date) : new Date();
+    const months = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    return `${d.getDate()} de ${months[d.getMonth()]} de ${d.getFullYear()}`;
+  }
+
+  async getLegalDocuments(): Promise<LegalDocumentsResponse> {
+    const companyName = (await this.getSetting('LEGAL_COMPANY_NAME')) || DEFAULT_LEGAL_CONFIG.companyName;
+    const contactEmail = (await this.getSetting('LEGAL_CONTACT_EMAIL')) || DEFAULT_LEGAL_CONFIG.contactEmail;
+    const dpoEmail = (await this.getSetting('LEGAL_DPO_EMAIL')) || DEFAULT_LEGAL_CONFIG.dpoEmail;
+    const websiteUrl =
+      (await this.getSetting('LEGAL_WEBSITE_URL')) ||
+      (this.configService.get<string>('APP_URL') || DEFAULT_LEGAL_CONFIG.websiteUrl).replace(/\/+$/, '');
+    const forumCity = (await this.getSetting('LEGAL_FORUM_CITY')) || DEFAULT_LEGAL_CONFIG.forumCity;
+    const retentionPeriod = (await this.getSetting('LEGAL_RETENTION_PERIOD')) || DEFAULT_LEGAL_CONFIG.retentionPeriod;
+
+    // Termos de Serviço
+    const termsSetting = await this.settingRepository.findOne({ where: { key: 'LEGAL_TERMS_OF_SERVICE' } });
+    const rawTerms = termsSetting?.value || DEFAULT_TERMS_OF_SERVICE;
+    const termsUpdatedAt = (await this.getSetting('LEGAL_TERMS_UPDATED_AT')) || this.formatDatePtBr(termsSetting?.updated_at);
+
+    // Política de Privacidade
+    const privacySetting = await this.settingRepository.findOne({ where: { key: 'LEGAL_PRIVACY_POLICY' } });
+    const rawPrivacy = privacySetting?.value || DEFAULT_PRIVACY_POLICY;
+    const privacyUpdatedAt = (await this.getSetting('LEGAL_PRIVACY_UPDATED_AT')) || this.formatDatePtBr(privacySetting?.updated_at);
+
+    const variables = {
+      publishDate: termsUpdatedAt,
+      companyName,
+      contactEmail,
+      dpoEmail,
+      websiteUrl,
+      forumCity,
+      retentionPeriod,
+    };
+
+    const renderedTerms = interpolateLegalDocument(rawTerms, {
+      ...variables,
+      publishDate: termsUpdatedAt,
+    });
+
+    const renderedPrivacy = interpolateLegalDocument(rawPrivacy, {
+      ...variables,
+      publishDate: privacyUpdatedAt,
+    });
+
+    return {
+      terms: {
+        raw: rawTerms,
+        rendered: renderedTerms,
+        updatedAt: termsUpdatedAt,
+      },
+      privacy: {
+        raw: rawPrivacy,
+        rendered: renderedPrivacy,
+        updatedAt: privacyUpdatedAt,
+      },
+      variables,
+    };
+  }
+
+  async saveLegalDocuments(
+    dto: LegalDocumentsDto,
+    auditContext?: { userId?: string; ipAddress?: string; userAgent?: string },
+  ): Promise<{ success: boolean; message: string }> {
+    const nowFormatted = this.formatDatePtBr(new Date());
+
+    if (dto.companyName !== undefined) {
+      await this.saveSetting('LEGAL_COMPANY_NAME', dto.companyName.trim(), false);
+    }
+    if (dto.contactEmail !== undefined) {
+      await this.saveSetting('LEGAL_CONTACT_EMAIL', dto.contactEmail.trim(), false);
+    }
+    if (dto.dpoEmail !== undefined) {
+      await this.saveSetting('LEGAL_DPO_EMAIL', dto.dpoEmail.trim(), false);
+    }
+    if (dto.websiteUrl !== undefined) {
+      await this.saveSetting('LEGAL_WEBSITE_URL', dto.websiteUrl.trim(), false);
+    }
+    if (dto.forumCity !== undefined) {
+      await this.saveSetting('LEGAL_FORUM_CITY', dto.forumCity.trim(), false);
+    }
+    if (dto.retentionPeriod !== undefined) {
+      await this.saveSetting('LEGAL_RETENTION_PERIOD', dto.retentionPeriod.trim(), false);
+    }
+
+    if (dto.termsOfService !== undefined && dto.termsOfService.trim()) {
+      await this.saveSetting('LEGAL_TERMS_OF_SERVICE', dto.termsOfService.trim(), false);
+      await this.saveSetting('LEGAL_TERMS_UPDATED_AT', nowFormatted, false);
+    }
+
+    if (dto.privacyPolicy !== undefined && dto.privacyPolicy.trim()) {
+      await this.saveSetting('LEGAL_PRIVACY_POLICY', dto.privacyPolicy.trim(), false);
+      await this.saveSetting('LEGAL_PRIVACY_UPDATED_AT', nowFormatted, false);
+    }
+
+    if (this.auditService) {
+      await this.auditService.logEvent({
+        userId: auditContext?.userId || null,
+        action: SecurityAuditEvent.LEGAL_DOCUMENTS_UPDATED,
+        ipAddress: auditContext?.ipAddress,
+        userAgent: auditContext?.userAgent,
+        metadata: {
+          updatedFields: Object.keys(dto),
+          updatedAt: nowFormatted,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: 'Termos de Serviço e Política de Privacidade atualizados com sucesso!',
+    };
+  }
+
+  async resetLegalDocumentsToDefault(auditContext?: {
+    userId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    await this.deleteSetting('LEGAL_TERMS_OF_SERVICE');
+    await this.deleteSetting('LEGAL_PRIVACY_POLICY');
+    await this.deleteSetting('LEGAL_TERMS_UPDATED_AT');
+    await this.deleteSetting('LEGAL_PRIVACY_UPDATED_AT');
+
+    if (this.auditService) {
+      await this.auditService.logEvent({
+        userId: auditContext?.userId || null,
+        action: SecurityAuditEvent.LEGAL_DOCUMENTS_UPDATED,
+        ipAddress: auditContext?.ipAddress,
+        userAgent: auditContext?.userAgent,
+        metadata: { resetToDefault: true },
+      });
+    }
+
+    return {
+      success: true,
+      message: 'Termos e Política de Privacidade restaurados para a minuta oficial padrão!',
+    };
+  }
+}
+
+export interface LegalDocumentsDto {
+  termsOfService?: string;
+  privacyPolicy?: string;
+  companyName?: string;
+  contactEmail?: string;
+  dpoEmail?: string;
+  websiteUrl?: string;
+  forumCity?: string;
+  retentionPeriod?: string;
+}
+
+export interface LegalDocumentsResponse {
+  terms: {
+    raw: string;
+    rendered: string;
+    updatedAt: string;
+  };
+  privacy: {
+    raw: string;
+    rendered: string;
+    updatedAt: string;
+  };
+  variables: {
+    publishDate: string;
+    companyName: string;
+    contactEmail: string;
+    dpoEmail: string;
+    websiteUrl: string;
+    forumCity: string;
+    retentionPeriod: string;
+  };
 }

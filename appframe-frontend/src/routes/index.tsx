@@ -13,6 +13,7 @@ import {
   SettingsPage,
   AdminPage,
   ResetPasswordPage,
+  LegalPage,
 } from '../pages';
 
 // Componente para proteção de rotas privadas
@@ -231,6 +232,12 @@ export const AppRoutes: React.FC = () => {
       {/* Fluxos Especiais de Autenticação */}
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route path="/2fa" element={<TwoFactorChallengePage />} />
+
+      {/* Documentos Legais (Abertos e Públicos via Modal) */}
+      <Route path="/terms" element={<LegalPage defaultDoc="terms" />} />
+      <Route path="/termos" element={<LegalPage defaultDoc="terms" />} />
+      <Route path="/privacy" element={<LegalPage defaultDoc="privacy" />} />
+      <Route path="/privacidade" element={<LegalPage defaultDoc="privacy" />} />
 
       {/* Fallback para rotas desconhecidas */}
       <Route path="*" element={<Navigate to="/varredura" replace />} />

@@ -9,6 +9,7 @@ import { AdminSettingsService } from './services/admin-settings.service';
 import { AdminUsersService } from './services/admin-users.service';
 import { AdminSettingsController } from './controllers/admin-settings.controller';
 import { AdminUsersController } from './controllers/admin-users.controller';
+import { LegalController } from './controllers/legal.controller';
 import { MediaModule } from '../media/media.module';
 import { SharedModule } from '../../shared/shared.module';
 
@@ -20,7 +21,7 @@ import { SharedModule } from '../../shared/shared.module';
     ConfigModule,
   ],
   providers: [AdminSettingsService, AdminUsersService],
-  controllers: [AdminSettingsController, AdminUsersController],
+  controllers: [AdminSettingsController, AdminUsersController, LegalController],
   exports: [AdminSettingsService, AdminUsersService, TypeOrmModule],
 })
 export class AdminModule {}

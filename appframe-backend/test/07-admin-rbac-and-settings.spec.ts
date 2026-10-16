@@ -874,6 +874,70 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       expect(authService.isPasswordStrong('curta1!')).toBe(false);
       expect(authService.isPasswordStrong('somenteletras')).toBe(false);
     });
+
+    it('deve obter e renderizar os termos de serviço e política de privacidade com interpolação dinâmica e auditoria', async () => {
+      const mockSettingRepo: any = {
+        findOne: jest.fn().mockResolvedValue(null),
+        create: jest.fn((val) => val),
+        save: jest.fn(async (val) => val),
+        delete: jest.fn(),
+      };
+      const mockEncryptionService: any = {
+        encrypt: jest.fn((v) => v),
+        decrypt: jest.fn((v) => v),
+      };
+      const mockDownloadService: any = {
+        getCookiesStatus: jest.fn().mockReturnValue({ configured: false }),
+      };
+      const mockConfigService: any = {
+        get: jest.fn().mockReturnValue('https://appframe.io'),
+      };
+      const mockAuditService: any = {
+        logEvent: jest.fn().mockResolvedValue({}),
+      };
+
+      const settingsService = new AdminSettingsService(
+        mockSettingRepo,
+        mockEncryptionService,
+        mockDownloadService,
+        mockConfigService,
+        mockAuditService,
+      );
+
+      const docs = await settingsService.getLegalDocuments();
+      expect(docs.terms.rendered).toContain('Termos de Serviço — AppFrame');
+      expect(docs.terms.rendered).toContain('AppFrame Tecnologia & Vídeo Digital');
+      expect(docs.terms.rendered).toContain('contato@appframe.io');
+      expect(docs.privacy.rendered).toContain('Política de Privacidade — AppFrame');
+      expect(docs.privacy.rendered).toContain('privacidade@appframe.io');
+      expect(docs.terms.rendered).not.toContain('{{company_name}}');
+      expect(docs.privacy.rendered).not.toContain('{{dpo_email}}');
+
+      // Teste de salvar customizado
+      await settingsService.saveLegalDocuments(
+        {
+          companyName: 'Minha Empresa Tech',
+          contactEmail: 'suporte@empresa.com',
+          termsOfService: '# Termos Customizados\nEmpresa: {{company_name}}',
+        },
+        {
+          userId: 'admin-id',
+          ipAddress: '127.0.0.1',
+        },
+      );
+
+      expect(mockSettingRepo.save).toHaveBeenCalled();
+      expect(mockAuditService.logEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: SecurityAuditEvent.LEGAL_DOCUMENTS_UPDATED,
+        }),
+      );
+
+      // Teste de restauração para padrão
+      await settingsService.resetLegalDocumentsToDefault({ userId: 'admin-id' });
+      expect(mockSettingRepo.delete).toHaveBeenCalledWith({ key: 'LEGAL_TERMS_OF_SERVICE' });
+      expect(mockSettingRepo.delete).toHaveBeenCalledWith({ key: 'LEGAL_PRIVACY_POLICY' });
+    });
   });
 });
 

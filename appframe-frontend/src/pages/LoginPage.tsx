@@ -10,6 +10,7 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Checkbox } from '../components/ui/Checkbox';
 import { API_BASE_URL } from '../services/api';
+import { LegalModal } from '../components/legal';
 
 export const LoginPage: React.FC = () => {
   const { navigate, params } = useNavigation();
@@ -26,6 +27,8 @@ export const LoginPage: React.FC = () => {
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalModalDoc, setLegalModalDoc] = useState<'terms' | 'privacy'>('terms');
   const isForgotSubmittingRef = useRef(false);
 
   // Retorna usuário já autenticado para a tela em que estava, impedindo acesso ao login
@@ -416,9 +419,40 @@ export const LoginPage: React.FC = () => {
       )}
 
       {/* Footer */}
-      <footer className="w-full text-center py-2 text-label-sm font-label-sm text-neutral-500 dark:text-[#949DAF] z-10">
-        AppFrame © 2026 • Executive Video Intelligence
+      <footer className="w-full text-center py-4 text-label-sm font-label-sm text-neutral-500 dark:text-[#949DAF] z-10 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+        <span>AppFrame © 2026 • Executive Video Intelligence</span>
+        <span className="hidden sm:inline">•</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setLegalModalDoc('terms');
+              setLegalModalOpen(true);
+            }}
+            className="hover:text-primary transition-colors cursor-pointer hover:underline"
+          >
+            Termos de Serviço
+          </button>
+          <span>•</span>
+          <button
+            type="button"
+            onClick={() => {
+              setLegalModalDoc('privacy');
+              setLegalModalOpen(true);
+            }}
+            className="hover:text-primary transition-colors cursor-pointer hover:underline"
+          >
+            Política de Privacidade
+          </button>
+        </div>
       </footer>
+
+      {/* Modal de Documentos Legais */}
+      <LegalModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        initialDoc={legalModalDoc}
+      />
     </div>
   );
 };

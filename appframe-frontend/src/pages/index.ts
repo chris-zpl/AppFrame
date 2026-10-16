@@ -10,3 +10,5 @@ export * from './HistoryPage';
 export * from './SettingsPage';
 export * from './AdminPage';
 export * from './ResetPasswordPage';
+export * from './LegalPage';
+

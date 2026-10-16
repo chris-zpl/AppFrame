@@ -5,12 +5,18 @@ import {
   Delete,
   Body,
   UseGuards,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { UserRole } from '../../users/enums/user-role.enum';
-import { AdminSettingsService, SmtpConfigDto } from '../services/admin-settings.service';
+import {
+  AdminSettingsService,
+  SmtpConfigDto,
+  LegalDocumentsDto,
+} from '../services/admin-settings.service';
 
 @Controller('admin/settings')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -73,5 +79,38 @@ export class AdminSettingsController {
   @Post('smtp/test')
   async testSmtp(@Body() body: { toEmail: string }) {
     return this.settingsService.testSmtp(body?.toEmail);
+  }
+
+  // --- Documentos Legais (Termos de Serviço e Política de Privacidade) ---
+
+  @Get('legal')
+  async getLegalSettings() {
+    return this.settingsService.getLegalDocuments();
+  }
+
+  @Post('legal')
+  async saveLegalSettings(@Body() dto: LegalDocumentsDto, @Req() req: Request) {
+    const user = (req as any).user;
+    const ip = (req.headers['x-forwarded-for'] as string) || req.ip || req.socket?.remoteAddress || null;
+    const userAgent = req.headers['user-agent'] || null;
+
+    return this.settingsService.saveLegalDocuments(dto, {
+      userId: user?.id,
+      ipAddress: ip,
+      userAgent,
+    });
+  }
+
+  @Post('legal/reset')
+  async resetLegalSettings(@Req() req: Request) {
+    const user = (req as any).user;
+    const ip = (req.headers['x-forwarded-for'] as string) || req.ip || req.socket?.remoteAddress || null;
+    const userAgent = req.headers['user-agent'] || null;
+
+    return this.settingsService.resetLegalDocumentsToDefault({
+      userId: user?.id,
+      ipAddress: ip,
+      userAgent,
+    });
   }
 }

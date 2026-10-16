@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 import { AppFrameLogo } from '../common/AppFrameLogo';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { useAuth } from '../../contexts/AuthContext';
+import { LegalModal } from '../legal';
 
 export type AppNavigationPath = 'varredura' | 'studio' | 'marcas-dagua' | 'historico' | 'configuracoes' | 'admin';
 
@@ -38,6 +39,8 @@ export const AppShell: React.FC<AppShellProps> = ({
   children,
 }) => {
   const [activePath, setActivePath] = useState<AppNavigationPath>(currentPath);
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalModalDoc, setLegalModalDoc] = useState<'terms' | 'privacy'>('terms');
   const routerNavigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -205,18 +208,39 @@ export const AppShell: React.FC<AppShellProps> = ({
             <span>Executive Video Intelligence</span>
           </div>
           <div className="flex items-center gap-space-lg font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
-            <span className="hover:text-primary transition-colors cursor-pointer">
+            <button
+              type="button"
+              onClick={() => {
+                setLegalModalDoc('privacy');
+                setLegalModalOpen(true);
+              }}
+              className="hover:text-primary transition-colors cursor-pointer"
+            >
               Privacidade
-            </span>
-            <span className="hover:text-primary transition-colors cursor-pointer">
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLegalModalDoc('terms');
+                setLegalModalOpen(true);
+              }}
+              className="hover:text-primary transition-colors cursor-pointer"
+            >
               Termos de Serviço
-            </span>
-            <span className="hover:text-primary transition-colors cursor-pointer">
-              Status do Sistema
+            </button>
+            <span className="text-on-surface-variant/60">
+              v1.0.0
             </span>
           </div>
         </div>
       </footer>
+
+      {/* Modal de Documentos Legais */}
+      <LegalModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        initialDoc={legalModalDoc}
+      />
     </div>
   );
 };
