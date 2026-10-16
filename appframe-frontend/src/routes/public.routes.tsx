@@ -39,7 +39,14 @@ export const publicRoutes = (
 
     {/* Fluxos Especiais de Autenticação */}
     <Route path="/auth/callback" element={<AuthCallbackPage />} />
-    <Route path="/2fa" element={<TwoFactorChallengePage />} />
+    <Route
+      path="/2fa"
+      element={
+        <PublicRoute>
+          <TwoFactorChallengePage />
+        </PublicRoute>
+      }
+    />
 
     {/* Documentos Legais Públicos */}
     <Route path="/terms" element={<LegalPage defaultDoc="terms" />} />
