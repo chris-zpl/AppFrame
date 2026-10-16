@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { marked } from 'marked';
-import { legalService, type LegalDocumentsResponse } from '../../services/legal.service';
+import { legalService, type LegalDocumentsResponse } from '../../features/admin';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { cn } from '../../lib/utils';

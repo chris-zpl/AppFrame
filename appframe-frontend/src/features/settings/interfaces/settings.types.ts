@@ -1,4 +1,4 @@
-import type { ActiveSession } from '../../../services/auth.service';
+import type { ActiveSession } from '../../auth';
 
 export interface UserSessionItem {
   id: string;

@@ -1,4 +1,4 @@
-import type { VideoJobItem } from '../../../services/media.service';
+import type { VideoJobItem } from '../services';
 
 export type HistoryFilterType = 'all' | 'processing' | 'completed' | 'failed';
 

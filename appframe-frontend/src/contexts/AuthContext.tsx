@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { authService, type UserProfile } from '../services/auth.service';
+import { authService, type UserProfile } from '../features/auth';
 
 export const isPublicAuthRoute = (path?: string): boolean => {
   if (!path) return false;

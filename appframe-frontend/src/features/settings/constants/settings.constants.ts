@@ -1,4 +1,4 @@
-import type { ActiveSession } from '../../../services/auth.service';
+import type { ActiveSession } from '../../auth';
 import type { UserSessionItem } from '../interfaces';
 
 export const extractBrowserFromUserAgent = (userAgent?: string | null): string => {

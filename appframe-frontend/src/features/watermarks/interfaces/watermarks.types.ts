@@ -1,3 +1,3 @@
-import type { WatermarkItem } from '../../../services/watermarks.service';
+import type { WatermarkItem } from '../services';
 
 export type { WatermarkItem };

@@ -5,11 +5,9 @@ import type {
   AdminAuditLog,
   YouTubeCookiesStatus,
   GeminiStatus,
-} from '../../../services/admin.service';
-import type {
   SaveLegalSettingsDto,
   LegalDocumentsResponse,
-} from '../../../services/legal.service';
+} from '../services';
 
 export type AdminTab = 'users' | 'youtube' | 'gemini' | 'smtp' | 'audit' | 'legal';
 

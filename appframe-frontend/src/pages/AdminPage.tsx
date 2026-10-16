@@ -6,9 +6,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Badge } from '../components/ui';
 import { cn } from '../lib/utils';
-import { legalService } from '../services/legal.service';
 import {
   adminService,
+  legalService,
   type AdminTab,
   type AdminUser,
   type AdminSession,

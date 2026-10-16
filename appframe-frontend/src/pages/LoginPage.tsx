@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useAuth, isPublicAuthRoute } from '../contexts/AuthContext';
-import { authService } from '../services/auth.service';
+import { authService } from '../features/auth';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
 import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';

@@ -9,7 +9,7 @@ import { Badge } from '../components/ui/Badge';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { cn } from '../lib/utils';
 import { API_BASE_URL } from '../services/api';
-import { watermarksService } from '../services/watermarks.service';
+import { watermarksService } from '../features/watermarks';
 import {
   mediaService,
   type CreateVideoJobPayload,
@@ -17,7 +17,7 @@ import {
   type StudioVideoQueueItem,
   type SubtitleLineData,
   type SubtitleSegmentData,
-} from '../services/media.service';
+} from '../features/history';
 import { toast } from 'sonner';
 
 export type AspectRatio = '9:16' | '16:9';

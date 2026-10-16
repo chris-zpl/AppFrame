@@ -7,8 +7,8 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
-import { mediaService } from '../services/media.service';
 import {
+  mediaService,
   type VideoJobItem,
   type HistoryFilterType,
   HistoryFilterTabs,
