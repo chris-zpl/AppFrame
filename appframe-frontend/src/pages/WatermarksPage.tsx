@@ -1,87 +1,34 @@
 import React, { useState, useRef } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '../contexts/NavigationContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
-import { toast } from 'sonner';
 import {
-  watermarksService,
   WatermarkUploadDropzone,
   WatermarkGrid,
+  useWatermarks,
 } from '../features/watermarks';
 
 export const WatermarksPage: React.FC = () => {
   const { navigate } = useNavigation();
-  const queryClient = useQueryClient();
   const [isDragging, setIsDragging] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [defaultWatermarkId, setDefaultWatermarkId] = useState<string | null>(() => {
-    return localStorage.getItem('appframe_default_watermark_id');
-  });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Consulta real com TanStack Query
   const {
-    data: watermarks = [],
+    watermarks,
     isLoading,
-  } = useQuery({
-    queryKey: ['watermarks'],
-    queryFn: () => watermarksService.list(),
-  });
-
-  // Mutação real de upload Multipart/FormData
-  const uploadMutation = useMutation({
-    mutationFn: (file: File) => watermarksService.upload(file),
-    onSuccess: (newWm) => {
-      queryClient.invalidateQueries({ queryKey: ['watermarks'] });
-      setErrorMessage(null);
-      toast.success("Marca d'água enviada com sucesso!");
-      if (!defaultWatermarkId) {
-        setDefaultWatermarkId(newWm.id);
-        localStorage.setItem('appframe_default_watermark_id', newWm.id);
-      }
-    },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.message || err?.message || 'Falha ao fazer upload da marca d’água.';
-      setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
-    },
-  });
-
-  // Mutação real de exclusão
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => watermarksService.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['watermarks'] });
-      setDeleteConfirmId(null);
-      toast.success("Marca d'água removida.");
-    },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.message || err?.message || 'Falha ao excluir a marca d’água.';
-      setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
-    },
-  });
-
-  const processFile = (file: File) => {
-    setErrorMessage(null);
-
-    // Validação estrita de arquivo PNG com canal alfa
-    if (file.type !== 'image/png' && !file.name.toLowerCase().endsWith('.png')) {
-      setErrorMessage('Formato inválido: apenas arquivos PNG com canal alfa transparente são suportados.');
-      return;
-    }
-
-    // Limite de 10 MB
-    if (file.size > 10 * 1024 * 1024) {
-      setErrorMessage('Arquivo muito grande: o tamanho máximo permitido é 10 MB.');
-      return;
-    }
-
-    uploadMutation.mutate(file);
-  };
+    errorMessage,
+    deleteConfirmId,
+    setDeleteConfirmId,
+    defaultWatermarkId,
+    handleSelectDefault,
+    uploadFile,
+    deleteWatermark,
+    isUploading,
+    isDeleting,
+  } = useWatermarks();
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -97,25 +44,15 @@ export const WatermarksPage: React.FC = () => {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processFile(e.dataTransfer.files[0]);
+      uploadFile(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      processFile(e.target.files[0]);
+      uploadFile(e.target.files[0]);
       e.target.value = '';
     }
-  };
-
-  const handleSetDefault = (id: string) => {
-    setDefaultWatermarkId(id);
-    localStorage.setItem('appframe_default_watermark_id', id);
-    toast.success('Marca d’água padrão para novos cortes atualizada.');
-  };
-
-  const handleDelete = (id: string) => {
-    deleteMutation.mutate(id);
   };
 
   return (
@@ -145,14 +82,14 @@ export const WatermarksPage: React.FC = () => {
             <Button
               variant="primary"
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadMutation.isPending}
+              disabled={isUploading}
               leftIcon={
                 <span className="material-symbols-outlined text-[18px]">
                   upload
                 </span>
               }
             >
-              {uploadMutation.isPending ? 'Enviando...' : 'Novo Upload'}
+              {isUploading ? 'Enviando...' : 'Novo Upload'}
             </Button>
           </div>
         </header>
@@ -169,7 +106,7 @@ export const WatermarksPage: React.FC = () => {
         {/* DROPZONE */}
         <WatermarkUploadDropzone
           isDragging={isDragging}
-          isPending={uploadMutation.isPending}
+          isPending={isUploading}
           errorMessage={errorMessage}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -187,7 +124,7 @@ export const WatermarksPage: React.FC = () => {
           <WatermarkGrid
             watermarks={watermarks}
             defaultWatermarkId={defaultWatermarkId}
-            onSetDefault={handleSetDefault}
+            onSetDefault={handleSelectDefault}
             onConfirmDelete={(id) => setDeleteConfirmId(id)}
           />
         ) : (
@@ -223,17 +160,17 @@ export const WatermarksPage: React.FC = () => {
                   variant="ghost"
                   className="flex-1"
                   onClick={() => setDeleteConfirmId(null)}
-                  disabled={deleteMutation.isPending}
+                  disabled={isDeleting}
                 >
                   Cancelar
                 </Button>
                 <Button
                   variant="danger"
                   className="flex-1"
-                  disabled={deleteMutation.isPending}
-                  onClick={() => handleDelete(deleteConfirmId)}
+                  disabled={isDeleting}
+                  onClick={() => deleteWatermark(deleteConfirmId)}
                 >
-                  {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
+                  {isDeleting ? 'Excluindo...' : 'Excluir'}
                 </Button>
               </div>
             </Card>

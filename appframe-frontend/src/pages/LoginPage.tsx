@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useNavigation } from '../contexts/NavigationContext';
-import { useAuth, isPublicAuthRoute } from '../contexts/AuthContext';
-import { authService } from '../features/auth';
+import { useAuth } from '../contexts/AuthContext';
+import { authService, useGuestGuard, getAuthRedirectTarget } from '../features/auth';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
 import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
@@ -14,7 +14,7 @@ import { LegalModal } from '../components/legal';
 
 export const LoginPage: React.FC = () => {
   const { navigate, params } = useNavigation();
-  const { isAuthenticated, user, refreshProfile } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const location = useLocation();
   const [email, setEmail] = useState(params.email || '');
   const [password, setPassword] = useState('');
@@ -31,33 +31,7 @@ export const LoginPage: React.FC = () => {
   const [legalModalDoc, setLegalModalDoc] = useState<'terms' | 'privacy'>('terms');
   const isForgotSubmittingRef = useRef(false);
 
-  // Retorna usuário já autenticado para a tela em que estava, impedindo acesso ao login
-  useEffect(() => {
-    if (isAuthenticated) {
-      const fromPath = (location.state as any)?.from?.pathname;
-      const fromSearch = (location.state as any)?.from?.search || '';
-      const fromUrl = fromPath ? `${fromPath}${fromSearch}` : null;
-      let lastActive: string | null = null;
-      try {
-        lastActive = sessionStorage.getItem('appframe_last_active_route');
-      } catch {}
-
-      let target =
-        fromUrl && !isPublicAuthRoute(fromUrl)
-          ? fromUrl
-          : lastActive && !isPublicAuthRoute(lastActive)
-          ? lastActive
-          : '/varredura';
-
-      const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.email === 'christian.zimpel@gmail.com';
-      const isAdmin = isSuperAdmin || user?.role === 'ADMIN';
-      if (target.startsWith('/admin') && !isAdmin) {
-        target = '/varredura';
-      }
-
-      navigate(target, { replace: true });
-    }
-  }, [isAuthenticated, location.state, navigate, user]);
+  useGuestGuard();
 
   const handleGoogleLogin = () => {
     window.location.href = `${API_BASE_URL}/auth/google`;
@@ -91,24 +65,7 @@ export const LoginPage: React.FC = () => {
       const fromPath = (location.state as any)?.from?.pathname;
       const fromSearch = (location.state as any)?.from?.search || '';
       const fromUrl = fromPath ? `${fromPath}${fromSearch}` : null;
-      let lastActive: string | null = null;
-      try {
-        lastActive = sessionStorage.getItem('appframe_last_active_route');
-      } catch {}
-
-      let target =
-        fromUrl && !isPublicAuthRoute(fromUrl)
-          ? fromUrl
-          : lastActive && !isPublicAuthRoute(lastActive)
-          ? lastActive
-          : '/varredura';
-
-      const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.email === 'christian.zimpel@gmail.com';
-      const isAdmin = isSuperAdmin || currentUser?.role === 'ADMIN';
-      if (target.startsWith('/admin') && !isAdmin) {
-        target = '/varredura';
-      }
-
+      const target = getAuthRedirectTarget(currentUser, fromUrl);
       navigate(target, { replace: true });
     } catch (err: any) {
       const status = err?.response?.status;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth, isPublicAuthRoute } from '../../contexts/AuthContext';
-import { isAdminUser } from '../../features/auth';
+import { useAuth } from '../../contexts/AuthContext';
+import { getAuthRedirectTarget } from '../../features/auth';
 
 export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -19,22 +19,7 @@ export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children 
     const fromPath = (location.state as any)?.from?.pathname;
     const fromSearch = (location.state as any)?.from?.search || '';
     const fromUrl = fromPath ? `${fromPath}${fromSearch}` : null;
-
-    let lastActive: string | null = null;
-    try {
-      lastActive = sessionStorage.getItem('appframe_last_active_route');
-    } catch {}
-
-    let target =
-      fromUrl && !isPublicAuthRoute(fromUrl)
-        ? fromUrl
-        : lastActive && !isPublicAuthRoute(lastActive)
-        ? lastActive
-        : '/varredura';
-
-    if (target.startsWith('/admin') && !isAdminUser(user)) {
-      target = '/varredura';
-    }
+    const target = getAuthRedirectTarget(user, fromUrl);
 
     return <Navigate to={target} replace />;
   }

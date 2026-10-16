@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { authService } from '../features/auth';
+import { authService, calculatePasswordStrength } from '../features/auth';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
 import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
@@ -20,42 +20,7 @@ export const ResetPasswordPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Análise determinística de força de senha (idêntica ao cadastro)
-  const passwordStrength = useMemo(() => {
-    if (!newPassword) return { score: 0, label: 'Vazia', colorClass: 'bg-surface-container-highest', isStrong: false };
-    
-    // Regra estrita: O comprimento mínimo de 8 caracteres é pré-requisito mandatório
-    const hasMinLength = newPassword.length >= 8;
-    const hasUpperAndLower = /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword);
-    const hasNumber = /\d/.test(newPassword);
-    const hasSpecial = /[^a-zA-Z0-9]/.test(newPassword);
-
-    if (!hasMinLength) {
-      return {
-        score: 1,
-        label: 'Muito Curta (mín. 8)',
-        colorClass: 'bg-error',
-        isStrong: false,
-      };
-    }
-
-    let score = 1; // 1 ponto pelo tamanho >= 8
-    if (hasUpperAndLower) score += 1;
-    if (hasNumber) score += 1;
-    if (hasSpecial) score += 1;
-
-    switch (score) {
-      case 1:
-        return { score: 1, label: 'Muito Fraca', colorClass: 'bg-error', isStrong: false };
-      case 2:
-        return { score: 2, label: 'Razoável', colorClass: 'bg-tertiary', isStrong: false };
-      case 3:
-        return { score: 3, label: 'Forte', colorClass: 'bg-primary', isStrong: true };
-      case 4:
-      default:
-        return { score: 4, label: 'Excelente', colorClass: 'bg-primary shadow-[0_0_8px_rgba(242,190,94,0.4)]', isStrong: true };
-    }
-  }, [newPassword]);
+  const passwordStrength = useMemo(() => calculatePasswordStrength(newPassword), [newPassword]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

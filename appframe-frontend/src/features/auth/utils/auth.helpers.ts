@@ -1,3 +1,5 @@
+import { isPublicAuthRoute } from '../../../contexts/AuthContext';
+
 export const SUPER_ADMIN_EMAIL = 'christian.zimpel@gmail.com';
 
 export interface UserRoleLike {
@@ -31,4 +33,30 @@ export const hasRole = (
   if (!user) return false;
   if (isSuperAdminUser(user)) return true;
   return Boolean(user.role && (roles as string[]).includes(user.role));
+};
+
+/**
+ * Calcula a rota de destino pós-login baseada no histórico de navegação e permissões do usuário.
+ */
+export const getAuthRedirectTarget = (
+  user: UserRoleLike | null | undefined,
+  fromPath?: string | null
+): string => {
+  let lastActive: string | null = null;
+  try {
+    lastActive = sessionStorage.getItem('appframe_last_active_route');
+  } catch {}
+
+  let target =
+    fromPath && !isPublicAuthRoute(fromPath)
+      ? fromPath
+      : lastActive && !isPublicAuthRoute(lastActive)
+      ? lastActive
+      : '/varredura';
+
+  if (target.startsWith('/admin') && !isAdminUser(user)) {
+    target = '/varredura';
+  }
+
+  return target;
 };

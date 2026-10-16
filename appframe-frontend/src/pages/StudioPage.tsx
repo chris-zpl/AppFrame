@@ -13,7 +13,6 @@ import { watermarksService } from '../features/watermarks';
 import {
   mediaService,
   type CreateVideoJobPayload,
-  type GeminiSubtitleSegment,
   type StudioVideoQueueItem,
   type SubtitleLineData,
   type SubtitleSegmentData,
@@ -26,6 +25,9 @@ import {
   type SubtitleMode,
   type FontFamily,
   type WatermarkPosition,
+  formatStudioTime as formatTime,
+  wrapCanvasText,
+  useStudioSubtitles,
 } from '../features/studio';
 
 export type { AspectRatio, SubtitleMode, FontFamily, WatermarkPosition };
@@ -112,12 +114,6 @@ export const StudioPage: React.FC = () => {
   const [isDeleteStudioModalOpen, setIsDeleteStudioModalOpen] = useState<boolean>(false);
   const [isDeletingFromStudio, setIsDeletingFromStudio] = useState<boolean>(false);
 
-  // Estados reais do Gerador de Legendas Gemini
-  const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState<boolean>(false);
-  const [isTranscribingAudio, setIsTranscribingAudio] = useState<boolean>(false);
-  const [showAdvancedGeminiOptions, setShowAdvancedGeminiOptions] = useState<boolean>(false);
-  const [dynamicSegments, setDynamicSegments] = useState<GeminiSubtitleSegment[]>([]);
-  const [selectedMediaFile, setSelectedMediaFile] = useState<File | null>(null);
   const [currentPreviewId, setCurrentPreviewId] = useState<string | null>(null);
   const mediaFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -151,105 +147,36 @@ export const StudioPage: React.FC = () => {
   const [fontSize, setFontSize] = useState<number>(28);
   const [useBackgroundBox, setUseBackgroundBox] = useState<boolean>(true);
 
+  // Hook de Legendas e Transcrição Gemini
+  const {
+    isGeneratingSubtitles,
+    isTranscribingAudio,
+    showAdvancedGeminiOptions,
+    setShowAdvancedGeminiOptions,
+    dynamicSegments,
+    setDynamicSegments,
+    selectedMediaFile,
+    setSelectedMediaFile,
+    handleGenerateGeminiSubtitles,
+    handleTranscribeCurrentVideo,
+  } = useStudioSubtitles({
+    isGeminiConnected,
+    videoTitle: params.videoTitle || currentVideo?.title,
+    currentVideoUrl: currentVideo?.url || params.videoUrl || params.sourceUrl,
+    currentPreviewId,
+    trimIn,
+    trimOut,
+    totalDuration,
+    setSubtitleMode,
+    setCurrentTime,
+  });
+
   // Garante que o modo dinâmico fique bloqueado caso o Gemini não esteja configurado
   useEffect(() => {
     if (!isLoadingGeminiStatus && !isGeminiConnected && subtitleMode === 'dynamic') {
       setSubtitleMode('static');
     }
   }, [isLoadingGeminiStatus, isGeminiConnected, subtitleMode]);
-
-  // Ação real: Gerar legendas sincronizadas pelo Gemini no backend
-  const handleGenerateGeminiSubtitles = async () => {
-    if (!isGeminiConnected) {
-      toast.error('O assistente de inteligência artificial (Gemini) não está configurado na plataforma. Contate o administrador.');
-      return;
-    }
-
-    const contextToUse = geminiPrompt.trim() || params.videoTitle || '';
-    if (!selectedMediaFile && !contextToUse) {
-      toast.error(
-        'Selecione um arquivo de áudio/vídeo ou descreva o tema/roteiro do vídeo para gerar as legendas pelo Gemini.'
-      );
-      return;
-    }
-
-    setIsGeneratingSubtitles(true);
-    try {
-      const result = await mediaService.generateGeminiSubtitles({
-        file: selectedMediaFile,
-        title: params.videoTitle,
-        context: contextToUse,
-        durationSeconds: Math.max(5, Math.round(trimOut - trimIn)),
-        language: 'pt-BR',
-      });
-
-      if (result.segments && result.segments.length > 0) {
-        setDynamicSegments(result.segments);
-        setSubtitleMode('dynamic');
-        setCurrentTime(result.segments[0].start);
-        toast.success(
-          `${result.segments.length} blocos de legenda gerados com sucesso pelo Google Gemini!`
-        );
-      } else {
-        toast.error('O Gemini não retornou segmentos de legenda para o conteúdo informado.');
-      }
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Falha ao gerar legendas pelo Google Gemini.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    } finally {
-      setIsGeneratingSubtitles(false);
-    }
-  };
-
-  // Ação real: Transcrever áudio do vídeo atual via Gemini (reconhecimento de fala real STT)
-  const handleTranscribeCurrentVideo = async () => {
-    if (!isGeminiConnected) {
-      toast.error('O assistente de inteligência artificial (Gemini) não está configurado na plataforma. Contate o administrador.');
-      return;
-    }
-
-    const videoUrl = currentVideo?.url || params.videoUrl || params.sourceUrl;
-    if (!videoUrl && !selectedMediaFile && !currentPreviewId) {
-      toast.error('Nenhum vídeo carregado no Studio para transcrição.');
-      return;
-    }
-
-    setIsTranscribingAudio(true);
-    try {
-      const result = await mediaService.generateGeminiSubtitles({
-        file: selectedMediaFile,
-        previewId: currentPreviewId || undefined,
-        sourceUrl: videoUrl || undefined,
-        trimStart: trimIn > 0 ? trimIn : undefined,
-        trimEnd: trimOut > 0 && trimOut < totalDuration ? trimOut : undefined,
-        language: 'pt-BR',
-      });
-
-      if (result.segments && result.segments.length > 0) {
-        setDynamicSegments(result.segments);
-        setSubtitleMode('dynamic');
-        setCurrentTime(result.segments[0].start);
-        toast.success(
-          `Transcrição concluída! ${result.segments.length} blocos de fala sincronizados com o áudio do vídeo.`
-        );
-      } else {
-        toast.info(
-          'Nenhuma fala foi detectada no áudio do vídeo. Caso o vídeo não possua narração, você pode gerar legendas por roteiro nas outras opções.'
-        );
-      }
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Falha ao transcrever áudio do vídeo pelo Google Gemini.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    } finally {
-      setIsTranscribingAudio(false);
-    }
-  };
 
   // Configurações da Aba Marca d'Água
   const [selectedWatermarkId, setSelectedWatermarkId] = useState<string>('none');
@@ -296,18 +223,6 @@ export const StudioPage: React.FC = () => {
   const draggingHandleRef = useRef<'in' | 'out' | 'playhead' | null>(null);
   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
-  // Formatação de cronômetro com precisão tabular (MM:SS ou MM:SS.mmm)
-  const formatTime = (seconds: number, includeMs: boolean = false): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    const ms = Math.floor((seconds % 1) * 1000);
-    const base = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    if (includeMs) {
-      return `${base}.${String(ms).padStart(3, '0')}`;
-    }
-    return base;
-  };
-
   // Renderização determinística no Canvas com cálculo estrito de quebra de linha (fix_bounds)
   const drawCanvasOverlay = useCallback(() => {
     const canvas = canvasRef.current;
@@ -336,25 +251,7 @@ export const StudioPage: React.FC = () => {
     ctx.font = `bold ${fontSize}px "${fontFamily}", sans-serif`;
 
     const wrapText = (text: string, maxWidth: number): string[] => {
-      const words = text.trim().split(/\s+/);
-      const lines: string[] = [];
-      let currentLine = '';
-
-      for (const w of words) {
-        if (!w) continue;
-        const testLine = currentLine ? `${currentLine} ${w}` : w;
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxWidth && currentLine) {
-          lines.push(currentLine);
-          currentLine = w;
-        } else {
-          currentLine = testLine;
-        }
-      }
-      if (currentLine) {
-        lines.push(currentLine);
-      }
-      return lines;
+      return wrapCanvasText(ctx, text, maxWidth);
     };
 
     let displayLines: string[] = [];
@@ -1994,7 +1891,7 @@ export const StudioPage: React.FC = () => {
                               size="sm"
                               disabled={!isGeminiConnected || isGeneratingSubtitles || isTranscribingAudio}
                               isLoading={isGeneratingSubtitles}
-                              onClick={handleGenerateGeminiSubtitles}
+                              onClick={() => handleGenerateGeminiSubtitles(geminiPrompt)}
                               leftIcon={
                                 <span className="material-symbols-outlined text-[16px]">
                                   auto_awesome

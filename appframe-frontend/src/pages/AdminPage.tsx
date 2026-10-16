@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Badge } from '../components/ui';
 import { cn } from '../lib/utils';
 import {
-  adminService,
-  legalService,
   type AdminTab,
-  type AdminUser,
   type AdminSession,
   type SmtpConfig,
   type SaveLegalSettingsDto,
@@ -23,12 +18,13 @@ import {
   RevokeSessionModal,
   ResetLegalModal,
   useAdminData,
+  useAdminGuard,
+  useAdminMutations,
 } from '../features/admin';
 import { isSuperAdminUser, isAdminUser } from '../features/auth';
 
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { user } = useAuth();
 
   const isSuperAdmin = isSuperAdminUser(user);
@@ -36,22 +32,16 @@ export const AdminPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
 
-  // Redireciona usuário comum sem privilégios
-  useEffect(() => {
-    if (user && !isAdmin) {
-      toast.error('Acesso restrito aos administradores.');
-      navigate('/varredura', { replace: true });
-    }
-  }, [user, isAdmin, navigate]);
+  // Guard de acesso e permissões de abas
+  useAdminGuard({
+    user,
+    isAdmin,
+    isSuperAdmin,
+    activeTab,
+    setActiveTab,
+  });
 
-  // Se o usuário for ADMIN (não super-admin), permite apenas 'users' e 'audit'
-  useEffect(() => {
-    if (!isSuperAdmin && activeTab !== 'users' && activeTab !== 'audit') {
-      setActiveTab('users');
-    }
-  }, [isSuperAdmin, activeTab]);
-
-  // ================= HOOK DE DADOS ADMIN =================
+  // Hook de Dados Admin
   const {
     users,
     sessions,
@@ -64,6 +54,32 @@ export const AdminPage: React.FC = () => {
     isRefetchingAudit,
     legalSettings,
   } = useAdminData({ isAdmin, isSuperAdmin, activeTab });
+
+  // Hook de Mutações Admin
+  const {
+    handleRoleChange,
+    handleStatusToggle,
+    handleRevokeSession,
+    isRevokingSession,
+    handleSaveYoutubeCookies,
+    handleDeleteYoutubeCookies,
+    isSavingCookies,
+    isDeletingCookies,
+    handleSaveGeminiKey,
+    handleTestGemini,
+    handleDeleteGemini,
+    isSavingGemini,
+    isTestingGemini,
+    isDeletingGemini,
+    handleSaveSmtp,
+    handleTestSmtp,
+    isSavingSmtp,
+    isTestingSmtp,
+    handleSaveLegal,
+    handleResetLegal: executeResetLegal,
+    isSavingLegal,
+    isResettingLegal,
+  } = useAdminMutations({ currentUser: user });
 
   // ================= ESTADOS DO TAB LEGAL =================
   const [legalForm, setLegalForm] = useState<SaveLegalSettingsDto>({
@@ -79,8 +95,6 @@ export const AdminPage: React.FC = () => {
   const [activeLegalDoc, setActiveLegalDoc] = useState<'terms' | 'privacy'>('terms');
   const [activeTermsMode, setActiveTermsMode] = useState<'edit' | 'preview'>('edit');
   const [activePrivacyMode, setActivePrivacyMode] = useState<'edit' | 'preview'>('edit');
-  const [isSavingLegal, setIsSavingLegal] = useState(false);
-  const [isResettingLegal, setIsResettingLegal] = useState(false);
   const [showResetLegalModal, setShowResetLegalModal] = useState(false);
 
   useEffect(() => {
@@ -111,15 +125,10 @@ export const AdminPage: React.FC = () => {
 
   // ================= ESTADOS DO TAB YOUTUBE =================
   const [cookiesInput, setCookiesInput] = useState('');
-  const [isSavingCookies, setIsSavingCookies] = useState(false);
-  const [isDeletingCookies, setIsDeletingCookies] = useState(false);
 
   // ================= ESTADOS DO TAB GEMINI =================
   const [geminiKeyInput, setGeminiKeyInput] = useState('');
   const [showGeminiKey, setShowGeminiKey] = useState(false);
-  const [isSavingGemini, setIsSavingGemini] = useState(false);
-  const [isTestingGemini, setIsTestingGemini] = useState(false);
-  const [isDeletingGemini, setIsDeletingGemini] = useState(false);
 
   // ================= ESTADOS DO TAB SMTP =================
   const [smtpForm, setSmtpForm] = useState<SmtpConfig>({
@@ -132,9 +141,7 @@ export const AdminPage: React.FC = () => {
     secure: false,
   });
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
-  const [isSavingSmtp, setIsSavingSmtp] = useState(false);
   const [testEmailInput, setTestEmailInput] = useState('');
-  const [isTestingSmtp, setIsTestingSmtp] = useState(false);
 
   useEffect(() => {
     if (smtpConfig) {
@@ -152,102 +159,17 @@ export const AdminPage: React.FC = () => {
 
   // ================= ESTADOS DE MODAIS =================
   const [sessionToRevoke, setSessionToRevoke] = useState<AdminSession | null>(null);
-  const [isRevokingSession, setIsRevokingSession] = useState(false);
 
-  // ================= AÇÕES: GESTÃO DE USUÁRIOS =================
-  const handleRoleChange = async (targetUser: AdminUser, newRole: 'SUPER_ADMIN' | 'ADMIN' | 'USER') => {
-    if (isSuperAdminUser(targetUser)) {
-      toast.error('O Super-Administrador da plataforma não pode ter seu papel alterado.');
-      return;
-    }
-    if (targetUser.id === user?.id || targetUser.email === user?.email) {
-      toast.error('Você não pode alterar seu próprio papel de acesso.');
-      return;
-    }
-    try {
-      await adminService.updateUserRole(targetUser.id, newRole);
-      queryClient.setQueryData<AdminUser[]>(['admin-users'], (prev) =>
-        prev
-          ? prev.map((u) => (u.id === targetUser.id ? { ...u, role: newRole } : u))
-          : []
-      );
-      await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      await queryClient.refetchQueries({ queryKey: ['admin-users'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
-      await queryClient.refetchQueries({ queryKey: ['admin-audit-logs'] });
-      toast.success(
-        `Papel do usuário ${targetUser.name} alterado para ${newRole === 'ADMIN' ? 'Administrador' : 'Usuário Comum'}.`
-      );
-    } catch (err: any) {
-      await queryClient.refetchQueries({ queryKey: ['admin-users'] });
-      const msg = err?.response?.data?.message || 'Falha ao alterar papel do usuário.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    }
-  };
-
-  const handleStatusToggle = async (targetUser: AdminUser) => {
-    if (isSuperAdminUser(targetUser)) {
-      toast.error('O Super-Administrador fundador não pode ser desativado.');
-      return;
-    }
-    const nextStatus = !targetUser.is_active;
-    try {
-      await adminService.updateUserStatus(targetUser.id, nextStatus);
-      queryClient.setQueryData<AdminUser[]>(['admin-users'], (prev) =>
-        prev
-          ? prev.map((u) => (u.id === targetUser.id ? { ...u, is_active: nextStatus } : u))
-          : []
-      );
-      await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      await queryClient.refetchQueries({ queryKey: ['admin-users'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
-      toast.success(`Usuário ${targetUser.name} foi ${nextStatus ? 'ativado' : 'bloqueado'}.`);
-    } catch (err: any) {
-      await queryClient.refetchQueries({ queryKey: ['admin-users'] });
-      const msg = err?.response?.data?.message || 'Falha ao alterar status do usuário.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    }
-  };
-
-  // ================= AÇÕES: SESSÕES =================
   const handleConfirmRevokeSession = async () => {
     if (!sessionToRevoke) return;
-    setIsRevokingSession(true);
-    try {
-      await adminService.revokeSession(sessionToRevoke.id);
-      await queryClient.invalidateQueries({ queryKey: ['admin-sessions'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
-      toast.success('Sessão encerrada com sucesso. O dispositivo foi desconectado.');
-      setSessionToRevoke(null);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Falha ao desconectar sessão.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    } finally {
-      setIsRevokingSession(false);
-    }
+    const ok = await handleRevokeSession(sessionToRevoke.id);
+    if (ok) setSessionToRevoke(null);
   };
 
-  // ================= AÇÕES: YOUTUBE =================
-  const handleSaveCookies = async (e: React.FormEvent) => {
+  const handleSaveCookiesSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cookiesInput.trim()) {
-      toast.error('Cole o conteúdo do arquivo cookies.txt do YouTube.');
-      return;
-    }
-    setIsSavingCookies(true);
-    try {
-      const res = await adminService.saveYoutubeCookies(cookiesInput);
-      await queryClient.invalidateQueries({ queryKey: ['admin-youtube-cookies'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
-      setCookiesInput('');
-      toast.success(res.message || 'Cookies do YouTube salvos com sucesso!');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Falha ao salvar cookies.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    } finally {
-      setIsSavingCookies(false);
-    }
+    const ok = await handleSaveYoutubeCookies(cookiesInput);
+    if (ok) setCookiesInput('');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -261,147 +183,25 @@ export const AdminPage: React.FC = () => {
     reader.readAsText(file);
   };
 
-  const handleDeleteCookies = async () => {
-    setIsDeletingCookies(true);
-    try {
-      const res = await adminService.deleteYoutubeCookies();
-      await queryClient.invalidateQueries({ queryKey: ['admin-youtube-cookies'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
-      toast.success(res.message || 'Cookies removidos com sucesso.');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Falha ao remover cookies.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    } finally {
-      setIsDeletingCookies(false);
-    }
-  };
-
-  // ================= AÇÕES: GEMINI =================
-  const handleSaveGeminiKey = async (e: React.FormEvent) => {
+  const handleSaveGeminiKeySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const clean = geminiKeyInput.trim();
-    if (!clean) {
-      toast.error('Informe a chave de API do Google AI Studio (Gemini).');
-      return;
-    }
-    setIsSavingGemini(true);
-    try {
-      const res = await adminService.saveGeminiApiKey(clean);
-      await queryClient.invalidateQueries({ queryKey: ['admin-gemini-status'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
-      setGeminiKeyInput('');
-      toast.success(res.message || 'Chave do Gemini salva com sucesso!');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Falha ao validar ou salvar chave do Gemini.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    } finally {
-      setIsSavingGemini(false);
-    }
+    const ok = await handleSaveGeminiKey(geminiKeyInput);
+    if (ok) setGeminiKeyInput('');
   };
 
-  const handleTestGemini = async () => {
-    setIsTestingGemini(true);
-    try {
-      const res = await adminService.testGemini(geminiKeyInput.trim() || undefined);
-      toast.success(res.message || 'Conexão com Google Gemini realizada com sucesso!');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Falha no teste de conexão com o Gemini.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    } finally {
-      setIsTestingGemini(false);
-    }
-  };
-
-  const handleDeleteGemini = async () => {
-    setIsDeletingGemini(true);
-    try {
-      const res = await adminService.deleteGeminiApiKey();
-      await queryClient.invalidateQueries({ queryKey: ['admin-gemini-status'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
-      toast.success(res.message || 'Chave global do Gemini removida.');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Falha ao remover chave.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    } finally {
-      setIsDeletingGemini(false);
-    }
-  };
-
-  // ================= AÇÕES: SMTP =================
-  const handleSaveSmtp = async (e: React.FormEvent) => {
+  const handleSaveSmtpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!smtpForm.host || !smtpForm.fromEmail) {
-      toast.error('Preencha o Host e o E-mail de remetente.');
-      return;
-    }
-    setIsSavingSmtp(true);
-    try {
-      const res = await adminService.saveSmtpConfig(smtpForm);
-      await queryClient.invalidateQueries({ queryKey: ['admin-smtp-config'] });
-      toast.success(res.message || 'Configurações de SMTP salvas com sucesso!');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Falha ao salvar configurações SMTP.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    } finally {
-      setIsSavingSmtp(false);
-    }
+    handleSaveSmtp(smtpForm);
   };
 
-  const handleTestSmtp = async () => {
-    const emailToTest = testEmailInput.trim() || user?.email;
-    if (!emailToTest) {
-      toast.error('Informe um e-mail de destino para o teste.');
-      return;
-    }
-    setIsTestingSmtp(true);
-    try {
-      const res = await adminService.testSmtp(emailToTest);
-      toast.success(res.message || `E-mail de teste enviado para ${emailToTest}!`);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Falha ao enviar e-mail de teste.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    } finally {
-      setIsTestingSmtp(false);
-    }
-  };
-
-  // ================= AÇÕES: DOCUMENTOS LEGAIS =================
-  const handleSaveLegal = async (e: React.FormEvent) => {
+  const handleSaveLegalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSavingLegal(true);
-    try {
-      const res = await legalService.saveAdminLegalSettings(legalForm);
-      await queryClient.invalidateQueries({ queryKey: ['admin-legal-settings'] });
-      await queryClient.invalidateQueries({ queryKey: ['public-legal-documents'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
-      toast.success(res.message || 'Termos de Serviço e Política de Privacidade atualizados com sucesso!');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Falha ao salvar documentos legais.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    } finally {
-      setIsSavingLegal(false);
-    }
-  };
-
-  const handleResetLegal = () => {
-    setShowResetLegalModal(true);
+    handleSaveLegal(legalForm);
   };
 
   const handleConfirmResetLegal = async () => {
-    setIsResettingLegal(true);
-    try {
-      const res = await legalService.resetAdminLegalSettings();
-      await queryClient.invalidateQueries({ queryKey: ['admin-legal-settings'] });
-      await queryClient.invalidateQueries({ queryKey: ['public-legal-documents'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin-audit-logs'] });
-      setShowResetLegalModal(false);
-      toast.success(res.message || 'Termos e Política de Privacidade restaurados para a minuta oficial padrão!');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Falha ao restaurar documentos legais.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    } finally {
-      setIsResettingLegal(false);
-    }
+    const ok = await executeResetLegal();
+    if (ok) setShowResetLegalModal(false);
   };
 
   if (!isAdmin) {
@@ -562,8 +362,8 @@ export const AdminPage: React.FC = () => {
             setCookiesInput={setCookiesInput}
             isSavingCookies={isSavingCookies}
             isDeletingCookies={isDeletingCookies}
-            onSaveCookies={handleSaveCookies}
-            onDeleteCookies={handleDeleteCookies}
+            onSaveCookies={handleSaveCookiesSubmit}
+            onDeleteCookies={handleDeleteYoutubeCookies}
             onFileUpload={handleFileUpload}
           />
         )}
@@ -579,8 +379,8 @@ export const AdminPage: React.FC = () => {
             isSavingGemini={isSavingGemini}
             isTestingGemini={isTestingGemini}
             isDeletingGemini={isDeletingGemini}
-            onSaveGeminiKey={handleSaveGeminiKey}
-            onTestGemini={handleTestGemini}
+            onSaveGeminiKey={handleSaveGeminiKeySubmit}
+            onTestGemini={() => handleTestGemini(geminiKeyInput)}
             onDeleteGemini={handleDeleteGemini}
           />
         )}
@@ -597,8 +397,8 @@ export const AdminPage: React.FC = () => {
             setTestEmailInput={setTestEmailInput}
             isTestingSmtp={isTestingSmtp}
             currentUserEmail={user?.email}
-            onSaveSmtp={handleSaveSmtp}
-            onTestSmtp={handleTestSmtp}
+            onSaveSmtp={handleSaveSmtpSubmit}
+            onTestSmtp={() => handleTestSmtp(testEmailInput)}
           />
         )}
 
@@ -634,8 +434,8 @@ export const AdminPage: React.FC = () => {
             setActivePrivacyMode={setActivePrivacyMode}
             isSavingLegal={isSavingLegal}
             isResettingLegal={isResettingLegal}
-            onSaveLegal={handleSaveLegal}
-            onResetLegal={handleResetLegal}
+            onSaveLegal={handleSaveLegalSubmit}
+            onResetLegal={() => setShowResetLegalModal(true)}
           />
         )}
       </div>

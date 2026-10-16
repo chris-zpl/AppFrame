@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
-import { useAuth, isPublicAuthRoute } from '../contexts/AuthContext';
-import { authService } from '../features/auth';
+import { authService, useGuestGuard, calculatePasswordStrength } from '../features/auth';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
 import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
@@ -14,7 +13,6 @@ import { LegalModal } from '../components/legal';
 
 export const RegisterPage: React.FC = () => {
   const { navigate } = useNavigation();
-  const { isAuthenticated } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,55 +23,9 @@ export const RegisterPage: React.FC = () => {
   const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [legalModalDoc, setLegalModalDoc] = useState<'terms' | 'privacy'>('terms');
 
-  // Retorna usuário já autenticado para a tela em que estava, impedindo acesso ao registro
-  useEffect(() => {
-    if (isAuthenticated) {
-      let lastActive: string | null = null;
-      try {
-        lastActive = sessionStorage.getItem('appframe_last_active_route');
-      } catch {}
+  useGuestGuard();
 
-      const target = lastActive && !isPublicAuthRoute(lastActive) ? lastActive : '/varredura';
-      navigate(target, { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
-
-  // Análise determinística de força de senha
-  const passwordStrength = useMemo(() => {
-    if (!password) return { score: 0, label: 'Vazia', colorClass: 'bg-surface-container-highest', isStrong: false };
-    
-    // Regra estrita: O comprimento mínimo de 8 caracteres é pré-requisito mandatório
-    const hasMinLength = password.length >= 8;
-    const hasUpperAndLower = /[a-z]/.test(password) && /[A-Z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    const hasSpecial = /[^a-zA-Z0-9]/.test(password);
-
-    if (!hasMinLength) {
-      return {
-        score: 1,
-        label: 'Muito Curta (mín. 8)',
-        colorClass: 'bg-error',
-        isStrong: false,
-      };
-    }
-
-    let score = 1; // 1 ponto pelo tamanho >= 8
-    if (hasUpperAndLower) score += 1;
-    if (hasNumber) score += 1;
-    if (hasSpecial) score += 1;
-
-    switch (score) {
-      case 1:
-        return { score: 1, label: 'Muito Fraca', colorClass: 'bg-error', isStrong: false };
-      case 2:
-        return { score: 2, label: 'Razoável', colorClass: 'bg-tertiary', isStrong: false };
-      case 3:
-        return { score: 3, label: 'Forte', colorClass: 'bg-primary', isStrong: true };
-      case 4:
-      default:
-        return { score: 4, label: 'Excelente', colorClass: 'bg-primary shadow-[0_0_8px_rgba(242,190,94,0.4)]', isStrong: true };
-    }
-  }, [password]);
+  const passwordStrength = useMemo(() => calculatePasswordStrength(password), [password]);
 
   const handleGoogleSignup = () => {
     // Redireciona para o endpoint OAuth do NestJS ou simula callback

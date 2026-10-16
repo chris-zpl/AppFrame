@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
-import { useAuth, isPublicAuthRoute } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
+import { getAuthRedirectTarget } from '../features/auth';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
 import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
@@ -56,13 +57,7 @@ export const AuthCallbackPage: React.FC = () => {
         setStatusText('Sessão estabelecida! Redirecionando para o Workspace...');
         setProgress(100);
 
-        let target = '/varredura';
-        try {
-          const lastActive = sessionStorage.getItem('appframe_last_active_route');
-          if (lastActive && !isPublicAuthRoute(lastActive)) {
-            target = lastActive;
-          }
-        } catch {}
+        const target = getAuthRedirectTarget(null);
 
         setTimeout(() => {
           navigate(target, { replace: true });

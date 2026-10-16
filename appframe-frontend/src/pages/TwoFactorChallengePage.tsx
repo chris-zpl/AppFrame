@@ -5,7 +5,8 @@ import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { useAuth, isPublicAuthRoute } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
+import { getAuthRedirectTarget } from '../features/auth';
 
 export const TwoFactorChallengePage: React.FC = () => {
   const { navigate, params } = useNavigation();
@@ -84,20 +85,7 @@ export const TwoFactorChallengePage: React.FC = () => {
 
     try {
       const result = await verify2fa(tempToken, code);
-      const loggedUser = result?.user;
-      const isSuperAdmin = loggedUser?.role === 'SUPER_ADMIN' || loggedUser?.email === 'christian.zimpel@gmail.com';
-      const isAdmin = isSuperAdmin || loggedUser?.role === 'ADMIN';
-
-      let lastActive: string | null = null;
-      try {
-        lastActive = sessionStorage.getItem('appframe_last_active_route');
-      } catch {}
-
-      let target = lastActive && !isPublicAuthRoute(lastActive) ? lastActive : '/varredura';
-      if (target.startsWith('/admin') && !isAdmin) {
-        target = '/varredura';
-      }
-
+      const target = getAuthRedirectTarget(result?.user);
       navigate(target, { replace: true });
     } catch (err: any) {
       const msg =
