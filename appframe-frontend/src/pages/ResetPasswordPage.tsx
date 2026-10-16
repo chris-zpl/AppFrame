@@ -24,11 +24,25 @@ export const ResetPasswordPage: React.FC = () => {
   const passwordStrength = useMemo(() => {
     if (!newPassword) return { score: 0, label: 'Vazia', colorClass: 'bg-surface-container-highest', isStrong: false };
     
-    let score = 0;
-    if (newPassword.length >= 8) score += 1;
-    if (/[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword)) score += 1;
-    if (/\d/.test(newPassword)) score += 1;
-    if (/[^a-zA-Z0-9]/.test(newPassword)) score += 1;
+    // Regra estrita: O comprimento mínimo de 8 caracteres é pré-requisito mandatório
+    const hasMinLength = newPassword.length >= 8;
+    const hasUpperAndLower = /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword);
+    const hasNumber = /\d/.test(newPassword);
+    const hasSpecial = /[^a-zA-Z0-9]/.test(newPassword);
+
+    if (!hasMinLength) {
+      return {
+        score: 1,
+        label: 'Muito Curta (mín. 8)',
+        colorClass: 'bg-error',
+        isStrong: false,
+      };
+    }
+
+    let score = 1; // 1 ponto pelo tamanho >= 8
+    if (hasUpperAndLower) score += 1;
+    if (hasNumber) score += 1;
+    if (hasSpecial) score += 1;
 
     switch (score) {
       case 1:

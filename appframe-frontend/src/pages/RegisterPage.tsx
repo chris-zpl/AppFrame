@@ -39,11 +39,25 @@ export const RegisterPage: React.FC = () => {
   const passwordStrength = useMemo(() => {
     if (!password) return { score: 0, label: 'Vazia', colorClass: 'bg-surface-container-highest', isStrong: false };
     
-    let score = 0;
-    if (password.length >= 8) score += 1;
-    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score += 1;
-    if (/\d/.test(password)) score += 1;
-    if (/[^a-zA-Z0-9]/.test(password)) score += 1;
+    // Regra estrita: O comprimento mínimo de 8 caracteres é pré-requisito mandatório
+    const hasMinLength = password.length >= 8;
+    const hasUpperAndLower = /[a-z]/.test(password) && /[A-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[^a-zA-Z0-9]/.test(password);
+
+    if (!hasMinLength) {
+      return {
+        score: 1,
+        label: 'Muito Curta (mín. 8)',
+        colorClass: 'bg-error',
+        isStrong: false,
+      };
+    }
+
+    let score = 1; // 1 ponto pelo tamanho >= 8
+    if (hasUpperAndLower) score += 1;
+    if (hasNumber) score += 1;
+    if (hasSpecial) score += 1;
 
     switch (score) {
       case 1:
@@ -69,6 +83,16 @@ export const RegisterPage: React.FC = () => {
 
     if (!agreeTerms) {
       setErrorMessage('Você deve concordar com os Termos de Serviço para continuar.');
+      return;
+    }
+
+    if (!password) {
+      setErrorMessage('Por favor, informe uma senha de acesso.');
+      return;
+    }
+
+    if (password.length < 8) {
+      setErrorMessage('A senha deve ter no mínimo 8 caracteres.');
       return;
     }
 
@@ -215,11 +239,15 @@ export const RegisterPage: React.FC = () => {
                 <div className="flex flex-col gap-1.5">
                   <Input
                     label="Senha de Acesso"
-                    placeholder="••••••••••••"
+                    placeholder="Mínimo de 8 caracteres"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errorMessage) setErrorMessage(null);
+                    }}
                     required
+                    minLength={8}
                     leftIcon={
                       <span className="material-symbols-outlined text-[18px]">
                         lock

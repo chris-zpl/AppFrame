@@ -828,6 +828,44 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
         }),
       );
     });
+
+    it('deve rejeitar cadastro (register) se a senha não atingir o critério de segurança forte', async () => {
+      mockUserRepo.findOne.mockResolvedValue(null);
+
+      // Menor que 8 caracteres
+      await expect(
+        authService.register({
+          name: 'Tester',
+          email: 'weak1@appframe.io',
+          password: 'Aa1!', // 4 caracteres
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      // 8 caracteres sem diversidade (apenas números)
+      await expect(
+        authService.register({
+          name: 'Tester',
+          email: 'weak2@appframe.io',
+          password: '12345678',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      // 8 caracteres sem diversidade (apenas minúsculas)
+      await expect(
+        authService.register({
+          name: 'Tester',
+          email: 'weak3@appframe.io',
+          password: 'abcdefgh',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      // Senha forte válida (score >= 3 e >= 8 caracteres)
+      expect(authService.isPasswordStrong('SenhaSegura123!')).toBe(true);
+      expect(authService.isPasswordStrong('Password$2026!')).toBe(true);
+      expect(authService.isPasswordStrong('Aa1!Aa1!')).toBe(true);
+      expect(authService.isPasswordStrong('curta1!')).toBe(false);
+      expect(authService.isPasswordStrong('somenteletras')).toBe(false);
+    });
   });
 });
 

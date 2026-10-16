@@ -100,6 +100,19 @@ export class AuthService {
     return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(key, 'hex'));
   }
 
+  /**
+   * Avaliação determinística de força de senha:
+   * Requer no mínimo 8 caracteres e atingir pontuação forte (score >= 3).
+   */
+  isPasswordStrong(password: string): boolean {
+    if (!password || password.length < 8) return false;
+    let score = 1; // 1 ponto pelo tamanho >= 8
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score += 1;
+    if (/\d/.test(password)) score += 1;
+    if (/[^a-zA-Z0-9]/.test(password)) score += 1;
+    return score >= 3;
+  }
+
   private hashToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
@@ -189,6 +202,12 @@ export class AuthService {
     });
     if (existing) {
       throw new ConflictException('Já existe um usuário cadastrado com este e-mail.');
+    }
+
+    if (!this.isPasswordStrong(dto.password)) {
+      throw new BadRequestException(
+        'A senha deve conter no mínimo 8 caracteres e atingir o critério de segurança forte (combinando letras maiúsculas, minúsculas, números ou símbolos).',
+      );
     }
 
     const user = this.userRepository.create({
@@ -668,6 +687,12 @@ export class AuthService {
       }
     }
 
+    if (!this.isPasswordStrong(dto.newPassword)) {
+      throw new BadRequestException(
+        'A nova senha deve conter no mínimo 8 caracteres e atingir o critério de segurança forte (combinando letras maiúsculas, minúsculas, números ou símbolos).',
+      );
+    }
+
     // Define a nova senha
     user.password_hash = this.hashPassword(dto.newPassword);
     await this.userRepository.save(user);
@@ -1076,6 +1101,12 @@ export class AuthService {
     const user = await this.userRepository.findOne({ where: { id: payload.userId } });
     if (!user) {
       throw new NotFoundException('Usuário não encontrado.');
+    }
+
+    if (!this.isPasswordStrong(dto.newPassword)) {
+      throw new BadRequestException(
+        'A nova senha deve conter no mínimo 8 caracteres e atingir o critério de segurança forte (combinando letras maiúsculas, minúsculas, números ou símbolos).',
+      );
     }
 
     // 1. Define a nova senha com hash forte
