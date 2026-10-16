@@ -2,21 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { AppShell } from '../components/layout/AppShell';
-import { Badge } from '../components/ui';
-import { cn } from '../lib/utils';
 import {
   type AdminTab,
   type AdminSession,
   type SmtpConfig,
   type SaveLegalSettingsDto,
+  AdminHeader,
+  AdminNavigationTabs,
   AdminUsersTab,
   AdminYoutubeTab,
   AdminGeminiTab,
   AdminSmtpTab,
   AdminAuditLogsTab,
   AdminLegalTab,
-  RevokeSessionModal,
-  ResetLegalModal,
+  AdminModals,
   useAdminData,
   useAdminGuard,
   useAdminMutations,
@@ -216,129 +215,16 @@ export const AdminPage: React.FC = () => {
       <div className="flex flex-col gap-6 animate-in fade-in duration-200">
         {/* ================= HEADER DO PAINEL ADMIN ================= */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-surface-container-highest">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2.5">
-              <span className="material-symbols-outlined text-[28px] text-primary">
-                admin_panel_settings
-              </span>
-              <h1 className="text-headline-sm font-bold text-on-surface">
-                Painel Administrativo
-              </h1>
-              <Badge variant={isSuperAdmin ? 'primary' : 'neutral'} className="font-bold">
-                {isSuperAdmin ? 'SUPER ADMIN' : 'ADMINISTRADOR'}
-              </Badge>
-            </div>
-            <p className="text-body-sm text-on-surface-variant">
-              {isSuperAdmin
-                ? 'Controle total da plataforma: usuários, sessões, credenciais globais e servidores.'
-                : 'Gestão de usuários da plataforma e controle de sessões ativas.'}
-            </p>
-          </div>
-
-          {/* Abas de Navegação */}
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container border border-surface-container-highest overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => setActiveTab('users')}
-              className={cn(
-                'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
-                activeTab === 'users'
-                  ? 'bg-primary text-on-primary shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-              )}
-            >
-              <span className="material-symbols-outlined text-[18px]">group</span>
-              <span>Usuários & Sessões</span>
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20 text-white font-mono">
-                {users.length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('audit')}
-              className={cn(
-                'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
-                activeTab === 'audit'
-                  ? 'bg-primary text-on-primary shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-              )}
-            >
-              <span className="material-symbols-outlined text-[18px]">policy</span>
-              <span>Auditoria de Segurança</span>
-              {auditLogs.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20 text-white font-mono">
-                  {auditLogs.length}
-                </span>
-              )}
-            </button>
-
-            {isSuperAdmin && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('youtube')}
-                  className={cn(
-                    'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
-                    activeTab === 'youtube'
-                      ? 'bg-primary text-on-primary shadow-sm'
-                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-                  )}
-                >
-                  <span className="material-symbols-outlined text-[18px]">smart_display</span>
-                  <span>YouTube (Sessão Global)</span>
-                  {ytStatus?.hasCookies && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('gemini')}
-                  className={cn(
-                    'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
-                    activeTab === 'gemini'
-                      ? 'bg-primary text-on-primary shadow-sm'
-                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-                  )}
-                >
-                  <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-                  <span>Google Gemini AI</span>
-                  {geminiStatus?.configured && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('smtp')}
-                  className={cn(
-                    'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
-                    activeTab === 'smtp'
-                      ? 'bg-primary text-on-primary shadow-sm'
-                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-                  )}
-                >
-                  <span className="material-symbols-outlined text-[18px]">mail</span>
-                  <span>Servidor SMTP</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('legal')}
-                  className={cn(
-                    'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
-                    activeTab === 'legal'
-                      ? 'bg-primary text-on-primary shadow-sm'
-                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-                  )}
-                >
-                  <span className="material-symbols-outlined text-[18px]">gavel</span>
-                  <span>Termos & Privacidade</span>
-                </button>
-              </>
-            )}
-          </div>
+          <AdminHeader isSuperAdmin={isSuperAdmin} />
+          <AdminNavigationTabs
+            activeTab={activeTab}
+            onSelectTab={setActiveTab}
+            isSuperAdmin={isSuperAdmin}
+            usersCount={users.length}
+            auditCount={auditLogs.length}
+            hasYoutubeCookies={ytStatus?.hasCookies}
+            isGeminiConfigured={geminiStatus?.configured}
+          />
         </div>
 
         {/* ================= ABA 1: USUÁRIOS E SESSÕES ================= */}
@@ -440,21 +326,16 @@ export const AdminPage: React.FC = () => {
         )}
       </div>
 
-      {/* Modal de Confirmação para Revogar Sessão de Usuário */}
-      <RevokeSessionModal
-        isOpen={Boolean(sessionToRevoke)}
-        onClose={() => setSessionToRevoke(null)}
-        onConfirm={handleConfirmRevokeSession}
-        session={sessionToRevoke}
-        isLoading={isRevokingSession}
-      />
-
-      {/* Modal de Confirmação para Restaurar Documentos Legais Padrão */}
-      <ResetLegalModal
-        isOpen={showResetLegalModal}
-        onClose={() => setShowResetLegalModal(false)}
-        onConfirm={handleConfirmResetLegal}
-        isLoading={isResettingLegal}
+      {/* Modais de Confirmação (Revogação de Sessão e Reset Legal) */}
+      <AdminModals
+        sessionToRevoke={sessionToRevoke}
+        onCloseRevokeSession={() => setSessionToRevoke(null)}
+        onConfirmRevokeSession={handleConfirmRevokeSession}
+        isRevokingSession={isRevokingSession}
+        showResetLegalModal={showResetLegalModal}
+        onCloseResetLegalModal={() => setShowResetLegalModal(false)}
+        onConfirmResetLegal={handleConfirmResetLegal}
+        isResettingLegal={isResettingLegal}
       />
     </AppShell>
   );

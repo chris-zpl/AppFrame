@@ -8,3 +8,6 @@ export * from './AdminAuditLogsTab';
 export * from './AdminLegalTab';
 export * from './RevokeSessionModal';
 export * from './ResetLegalModal';
+export * from './AdminHeader';
+export * from './AdminNavigationTabs';
+export * from './AdminModals';
