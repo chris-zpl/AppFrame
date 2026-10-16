@@ -6,6 +6,7 @@ export type AppRoute =
   | 'varredura'
   | 'login'
   | 'register'
+  | 'reset-password'
   | 'auth-callback'
   | '2fa'
   | 'studio'
@@ -15,7 +16,9 @@ export type AppRoute =
   | 'history'
   | 'settings'
   | 'configuracoes'
-  | 'admin';
+  | 'admin'
+  | 'terms'
+  | 'privacy';
 
 export interface NavigateOptions {
   replace?: boolean;
@@ -37,6 +40,7 @@ function parsePathname(pathname: string): AppRoute {
   const clean = pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
   if (clean === 'register') return 'register';
   if (clean === 'login') return 'login';
+  if (clean === 'reset-password' || clean === 'recuperar-senha' || clean === 'forgot-password') return 'reset-password';
   if (clean === 'auth/callback' || clean === 'auth-callback') return 'auth-callback';
   if (clean === '2fa' || clean === 'two-factor') return '2fa';
   if (clean === 'studio') return 'studio';
@@ -44,6 +48,8 @@ function parsePathname(pathname: string): AppRoute {
   if (clean === 'historico' || clean === 'history') return 'historico';
   if (clean === 'settings' || clean === 'configuracoes') return 'settings';
   if (clean === 'admin') return 'admin';
+  if (clean === 'terms' || clean === 'termos') return 'terms';
+  if (clean === 'privacy' || clean === 'privacidade') return 'privacy';
   if (clean === 'scraper' || clean === 'varredura' || clean === '') return 'varredura';
   return 'varredura';
 }
@@ -75,6 +81,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       let path = '/varredura';
       if (clean === 'register') path = '/register';
       else if (clean === 'login') path = '/login';
+      else if (clean === 'reset-password' || clean === 'recuperar-senha' || clean === 'forgot-password') path = '/reset-password';
       else if (clean === 'auth/callback' || clean === 'auth-callback') path = '/auth/callback';
       else if (clean === '2fa' || clean === 'two-factor') path = '/2fa';
       else if (clean === 'studio') path = '/studio';
@@ -88,6 +95,8 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       else if (clean === 'historico' || clean === 'history') path = '/historico';
       else if (clean === 'settings' || clean === 'configuracoes') path = '/settings';
       else if (clean === 'admin') path = '/admin';
+      else if (clean === 'terms' || clean === 'termos') path = '/terms';
+      else if (clean === 'privacy' || clean === 'privacidade') path = '/privacy';
       else if (clean === 'scraper' || clean === 'varredura' || clean === '') path = '/varredura';
       else if (route.startsWith('/')) path = route;
 
