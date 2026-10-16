@@ -7,13 +7,14 @@ export interface ResetPasswordEmailOptions {
 export function getResetPasswordEmailHtml(options: ResetPasswordEmailOptions): string {
   const appUrl = (options.appUrl || 'http://localhost:5173').replace(/\/+$/, '');
   const resetLink = `${appUrl}/reset-password?token=${encodeURIComponent(options.resetToken)}`;
+  const salutation = options.name?.trim() ? `${options.name.trim()},` : 'Olá,';
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Redefinir Senha • AppFrame</title>
+  <title>Redefinição de Senha • AppFrame</title>
   <!--[if mso]>
   <noscript>
     <xml>
@@ -31,24 +32,21 @@ export function getResetPasswordEmailHtml(options: ResetPasswordEmailOptions): s
     .btn-reset:hover { background-color: #C68E33 !important; }
   </style>
 </head>
-<body style="margin: 0; padding: 40px 12px; background-color: #F8F9FA; -webkit-font-smoothing: antialiased;">
+<body style="margin: 0; padding: 40px 16px; background-color: #F3F4F6; -webkit-font-smoothing: antialiased;">
 
   <!-- Tabela Container Central -->
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; margin: 0 auto; background-color: #FFFFFF; border-radius: 24px; border: 1px solid #E5E7EB; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.02); overflow: hidden;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; margin: 0 auto; background-color: #FFFFFF; border-radius: 16px; border: 1px solid #E5E7EB; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); overflow: hidden;">
     
-    <!-- 1. Header com Logotipo AppFrame -->
+    <!-- 1. Header com Logotipo Centralizado -->
     <tr>
-      <td align="center" style="padding: 44px 32px 28px 32px;">
+      <td align="center" style="padding: 40px 40px 24px 40px;">
         <table role="presentation" border="0" cellpadding="0" cellspacing="0">
           <tr>
             <td align="center" valign="middle">
               <!-- SVG do Ícone em Camadas AppFrame -->
-              <svg width="36" height="36" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: block; vertical-align: middle;">
-                <!-- Base Inferior -->
+              <svg width="42" height="42" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: block; vertical-align: middle;">
                 <path d="M24 32L6 22.5L24 13L42 22.5L24 32Z" fill="#1D2027" fill-opacity="0.9" stroke="#4F4537" stroke-linejoin="round" stroke-width="1.2"/>
-                <!-- Camada Intermediária -->
                 <path d="M24 26L8 17.5L24 9L40 17.5L24 26Z" fill="#272A31" fill-opacity="0.85" stroke="#9B8F7D" stroke-linejoin="round" stroke-opacity="0.7" stroke-width="1.2"/>
-                <!-- Camada Superior Dourada Oficial -->
                 <path d="M24 20L10 12.5L24 5L38 12.5L24 20Z" fill="url(#appframe-amber-grad-reset)" stroke="#FFDEA8" stroke-linejoin="round" stroke-width="1.4"/>
                 <defs>
                   <linearGradient id="appframe-amber-grad-reset" x1="10" y1="5" x2="38" y2="20" gradientUnits="userSpaceOnUse">
@@ -58,76 +56,73 @@ export function getResetPasswordEmailHtml(options: ResetPasswordEmailOptions): s
                 </defs>
               </svg>
             </td>
-            <td align="left" valign="middle" style="padding-left: 12px;">
-              <span style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 26px; font-weight: 800; color: #111827; letter-spacing: -0.5px;">AppFrame</span>
-            </td>
           </tr>
         </table>
       </td>
     </tr>
 
-    <!-- 2. Título "Redefinir senha" -->
+    <!-- 2. Conteúdo Principal -->
     <tr>
-      <td align="center" style="padding: 10px 32px 14px 32px;">
-        <h1 style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 34px; font-weight: 800; color: #111827; letter-spacing: -1px; line-height: 1.15;">
-          Redefinir senha
+      <td style="padding: 0 44px 40px 44px;">
+        
+        <!-- Saudação com Nome -->
+        <h1 style="margin: 0 0 16px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 26px; font-weight: 800; color: #111827; letter-spacing: -0.5px; text-align: left;">
+          ${salutation}
         </h1>
-      </td>
-    </tr>
 
-    <!-- 3. Mensagem explicativa -->
-    <tr>
-      <td align="center" style="padding: 0 40px 32px 40px;">
-        <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 17px; font-weight: 400; color: #4B5563; line-height: 1.5; text-align: center;">
-          Recebemos uma solicitação para redefinir a sua senha.
+        <!-- Mensagem de Solicitação -->
+        <p style="margin: 0 0 32px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; font-weight: 400; color: #374151; line-height: 1.6; text-align: left;">
+          Alguém solicitou a redefinição de senha da sua conta no AppFrame.
         </p>
-      </td>
-    </tr>
 
-    <!-- 4. Botão de Ação "Redefinir senha" -->
-    <tr>
-      <td align="center" style="padding: 0 32px 36px 32px;">
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 380px;">
+        <!-- Botão Centralizado -->
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
           <tr>
             <td align="center">
               <a href="${resetLink}" target="_blank" class="btn-reset" style="
-                display: block;
-                width: 100%;
-                box-sizing: border-box;
+                display: inline-block;
                 background-color: #D99E41;
                 background: linear-gradient(180deg, #E2A84B 0%, #D49B3C 100%);
                 color: #111827;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                font-size: 17px;
+                font-size: 16px;
                 font-weight: 700;
                 text-align: center;
                 text-decoration: none;
-                padding: 16px 28px;
-                border-radius: 12px;
+                padding: 14px 36px;
+                border-radius: 8px;
                 box-shadow: 0 4px 14px rgba(217, 158, 65, 0.28);
                 letter-spacing: -0.2px;
               ">
-                Redefinir senha
+                Redefinir Minha Senha
               </a>
             </td>
           </tr>
         </table>
-      </td>
-    </tr>
 
-    <!-- 5. Aviso de Expiração & Segurança -->
-    <tr>
-      <td align="center" style="padding: 0 40px 40px 40px;">
-        <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; font-weight: 400; color: #6B7280; line-height: 1.6; text-align: center;">
-          O link expira em 1 hora. Se você não solicitou, ignore este e-mail.
+        <!-- Link Copiável -->
+        <p style="margin: 0 0 24px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; color: #6B7280; text-align: center; line-height: 1.5; word-break: break-all;">
+          <span style="color: #6B7280; font-weight: 500;">Link para copiar e colar:</span><br>
+          <a href="${resetLink}" style="color: #B8851B; text-decoration: underline;">${resetLink}</a>
         </p>
+
+        <!-- Informação de Validade (Itálico) -->
+        <p style="margin: 0 0 28px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; font-style: italic; color: #4B5563; text-align: center; line-height: 1.6;">
+          Este link é válido por 1 hora e só pode ser utilizado uma única vez.
+        </p>
+
+        <!-- Aviso de Segurança e Encerramento -->
+        <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; color: #374151; line-height: 1.6; text-align: left;">
+          Se você não solicitou esta alteração, pode ignorar este e-mail com segurança ou entrar em contato conosco. Sua senha não será alterada até que você crie uma nova senha.
+        </p>
+
       </td>
     </tr>
 
   </table>
 
   <!-- Rodapé Institucional -->
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; margin: 20px auto 0 auto;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; margin: 24px auto 0 auto;">
     <tr>
       <td align="center" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; color: #9CA3AF; text-align: center; line-height: 1.5;">
         AppFrame © 2026 • Executive Video Intelligence<br>

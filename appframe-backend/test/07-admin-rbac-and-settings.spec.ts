@@ -603,7 +603,7 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       );
     });
 
-    it('deve renderizar o template de e-mail de redefinição de senha com layout idêntico à imagem de referência', () => {
+    it('deve renderizar o template de e-mail de redefinição de senha com layout e frases similares à referência', () => {
       const html = getResetPasswordEmailHtml({
         name: 'Christian',
         appUrl: 'https://appframe.io',
@@ -611,22 +611,29 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       });
 
       // 1. Identidade Visual e Header
-      expect(html).toContain('AppFrame');
       expect(html).toContain('appframe-amber-grad-reset');
 
-      // 2. Título Central Oficial
-      expect(html).toContain('Redefinir senha');
+      // 2. Saudação com Nome
+      expect(html).toContain('Christian,');
 
-      // 3. Mensagem Explicativa
-      expect(html).toContain('Recebemos uma solicitação para redefinir a sua senha.');
+      // 3. Frase de solicitação (adaptada em português)
+      expect(html).toContain('Alguém solicitou a redefinição de senha da sua conta no AppFrame.');
 
       // 4. Botão com link seguro e cor do sistema
+      expect(html).toContain('Redefinir Minha Senha');
       expect(html).toContain('https://appframe.io/reset-password?token=secure-token-123456789');
       expect(html).toContain('#D99E41');
       expect(html).toContain('btn-reset');
 
-      // 5. Nota de Expiração Estrita de 1 Hora e Segurança
-      expect(html).toContain('O link expira em 1 hora. Se você não solicitou, ignore este e-mail.');
+      // 5. Link copiável
+      expect(html).toContain('Link para copiar e colar:');
+
+      // 6. Nota de Expiração Estrita de 1 Hora e uso único (itálico)
+      expect(html).toContain('Este link é válido por 1 hora e só pode ser utilizado uma única vez.');
+
+      // 7. Parágrafo de segurança
+      expect(html).toContain('Se você não solicitou esta alteração, pode ignorar este e-mail com segurança');
+      expect(html).toContain('Sua senha não será alterada até que você crie uma nova senha.');
     });
 
     it('deve gerar token no Redis com expiração estrita de 1 hora (3600 segundos) e registrar evento no log de auditoria', async () => {
