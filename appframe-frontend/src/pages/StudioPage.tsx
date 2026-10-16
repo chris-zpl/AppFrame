@@ -4,9 +4,6 @@ import { useNavigation } from '../contexts/NavigationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AppShell } from '../components/layout/AppShell';
 import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
-import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { cn } from '../lib/utils';
 import { API_BASE_URL } from '../lib/api';
 import { watermarksService } from '../features/watermarks';
@@ -21,11 +18,16 @@ import { toast } from 'sonner';
 
 import {
   StudioVideoQueue,
+  StudioHeader,
+  StudioPlayer,
+  StudioTimeline,
+  StudioSubtitlesTab,
+  StudioWatermarkTab,
+  StudioDeleteModal,
   type AspectRatio,
   type SubtitleMode,
   type FontFamily,
   type WatermarkPosition,
-  formatStudioTime as formatTime,
   wrapCanvasText,
   useStudioSubtitles,
 } from '../features/studio';
@@ -994,19 +996,6 @@ export const StudioPage: React.FC = () => {
     }
   };
 
-  // Posições da Matriz 3x3
-  const MATRIX_POSITIONS: { key: WatermarkPosition; label: string; icon: string }[] = [
-    { key: 'top-left', label: 'Superior Esquerdo', icon: 'north_west' },
-    { key: 'top-center', label: 'Superior Centro', icon: 'north' },
-    { key: 'top-right', label: 'Superior Direito', icon: 'north_east' },
-    { key: 'center-left', label: 'Centro Esquerdo', icon: 'west' },
-    { key: 'center', label: 'Centro', icon: 'filter_center_focus' },
-    { key: 'center-right', label: 'Centro Direito', icon: 'east' },
-    { key: 'bottom-left', label: 'Inferior Esquerdo', icon: 'south_west' },
-    { key: 'bottom-center', label: 'Inferior Centro', icon: 'south' },
-    { key: 'bottom-right', label: 'Inferior Direito', icon: 'south_east' },
-  ];
-
   const studioProjectTitle =
     currentVideo?.title ||
     params.videoTitle ||
@@ -1022,129 +1011,23 @@ export const StudioPage: React.FC = () => {
     >
       <div className="flex flex-col w-full text-on-surface pb-8">
         {/* ================= BARRA SUPERIOR DE CONTROLE DO STUDIO ================= */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-space-md p-3.5 rounded-2xl bg-surface-container-low border border-surface-container-high/80 shadow-sm">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('varredura')}
-              className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer border border-outline/10"
-              title="Voltar para Varredura"
-            >
-              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-            </button>
+        <StudioHeader
+          studioProjectTitle={studioProjectTitle}
+          aspectRatio={aspectRatio}
+          setAspectRatio={setAspectRatio}
+          videoQueueLength={videoQueue.length}
+          activeQueueIndex={activeQueueIndex}
+          hasCurrentVideo={Boolean(currentVideo)}
+          isPreparingPreview={isPreparingPreview}
+          isGenerating={isGenerating}
+          renderProgress={renderProgress}
+          onNavigateBack={() => navigate('varredura')}
+          onResetStudio={handleResetStudio}
+          onOpenDeleteModal={() => setIsDeleteStudioModalOpen(true)}
+          onGenerateVideo={handleGenerateVideo}
+        />
 
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-title-md text-title-md font-bold text-on-surface line-clamp-1 max-w-md">
-                  {studioProjectTitle}
-                </span>
-                <Badge variant={aspectRatio === '9:16' ? 'short' : 'long'}>
-                  {aspectRatio === '9:16' ? '9:16 Shorts' : '16:9 Widescreen'}
-                </Badge>
-                {videoQueue.length > 1 && (
-                  <Badge variant="neutral">
-                    Fila: {activeQueueIndex + 1} de {videoQueue.length}
-                  </Badge>
-                )}
-              </div>
-              <span className="text-label-sm font-label-sm text-outline">
-                Canvas 1080p • FFmpeg Hardware Acceleration Ativo
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 self-end md:self-auto">
-            {/* Alternador de Aspecto entre 9:16 e 16:9 */}
-            <div className="flex items-center p-1 rounded-xl bg-surface-container border border-surface-container-highest">
-              <button
-                type="button"
-                onClick={() => setAspectRatio('9:16')}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label-md font-label-md transition-all cursor-pointer',
-                  aspectRatio === '9:16'
-                    ? 'bg-primary text-on-primary font-bold shadow-sm'
-                    : 'text-on-surface-variant hover:text-on-surface'
-                )}
-                title="Formato Vertical 9:16 (Shorts/Reels/TikTok)"
-              >
-                <span className="material-symbols-outlined text-[16px]">stay_current_portrait</span>
-                <span>9:16</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setAspectRatio('16:9')}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label-md font-label-md transition-all cursor-pointer',
-                  aspectRatio === '16:9'
-                    ? 'bg-primary text-on-primary font-bold shadow-sm'
-                    : 'text-on-surface-variant hover:text-on-surface'
-                )}
-                title="Formato Horizontal 16:9 (YouTube Widescreen)"
-              >
-                <span className="material-symbols-outlined text-[16px]">stay_current_landscape</span>
-                <span>16:9</span>
-              </button>
-            </div>
-
-            {/* Botões de Ação do Studio */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="md"
-                disabled={!currentVideo || isPreparingPreview || isGenerating}
-                onClick={handleResetStudio}
-                title="Restaurar configurações para o padrão de fábrica"
-                leftIcon={
-                  <span className="material-symbols-outlined text-[18px]">
-                    restart_alt
-                  </span>
-                }
-                className="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer"
-              >
-                <span>Resetar</span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="md"
-                disabled={!currentVideo || isPreparingPreview || isGenerating}
-                onClick={() => setIsDeleteStudioModalOpen(true)}
-                title="Remover vídeo e excluir arquivo temporário do Studio"
-                leftIcon={
-                  <span className="material-symbols-outlined text-[18px]">
-                    delete_outline
-                  </span>
-                }
-                className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
-              >
-                <span>Excluir do Studio</span>
-              </Button>
-
-              {/* Botão de Ação Primária: "Gerar Vídeo" */}
-              <Button
-                variant="primary"
-                size="md"
-                isLoading={isGenerating}
-                disabled={!currentVideo || isPreparingPreview || isGenerating}
-                onClick={handleGenerateVideo}
-                leftIcon={
-                  <span className="material-symbols-outlined text-[20px]">
-                    movie_edit
-                  </span>
-                }
-                className="px-5 font-bold shadow-[0_0_15px_rgba(212,163,70,0.3)] cursor-pointer"
-              >
-                <span>
-                  {isGenerating
-                    ? `Gerando (${renderProgress}%)...`
-                    : 'Gerar Vídeo'}
-                </span>
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        {/* ================= FILA DE ESPERA DE VÍDEOS SELECIONADOS NA VARREDURA ================= */}
+        {/* ================= FILA DE VÍDEOS PENDENTES (SELECIONADOS NA VARREDURA) ================= */}
         <StudioVideoQueue
           videoQueue={videoQueue}
           activeQueueIndex={activeQueueIndex}
@@ -1154,466 +1037,53 @@ export const StudioPage: React.FC = () => {
           onSelectVideo={setActiveQueueIndex}
         />
 
-        {/* ================= ÁREA DE TRABALHO: PREVIEW + PAINEL LATERAL ================= */}
+        {/* ================= CORPO PRINCIPAL DO STUDIO ================= */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-md items-start">
-          {/* ================= COLUNA CENTRAL: VISUALIZADOR E CANVAS DE PREVIEW ================= */}
+          {/* LADO ESQUERDO: PLAYER + TIMELINE (8 COLUNAS) */}
           <div className="lg:col-span-8 flex flex-col gap-space-md">
-            <Card className="relative overflow-hidden bg-surface-container-lowest border border-surface-container-high/90 p-4 flex flex-col items-center justify-center min-h-[460px] shadow-2xl">
-              {/* Halos Luminosos Sutis no Player */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+            <StudioPlayer
+              currentVideo={currentVideo}
+              aspectRatio={aspectRatio}
+              previewStreamUrl={previewStreamUrl}
+              isPreparingPreview={isPreparingPreview}
+              previewError={previewError}
+              isAuthError={isAuthError}
+              videoRef={videoRef}
+              canvasRef={canvasRef}
+              isPlaying={isPlaying}
+              isMuted={isMuted}
+              setIsMuted={setIsMuted}
+              currentTime={currentTime}
+              totalDuration={totalDuration}
+              trimIn={trimIn}
+              trimOut={trimOut}
+              setTotalDuration={setTotalDuration}
+              setTrimOut={setTrimOut}
+              setCurrentTime={setCurrentTime}
+              setIsPlaying={setIsPlaying}
+              handleTogglePlay={handleTogglePlay}
+              seekVideoTo={seekVideoTo}
+              loadVideoPreview={loadVideoPreview}
+              onNavigateToVarredura={() => navigate('varredura')}
+            />
 
-              {/* Moldura do Vídeo com Aspect Ratio Dinâmico (Sem imagem mockada) */}
-              <div
-                onClick={previewStreamUrl && !isPreparingPreview ? handleTogglePlay : undefined}
-                className={cn(
-                  'relative overflow-hidden rounded-2xl bg-black border border-surface-container-highest transition-all duration-300 shadow-[0_12px_40px_rgba(0,0,0,0.8)] flex items-center justify-center',
-                  previewStreamUrl && !isPreparingPreview ? 'cursor-pointer' : '',
-                  aspectRatio === '9:16'
-                    ? 'w-[290px] h-[515px] sm:w-[320px] sm:h-[568px]'
-                    : 'w-full max-w-[620px] aspect-video'
-                )}
-              >
-                {!currentVideo ? (
-                  <div className="flex flex-col items-center justify-center text-center p-6 gap-3 z-30">
-                    <span className="material-symbols-outlined text-[42px] text-primary/70">
-                      video_library
-                    </span>
-                    <p className="font-title-sm text-title-sm font-bold text-on-surface">
-                      Nenhum vídeo selecionado
-                    </p>
-                    <p className="text-body-sm text-on-surface-variant max-w-xs">
-                      Selecione um ou mais vídeos na tela de Varredura para carregá-los e editá-los em tempo real no Studio.
-                    </p>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => navigate('varredura')}
-                      leftIcon={
-                        <span className="material-symbols-outlined text-[16px]">
-                          travel_explore
-                        </span>
-                      }
-                    >
-                      Ir para Varredura
-                    </Button>
-                  </div>
-                ) : isPreparingPreview ? (
-                  <div className="flex flex-col items-center justify-center text-center p-6 gap-3 z-30">
-                    <span className="material-symbols-outlined text-[40px] text-primary animate-spin">
-                      progress_activity
-                    </span>
-                    <p className="font-title-sm text-title-sm font-bold text-on-surface">
-                      Baixando vídeo para visualização em tempo real...
-                    </p>
-                    <p className="text-label-sm text-on-surface-variant max-w-xs line-clamp-2">
-                      {currentVideo.title}
-                    </p>
-                  </div>
-                ) : previewError ? (
-                  <div className="flex flex-col items-center justify-center text-center p-6 gap-3 z-30 max-w-sm mx-auto">
-                    <span className="material-symbols-outlined text-[42px] text-error">
-                      {isAuthError ? 'lock_person' : 'error'}
-                    </span>
-                    <p className="font-title-sm text-title-sm font-bold text-on-surface">
-                      {isAuthError ? 'Vídeo com Restrição de Idade (+18)' : 'Falha ao carregar o vídeo'}
-                    </p>
-                    <p className="text-body-sm text-on-surface-variant line-clamp-4">
-                      {isAuthError
-                        ? 'Este vídeo possui restrição de idade (+18) do YouTube. O download requer autorização da conta global configurada no servidor (storage/cookies.txt).'
-                        : previewError}
-                    </p>
-                    <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => loadVideoPreview(currentVideo)}
-                        leftIcon={
-                          <span className="material-symbols-outlined text-[16px]">
-                            refresh
-                          </span>
-                        }
-                      >
-                        Tentar Novamente
-                      </Button>
-                    </div>
-                  </div>
-                ) : previewStreamUrl ? (
-                  <video
-                    ref={videoRef}
-                    src={previewStreamUrl}
-                    playsInline
-                    preload="auto"
-                    muted={isMuted}
-                    onLoadedMetadata={(e) => {
-                      const vid = e.currentTarget;
-                      if (Number.isFinite(vid.duration) && vid.duration > 0) {
-                        const dur = Number(vid.duration.toFixed(2));
-                        setTotalDuration((prev) => (prev <= 0 ? dur : prev));
-                        setTrimOut((prev) => (prev <= 0 ? dur : prev));
-                      }
-                    }}
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onTimeUpdate={(e) => {
-                      const vid = e.currentTarget;
-                      const now = vid.currentTime;
-                      setCurrentTime(now);
-                      if (trimOut > trimIn && now >= trimOut) {
-                        vid.pause();
-                        vid.currentTime = trimIn;
-                        setIsPlaying(false);
-                        setCurrentTime(trimIn);
-                      }
-                    }}
-                    onEnded={() => {
-                      setIsPlaying(false);
-                      seekVideoTo(trimIn);
-                    }}
-                    onError={(e) => {
-                      const err = e.currentTarget.error;
-                      console.error('Erro no elemento de vídeo:', err?.code, err?.message);
-                      toast.error('Erro ao decodificar stream do vídeo no navegador.');
-                    }}
-                    className="w-full h-full object-contain select-none"
-                  />
-                ) : null}
-
-                {/* Camada de Canvas Sobreposta ao Vídeo (visível apenas quando o vídeo real está carregado) */}
-                <canvas
-                  ref={canvasRef}
-                  width={aspectRatio === '9:16' ? 360 : 640}
-                  height={aspectRatio === '9:16' ? 640 : 360}
-                  className={cn(
-                    'absolute inset-0 w-full h-full object-contain pointer-events-none z-20',
-                    (!previewStreamUrl || isPreparingPreview || Boolean(previewError)) &&
-                      'hidden'
-                  )}
-                />
-
-                {/* Indicador de Margens Seguras (Safe Zone) */}
-                <div className="absolute inset-4 border border-dashed border-primary/20 rounded-xl pointer-events-none z-10 flex items-start justify-end p-1">
-                  <span className="text-[9px] font-bold tracking-wider uppercase text-primary/40 bg-black/40 px-1 rounded">
-                    Safe Zone
-                  </span>
-                </div>
-
-                {/* Botão Central de Play no Hover (quando pausado e vídeo pronto) */}
-                {!isPlaying && Boolean(previewStreamUrl) && !isPreparingPreview && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleTogglePlay();
-                    }}
-                    className="absolute z-30 w-16 h-16 rounded-full bg-primary/90 text-on-primary flex items-center justify-center shadow-[0_0_24px_rgba(242,190,94,0.4)] transition-transform hover:scale-110 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-[36px] ml-1">
-                      play_arrow
-                    </span>
-                  </button>
-                )}
-              </div>
-
-              {/* Barra de Controles do Player com Cronômetro Tabular */}
-              <div className="w-full max-w-xl mt-4 flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-surface-container/80 backdrop-blur-md border border-surface-container-high/80">
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    disabled={!previewStreamUrl || isPreparingPreview}
-                    onClick={handleTogglePlay}
-                    className="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 cursor-pointer shadow-sm disabled:opacity-40"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">
-                      {isPlaying ? 'pause' : 'play_arrow'}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={!previewStreamUrl || isPreparingPreview}
-                    onClick={() => seekVideoTo(Math.max(trimIn, currentTime - 5))}
-                    title="Retroceder 5 segundos"
-                    className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">replay_5</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={!previewStreamUrl || isPreparingPreview}
-                    onClick={() => seekVideoTo(Math.min(trimOut, currentTime + 5))}
-                    title="Avançar 5 segundos"
-                    className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">forward_5</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={!previewStreamUrl || isPreparingPreview}
-                    onClick={() => {
-                      const next = !isMuted;
-                      setIsMuted(next);
-                      if (videoRef.current) {
-                        videoRef.current.muted = next;
-                      }
-                    }}
-                    title={isMuted ? 'Ativar som' : 'Silenciar áudio'}
-                    className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">
-                      {isMuted ? 'volume_off' : 'volume_up'}
-                    </span>
-                  </button>
-                </div>
-
-                {/* Cronômetro com Números Tabulares Precisos */}
-                <div className="flex items-center gap-2 bg-surface-container-lowest px-3 py-1.5 rounded-lg border border-outline/10">
-                  <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
-                  <span className="font-mono text-title-sm text-title-sm font-bold text-on-surface tabular-nums">
-                    {formatTime(currentTime)} / {formatTime(totalDuration)}
-                  </span>
-                  <span className="text-[10px] text-outline px-1 py-0.5 rounded bg-surface-container font-mono">
-                    Corte: {formatTime(Math.max(0, trimOut - trimIn))}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    disabled={!previewStreamUrl || isPreparingPreview}
-                    onClick={() => seekVideoTo(trimIn)}
-                    title="Ir para Marcador In"
-                    className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-surface-container hover:bg-surface-container-high text-primary font-bold cursor-pointer disabled:opacity-40"
-                  >
-                    Ir ao In
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!previewStreamUrl || isPreparingPreview}
-                    onClick={() => seekVideoTo(trimOut)}
-                    title="Ir para Marcador Out"
-                    className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-surface-container hover:bg-surface-container-high text-primary font-bold cursor-pointer disabled:opacity-40"
-                  >
-                    Ir ao Out
-                  </button>
-                </div>
-              </div>
-            </Card>
-
-            {/* ================= TIMELINE DE PRECISÃO (INFERIOR) ================= */}
-            <Card className="bg-surface-container-low border border-surface-container-high/90 p-4 flex flex-col gap-3 shadow-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[20px] text-primary">
-                    graphic_eq
-                  </span>
-                  <span className="font-title-sm text-title-sm font-bold text-on-surface">
-                    Timeline de Precisão (Audio Waveform & Trim)
-                  </span>
-                </div>
-
-                {/* Tooltips dos Marcadores de Corte */}
-                <div className="flex items-center gap-3 font-mono text-label-sm font-label-sm tabular-nums">
-                  <span className="text-on-surface-variant">
-                    In: <strong className="text-primary">{formatTime(trimIn, true)}</strong>
-                  </span>
-                  <span className="text-outline">•</span>
-                  <span className="text-on-surface-variant">
-                    Out: <strong className="text-primary">{formatTime(trimOut, true)}</strong>
-                  </span>
-                  <span className="text-outline">•</span>
-                  <span className="text-tertiary">
-                    Duração: <strong>{Math.max(0, trimOut - trimIn).toFixed(2)}s</strong>
-                  </span>
-                </div>
-              </div>
-
-              {/* Contêiner Interativo da Timeline */}
-              <div className="relative flex flex-col select-none pt-4 pb-2">
-                {/* Régua de Tempo Dinâmica conforme a duração real do vídeo */}
-                <div className="w-full flex justify-between text-[10px] text-outline font-mono mb-1.5 px-1">
-                  {[0, 0.166, 0.333, 0.5, 0.666, 0.833, 1].map((ratio, idx) => (
-                    <span key={idx}>{formatTime(totalDuration * ratio)}</span>
-                  ))}
-                </div>
-
-                {/* Pista da Onda Sonora Real do Vídeo e Região de Corte */}
-                <div
-                  ref={timelineRef}
-                  onClick={totalDuration > 0 ? handleTimelineClick : undefined}
-                  className={cn(
-                    'relative w-full h-20 rounded-xl bg-surface-container-lowest border border-surface-container-highest/80 overflow-hidden flex items-center px-1',
-                    totalDuration > 0 ? 'cursor-pointer' : 'cursor-default'
-                  )}
-                >
-                  {waveformPeaks.length === 0 || totalDuration <= 0 ? (
-                    <div className="w-full h-full flex items-center justify-center gap-2 text-label-sm text-on-surface-variant">
-                      {isPreparingPreview ? (
-                        <>
-                          <span className="material-symbols-outlined text-[18px] text-primary animate-spin">
-                            progress_activity
-                          </span>
-                          <span>Extraindo onda sonora real (Audio Waveform) do vídeo...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="material-symbols-outlined text-[18px] text-outline">
-                            graphic_eq
-                          </span>
-                          <span>
-                            {previewError
-                              ? 'Não foi possível extrair o áudio do vídeo.'
-                              : 'Aguardando carregamento do vídeo para exibir a onda sonora real.'}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      {/* Gráfico da Onda Sonora Real extraída via FFmpeg */}
-                      <div className="w-full h-full flex items-center justify-between gap-[2px] px-1 pointer-events-none">
-                        {waveformPeaks.map((peak, idx) => {
-                          const peakTime = (idx / waveformPeaks.length) * totalDuration;
-                          const isInsideCut = peakTime >= trimIn && peakTime <= trimOut;
-
-                          return (
-                            <div
-                              key={idx}
-                              className={cn(
-                                'flex-1 rounded-full transition-colors',
-                                isInsideCut
-                                  ? 'bg-primary shadow-[0_0_6px_rgba(242,190,94,0.3)]'
-                                  : 'bg-surface-container-highest/60 opacity-30'
-                              )}
-                              style={{
-                                height: `${peak * 85}%`,
-                              }}
-                            />
-                          );
-                        })}
-                      </div>
-
-                      {/* Faixa Sombreada Excluída (Antes do In) */}
-                      <div
-                        className="absolute top-0 bottom-0 left-0 bg-black/60 pointer-events-none border-r border-primary/40"
-                        style={{ width: `${(trimIn / totalDuration) * 100}%` }}
-                      />
-
-                      {/* Faixa Sombreada Excluída (Depois do Out) */}
-                      <div
-                        className="absolute top-0 bottom-0 right-0 bg-black/60 pointer-events-none border-l border-primary/40"
-                        style={{ width: `${100 - (trimOut / totalDuration) * 100}%` }}
-                      />
-
-                      {/* Faixa Ativa com Destaque Âmbar (#D4A346) */}
-                      <div
-                        className="absolute top-0 bottom-0 pointer-events-none border-y-2 border-primary bg-primary/10"
-                        style={{
-                          left: `${(trimIn / totalDuration) * 100}%`,
-                          width: `${((trimOut - trimIn) / totalDuration) * 100}%`,
-                        }}
-                      />
-
-                      {/* Marcador Início (In) - Arrastável */}
-                      <div
-                        onMouseDown={(e) => handleTimelineMouseDown(e, 'in')}
-                        className="absolute top-0 bottom-0 z-30 flex flex-col items-center cursor-ew-resize group"
-                        style={{ left: `${(trimIn / totalDuration) * 100}%` }}
-                      >
-                        <div className="w-4 h-full bg-primary/30 flex items-center justify-center relative -translate-x-1/2">
-                          <div className="w-1.5 h-full bg-primary rounded-full shadow-[0_0_8px_rgba(212,163,70,0.8)]" />
-                          {/* Handle Superior com Tooltip */}
-                          <div className="absolute -top-3 w-5 h-5 rounded-md bg-primary text-on-primary flex items-center justify-center text-[10px] font-bold shadow-md">
-                            In
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Marcador Fim (Out) - Arrastável */}
-                      <div
-                        onMouseDown={(e) => handleTimelineMouseDown(e, 'out')}
-                        className="absolute top-0 bottom-0 z-30 flex flex-col items-center cursor-ew-resize group"
-                        style={{ left: `${(trimOut / totalDuration) * 100}%` }}
-                      >
-                        <div className="w-4 h-full bg-primary/30 flex items-center justify-center relative -translate-x-1/2">
-                          <div className="w-1.5 h-full bg-primary rounded-full shadow-[0_0_8px_rgba(212,163,70,0.8)]" />
-                          {/* Handle Superior com Tooltip */}
-                          <div className="absolute -top-3 w-5 h-5 rounded-md bg-primary text-on-primary flex items-center justify-center text-[10px] font-bold shadow-md">
-                            Out
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Agulha de Reprodução (Playhead) */}
-                      <div
-                        onMouseDown={(e) => handleTimelineMouseDown(e, 'playhead')}
-                        className="absolute top-0 bottom-0 z-40 flex flex-col items-center cursor-ew-resize"
-                        style={{ left: `${(currentTime / totalDuration) * 100}%` }}
-                      >
-                        <div className="w-0.5 h-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)] relative -translate-x-1/2">
-                          <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45 rounded-xs" />
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Botões de Micro-ajuste de 0.1s */}
-                <div className="flex items-center justify-between mt-2 text-label-sm font-label-sm text-outline">
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setTrimIn((v) => Math.max(0, v - 0.1))}
-                      className="px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface cursor-pointer"
-                    >
-                      In -0.1s
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTrimIn((v) => Math.min(trimOut - 0.5, v + 0.1))}
-                      className="px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface cursor-pointer"
-                    >
-                      In +0.1s
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTrimIn(currentTime)}
-                      className="px-2 py-0.5 rounded bg-primary/20 text-primary font-semibold hover:bg-primary/30 cursor-pointer"
-                    >
-                      Definir In Aqui
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setTrimOut(currentTime)}
-                      className="px-2 py-0.5 rounded bg-primary/20 text-primary font-semibold hover:bg-primary/30 cursor-pointer"
-                    >
-                      Definir Out Aqui
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTrimOut((v) => Math.max(trimIn + 0.5, v - 0.1))}
-                      className="px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface cursor-pointer"
-                    >
-                      Out -0.1s
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTrimOut((v) => Math.min(totalDuration, v + 0.1))}
-                      className="px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface cursor-pointer"
-                    >
-                      Out +0.1s
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </Card>
+            <StudioTimeline
+              trimIn={trimIn}
+              trimOut={trimOut}
+              currentTime={currentTime}
+              totalDuration={totalDuration}
+              waveformPeaks={waveformPeaks}
+              isPreparingPreview={isPreparingPreview}
+              previewError={previewError}
+              timelineRef={timelineRef}
+              handleTimelineClick={handleTimelineClick}
+              handleTimelineMouseDown={handleTimelineMouseDown}
+              setTrimIn={setTrimIn}
+              setTrimOut={setTrimOut}
+            />
           </div>
 
-          {/* ================= COLUNA LATERAL: CONFIGURAÇÕES (DIREITA) ================= */}
+          {/* LADO DIREITO: ABAS DE CUSTOMIZAÇÃO (4 COLUNAS) */}
           <div className="lg:col-span-4 flex flex-col gap-space-md">
             <Card className="bg-surface-container-low border border-surface-container-high/90 p-4 shadow-xl flex flex-col gap-4">
               {/* Abas Superiores do Painel Lateral */}
@@ -1646,603 +1116,73 @@ export const StudioPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* ================= ABA 1: CONFIGURAÇÕES DE LEGENDA ================= */}
+              {/* ABA 1: CONFIGURAÇÕES DE LEGENDA */}
               {activeTab === 'legendas' && (
-                <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-                  {/* Indicador de Status da IA Gemini (Global) */}
-                  <div
-                    className={cn(
-                      'p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all',
-                      isGeminiConnected
-                        ? 'bg-emerald-500/10 border-emerald-500/25'
-                        : 'bg-amber-500/10 border-amber-500/25'
-                    )}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className={cn(
-                          'material-symbols-outlined text-[18px] shrink-0',
-                          isGeminiConnected ? 'text-emerald-400' : 'text-amber-400'
-                        )}
-                      >
-                        {isGeminiConnected ? 'auto_awesome' : 'info'}
-                      </span>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-[12px] font-bold text-on-surface truncate">
-                          {isGeminiConnected ? 'IA Gemini Habilitada' : 'IA Gemini Indisponível'}
-                        </span>
-                        <span className="text-[11px] text-on-surface-variant truncate">
-                          {isGeminiConnected
-                            ? 'Transcrições e legendas dinâmicas ativas'
-                            : 'Contate o administrador para configurar a chave global'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Alternador entre Legenda Fixa e Legenda Dinâmica Gemini */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-label-sm font-label-sm text-outline font-semibold uppercase tracking-wider">
-                      Modo de Legenda
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSubtitleMode('static')}
-                        className={cn(
-                          'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-label-md font-label-md transition-all cursor-pointer',
-                          subtitleMode === 'static'
-                            ? 'bg-primary/15 border-primary text-primary font-bold shadow-[0_0_10px_rgba(212,163,70,0.15)]'
-                            : 'bg-surface-container border-surface-container-highest text-on-surface-variant hover:text-on-surface'
-                        )}
-                      >
-                        <span className="material-symbols-outlined text-[18px]">title</span>
-                        <span>Legenda Fixa</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!isGeminiConnected) {
-                            toast.info(
-                              'O assistente de inteligência artificial (Gemini) ainda não foi configurado na plataforma pelo administrador.'
-                            );
-                            return;
-                          }
-                          setSubtitleMode('dynamic');
-                        }}
-                        className={cn(
-                          'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-label-md font-label-md transition-all cursor-pointer',
-                          subtitleMode === 'dynamic' && isGeminiConnected
-                            ? 'bg-primary/15 border-primary text-primary font-bold shadow-[0_0_10px_rgba(212,163,70,0.15)]'
-                            : !isGeminiConnected
-                              ? 'bg-surface-container-lowest border-surface-container-highest text-outline opacity-75 hover:border-primary/40'
-                              : 'bg-surface-container border-surface-container-highest text-on-surface-variant hover:text-on-surface'
-                        )}
-                      >
-                        <span className="material-symbols-outlined text-[18px]">
-                          {isGeminiConnected ? 'auto_awesome' : 'lock'}
-                        </span>
-                        <span>Dinâmica (Gemini)</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Campo de Texto Estático ou Gerador Dinâmico Gemini */}
-                  {subtitleMode === 'static' ? (
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-label-sm font-label-sm text-outline font-semibold">
-                        Texto da Legenda Estática
-                      </label>
-                      <textarea
-                        value={staticText}
-                        onChange={(e) => setStaticText(e.target.value)}
-                        rows={3}
-                        placeholder="Digite o texto que será renderizado no vídeo..."
-                        className="w-full bg-surface-container-lowest border border-surface-container-highest rounded-xl p-3 text-body-md text-on-surface outline-none focus:border-primary/80 transition-all resize-none"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      {/* Card Principal de Destaque: Transcrever Áudio do Vídeo (Reconhecimento de Fala Real) */}
-                      <div className="p-3.5 rounded-xl bg-surface-container-lowest border border-primary/40 flex flex-col gap-2.5 shadow-[0_0_15px_rgba(212,163,70,0.08)]">
-                        <div className="flex items-center gap-2.5">
-                          <div className="p-2 rounded-xl bg-primary/15 text-primary shrink-0">
-                            <span className="material-symbols-outlined text-[20px] block">
-                              record_voice_over
-                            </span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-label-md font-bold text-on-surface">
-                              Transcrever Áudio do Vídeo
-                            </span>
-                            <span className="text-[11px] text-outline leading-tight">
-                              Ouve a fala real do vídeo e sincroniza cada bloco com precisão
-                            </span>
-                          </div>
-                        </div>
-
-                        <Button
-                          variant="primary"
-                          size="md"
-                          disabled={
-                            !isGeminiConnected ||
-                            isTranscribingAudio ||
-                            isGeneratingSubtitles ||
-                            !currentVideo
-                          }
-                          isLoading={isTranscribingAudio}
-                          onClick={handleTranscribeCurrentVideo}
-                          leftIcon={
-                            <span className="material-symbols-outlined text-[18px]">
-                              {isGeminiConnected ? 'mic' : 'lock'}
-                            </span>
-                          }
-                          className="w-full font-bold shadow-md"
-                        >
-                          {!isGeminiConnected
-                            ? 'IA Gemini Indisponível'
-                            : isTranscribingAudio
-                              ? 'Ouvindo e Transcrevendo Fala...'
-                              : 'Transcrever Fala do Vídeo com Gemini'}
-                        </Button>
-
-                        {trimIn > 0 || (trimOut > 0 && trimOut < totalDuration) ? (
-                          <span className="text-[10px] text-primary/80 flex items-center gap-1 font-medium">
-                            <span className="material-symbols-outlined text-[12px]">content_cut</span>
-                            Transcrevendo trecho ativo da timeline ({trimIn.toFixed(1)}s a {trimOut.toFixed(1)}s)
-                          </span>
-                        ) : null}
-
-                        {!isGeminiConnected && (
-                          <p className="text-[11px] text-outline text-center">
-                            IA Gemini não configurada no servidor. Contate o administrador.
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Opções Alternativas: Roteiro por IA ou Upload de Arquivo Próprio */}
-                      <div className="rounded-xl border border-surface-container-highest bg-surface-container-lowest overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setShowAdvancedGeminiOptions((v) => !v)}
-                          className="w-full flex items-center justify-between p-2.5 text-[12px] font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors cursor-pointer"
-                        >
-                          <span className="flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-[16px] text-outline">tune</span>
-                            <span>Outras opções: Gerar por roteiro de IA ou arquivo externo</span>
-                          </span>
-                          <span
-                            className={cn(
-                              'material-symbols-outlined text-[16px] transition-transform duration-200',
-                              showAdvancedGeminiOptions && 'rotate-180'
-                            )}
-                          >
-                            expand_more
-                          </span>
-                        </button>
-
-                        {showAdvancedGeminiOptions && (
-                          <div className="p-3 border-t border-surface-container-highest flex flex-col gap-3">
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-label-sm font-label-sm text-outline font-semibold">
-                                Roteiro / Contexto para o Gemini
-                              </label>
-                              <textarea
-                                value={geminiPrompt}
-                                onChange={(e) => setGeminiPrompt(e.target.value)}
-                                rows={3}
-                                disabled={!isGeminiConnected}
-                                placeholder="Informe o tema/roteiro do vídeo caso queira que a IA invente legendas dinâmicas a partir de um texto..."
-                                className="w-full bg-surface-container-lowest border border-surface-container-highest rounded-xl p-3 text-body-md text-on-surface outline-none focus:border-primary/80 transition-all resize-none disabled:opacity-50"
-                              />
-                            </div>
-
-                            {/* Upload opcional de arquivo externo */}
-                            <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-container border border-surface-container-highest">
-                              <input
-                                ref={mediaFileInputRef}
-                                type="file"
-                                accept="audio/*,video/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const f = e.target.files?.[0] || null;
-                                  setSelectedMediaFile(f);
-                                }}
-                              />
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="material-symbols-outlined text-[18px] text-primary shrink-0">
-                                  audio_file
-                                </span>
-                                <span className="text-body-xs text-on-surface-variant truncate">
-                                  {selectedMediaFile
-                                    ? selectedMediaFile.name
-                                    : 'Arquivo avulso (opcional)'}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                {selectedMediaFile && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setSelectedMediaFile(null);
-                                      if (mediaFileInputRef.current) {
-                                        mediaFileInputRef.current.value = '';
-                                      }
-                                    }}
-                                    className="p-1 rounded-lg text-outline hover:text-error cursor-pointer"
-                                    title="Remover arquivo"
-                                  >
-                                    <span className="material-symbols-outlined text-[16px]">close</span>
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  disabled={!isGeminiConnected}
-                                  onClick={() => mediaFileInputRef.current?.click()}
-                                  className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-[11px] font-semibold text-on-surface transition-colors cursor-pointer disabled:opacity-50"
-                                >
-                                  Escolher Arquivo
-                                </button>
-                              </div>
-                            </div>
-
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              disabled={!isGeminiConnected || isGeneratingSubtitles || isTranscribingAudio}
-                              isLoading={isGeneratingSubtitles}
-                              onClick={() => handleGenerateGeminiSubtitles(geminiPrompt)}
-                              leftIcon={
-                                <span className="material-symbols-outlined text-[16px]">
-                                  auto_awesome
-                                </span>
-                              }
-                              className="w-full font-bold"
-                            >
-                              Gerar Legendas por Roteiro / Arquivo
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Lista Real de Segmentos Gerados pelo Gemini */}
-                  {dynamicSegments.length > 0 && (
-                    <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-surface-container-lowest border border-surface-container-highest max-h-40 overflow-y-auto">
-                      <div className="flex items-center justify-between text-[11px] text-outline font-semibold mb-1">
-                        <span>Legendas Sincronizadas ({dynamicSegments.length})</span>
-                        <span>Clique para pré-visualizar</span>
-                      </div>
-                      {dynamicSegments.map((seg, idx) => {
-                        const isActive = currentTime >= seg.start && currentTime <= seg.end;
-                        return (
-                          <button
-                            key={`${seg.start}-${idx}`}
-                            type="button"
-                            onClick={() => {
-                              setSubtitleMode('dynamic');
-                              setCurrentTime(seg.start);
-                            }}
-                            className={cn(
-                              'flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-left text-body-xs transition-colors cursor-pointer',
-                              isActive
-                                ? 'bg-primary/20 text-primary font-bold border border-primary/40'
-                                : 'hover:bg-surface-container text-on-surface'
-                            )}
-                          >
-                            <span className="truncate">{seg.text}</span>
-                            <span className="font-mono text-[10px] text-outline shrink-0">
-                              {seg.start.toFixed(1)}s - {seg.end.toFixed(1)}s
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Seleção Tipográfica */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-label-sm font-label-sm text-outline font-semibold">
-                      Família Tipográfica
-                    </label>
-                    <select
-                      value={fontFamily}
-                      onChange={(e) => setFontFamily(e.target.value as FontFamily)}
-                      className="w-full bg-surface-container-lowest border border-surface-container-highest rounded-xl px-3 py-2.5 text-body-md text-on-surface outline-none focus:border-primary/80 transition-all cursor-pointer"
-                    >
-                      <option value="Plus Jakarta Sans">Plus Jakarta Sans (Padrão)</option>
-                      <option value="Montserrat">Montserrat (Impactante)</option>
-                      <option value="Bebas Neue">Bebas Neue (Condensada)</option>
-                      <option value="Anton">Anton (Bold Pesado)</option>
-                    </select>
-                  </div>
-
-                  {/* Seletores Nativos de Cor Hexadecimal */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[11px] font-label-sm text-outline font-semibold">
-                        Cor do Texto
-                      </label>
-                      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-lowest border border-surface-container-highest">
-                        <input
-                          type="color"
-                          value={textColor}
-                          onChange={(e) => setTextColor(e.target.value)}
-                          className="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0 shrink-0"
-                        />
-                        <input
-                          type="text"
-                          value={textColor}
-                          onChange={(e) => setTextColor(e.target.value)}
-                          className="w-full bg-transparent text-[11px] font-mono outline-none text-on-surface uppercase"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[11px] font-label-sm text-outline font-semibold">
-                        Contorno
-                      </label>
-                      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-lowest border border-surface-container-highest">
-                        <input
-                          type="color"
-                          value={strokeColor}
-                          onChange={(e) => setStrokeColor(e.target.value)}
-                          className="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0 shrink-0"
-                        />
-                        <input
-                          type="text"
-                          value={strokeColor}
-                          onChange={(e) => setStrokeColor(e.target.value)}
-                          className="w-full bg-transparent text-[11px] font-mono outline-none text-on-surface uppercase"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[11px] font-label-sm text-outline font-semibold">
-                        Cor do Fundo
-                      </label>
-                      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-lowest border border-surface-container-highest">
-                        <input
-                          type="color"
-                          value={bgColor}
-                          onChange={(e) => setBgColor(e.target.value)}
-                          className="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0 shrink-0"
-                        />
-                        <input
-                          type="text"
-                          value={bgColor}
-                          onChange={(e) => setBgColor(e.target.value)}
-                          className="w-full bg-transparent text-[11px] font-mono outline-none text-on-surface uppercase"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Slider de Tamanho da Fonte com Trilho Âmbar */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between text-label-sm font-label-sm">
-                      <span className="text-outline font-semibold">Tamanho da Fonte</span>
-                      <span className="text-primary font-bold font-mono">{fontSize}px</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={18}
-                      max={48}
-                      value={fontSize}
-                      onChange={(e) => setFontSize(Number(e.target.value))}
-                      className="w-full accent-amber-400 h-2 bg-surface-container-highest rounded-lg cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Toggle Caixa de Fundo vs Contorno */}
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-container border border-surface-container-highest">
-                    <span className="text-body-sm font-body-sm text-on-surface">
-                      Caixa de fundo arredondada
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={useBackgroundBox}
-                      onChange={(e) => setUseBackgroundBox(e.target.checked)}
-                      className="w-4 h-4 accent-amber-400 rounded cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Selo fix_bounds */}
-                  <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/30 flex items-center gap-2 text-label-sm font-label-sm text-primary">
-                    <span className="material-symbols-outlined text-[18px]">verified</span>
-                    <span>Cálculo determinístico fix_bounds ativado (sem estouro de bordas)</span>
-                  </div>
-                </div>
+                <StudioSubtitlesTab
+                  isGeminiConnected={isGeminiConnected}
+                  subtitleMode={subtitleMode}
+                  setSubtitleMode={setSubtitleMode}
+                  staticText={staticText}
+                  setStaticText={setStaticText}
+                  isTranscribingAudio={isTranscribingAudio}
+                  isGeneratingSubtitles={isGeneratingSubtitles}
+                  hasCurrentVideo={Boolean(currentVideo)}
+                  trimIn={trimIn}
+                  trimOut={trimOut}
+                  totalDuration={totalDuration}
+                  handleTranscribeCurrentVideo={handleTranscribeCurrentVideo}
+                  showAdvancedGeminiOptions={showAdvancedGeminiOptions}
+                  setShowAdvancedGeminiOptions={setShowAdvancedGeminiOptions}
+                  geminiPrompt={geminiPrompt}
+                  setGeminiPrompt={setGeminiPrompt}
+                  mediaFileInputRef={mediaFileInputRef}
+                  selectedMediaFile={selectedMediaFile}
+                  setSelectedMediaFile={setSelectedMediaFile}
+                  handleGenerateGeminiSubtitles={handleGenerateGeminiSubtitles}
+                  dynamicSegments={dynamicSegments}
+                  currentTime={currentTime}
+                  setCurrentTime={setCurrentTime}
+                  fontFamily={fontFamily}
+                  setFontFamily={setFontFamily}
+                  textColor={textColor}
+                  setTextColor={setTextColor}
+                  strokeColor={strokeColor}
+                  setStrokeColor={setStrokeColor}
+                  bgColor={bgColor}
+                  setBgColor={setBgColor}
+                  fontSize={fontSize}
+                  setFontSize={setFontSize}
+                  useBackgroundBox={useBackgroundBox}
+                  setUseBackgroundBox={setUseBackgroundBox}
+                />
               )}
 
-              {/* ================= ABA 2: CONFIGURAÇÕES DE MARCA D'ÁGUA ================= */}
+              {/* ABA 2: MARCA D'ÁGUA */}
               {activeTab === 'marca-dagua' && (
-                <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-                  {/* Seletor de Logos Cadastrados na Conta */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-label-sm font-label-sm text-outline font-semibold uppercase tracking-wider">
-                        Logo Cadastrado
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => navigate('marcas-dagua')}
-                        className="text-[11px] text-primary hover:underline flex items-center gap-1 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">tune</span>
-                        Gerenciar
-                      </button>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      {/* Opção: Sem Marca d'Água */}
-                      <div
-                        onClick={() => setSelectedWatermarkId('none')}
-                        className={cn(
-                          'flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer',
-                          selectedWatermarkId === 'none'
-                            ? 'bg-primary/15 border-primary shadow-[0_0_10px_rgba(212,163,70,0.15)]'
-                            : 'bg-surface-container border-surface-container-highest hover:bg-surface-container-high'
-                        )}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-surface-container-lowest flex items-center justify-center p-1 border border-outline/10 text-on-surface-variant">
-                            <span className="material-symbols-outlined text-[18px]">block</span>
-                          </div>
-                          <span className="text-title-sm font-semibold text-on-surface">
-                            Sem Marca d'Água
-                          </span>
-                        </div>
-                        {selectedWatermarkId === 'none' && (
-                          <span className="material-symbols-outlined text-[18px] text-primary">
-                            check_circle
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Lista Real de Marcas do Usuário */}
-                      {isLoadingWatermarks && (
-                        <div className="p-3 text-center text-body-sm text-outline">
-                          Carregando marcas d'água...
-                        </div>
-                      )}
-
-                      {!isLoadingWatermarks && userWatermarks.length === 0 && (
-                        <div className="p-3 rounded-xl bg-surface-container-lowest border border-dashed border-outline/30 text-center flex flex-col items-center gap-2">
-                          <span className="material-symbols-outlined text-[24px] text-outline">
-                            branding_watermark
-                          </span>
-                          <p className="text-body-xs text-outline">
-                            Nenhuma marca d'água salva na sua conta.
-                          </p>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => navigate('marcas')}
-                            leftIcon={
-                              <span className="material-symbols-outlined text-[16px]">add</span>
-                            }
-                          >
-                            Nova Marca
-                          </Button>
-                        </div>
-                      )}
-
-                      {userWatermarks.map((logo) => (
-                        <div
-                          key={logo.id}
-                          onClick={() => setSelectedWatermarkId(logo.id)}
-                          className={cn(
-                            'flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer',
-                            selectedWatermarkId === logo.id
-                              ? 'bg-primary/15 border-primary shadow-[0_0_10px_rgba(212,163,70,0.15)]'
-                              : 'bg-surface-container border-surface-container-highest hover:bg-surface-container-high'
-                          )}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-[repeating-conic-gradient(#202020_0%_25%,#303030_0%_50%)] bg-[length:8px_8px] flex items-center justify-center p-0.5 border border-outline/10 overflow-hidden shrink-0">
-                              <img
-                                src={logo.url || `${API_BASE_URL}/watermarks/${logo.id}/file`}
-                                alt={logo.original_name}
-                                className="max-h-full max-w-full object-contain"
-                              />
-                            </div>
-                            <span className="text-title-sm font-semibold text-on-surface truncate">
-                              {logo.original_name}
-                            </span>
-                          </div>
-                          {selectedWatermarkId === logo.id && (
-                            <span className="material-symbols-outlined text-[18px] text-primary shrink-0">
-                              check_circle
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Matriz 3x3 de Posicionamento na Tela */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-label-sm font-label-sm text-outline font-semibold uppercase tracking-wider">
-                        Posição na Tela (Matriz 3x3)
-                      </label>
-                      <span className="text-[10px] font-mono text-primary uppercase">
-                        {watermarkPosition}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 p-2 rounded-2xl bg-surface-container-lowest border border-surface-container-highest">
-                      {MATRIX_POSITIONS.map((pos) => {
-                        const isSelected = watermarkPosition === pos.key;
-                        return (
-                          <button
-                            key={pos.key}
-                            type="button"
-                            onClick={() => setWatermarkPosition(pos.key)}
-                            title={pos.label}
-                            className={cn(
-                              'h-12 rounded-xl flex items-center justify-center transition-all cursor-pointer border',
-                              isSelected
-                                ? 'bg-primary text-on-primary border-primary shadow-[0_0_12px_rgba(242,190,94,0.4)] font-bold scale-105'
-                                : 'bg-surface-container border-surface-container-highest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-                            )}
-                          >
-                            <span className="material-symbols-outlined text-[20px]">
-                              {pos.icon}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Slider de Opacidade (0% a 100%) */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between text-label-sm font-label-sm">
-                      <span className="text-outline font-semibold">Opacidade da Marca</span>
-                      <span className="text-primary font-bold font-mono">{watermarkOpacity}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={watermarkOpacity}
-                      onChange={(e) => setWatermarkOpacity(Number(e.target.value))}
-                      className="w-full accent-amber-400 h-2 bg-surface-container-highest rounded-lg cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Slider de Escala da Marca */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between text-label-sm font-label-sm">
-                      <span className="text-outline font-semibold">Tamanho / Escala</span>
-                      <span className="text-primary font-bold font-mono">{watermarkScale}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={50}
-                      max={150}
-                      value={watermarkScale}
-                      onChange={(e) => setWatermarkScale(Number(e.target.value))}
-                      className="w-full accent-amber-400 h-2 bg-surface-container-highest rounded-lg cursor-pointer"
-                    />
-                  </div>
-                </div>
+                <StudioWatermarkTab
+                  userWatermarks={userWatermarks}
+                  isLoadingWatermarks={isLoadingWatermarks}
+                  selectedWatermarkId={selectedWatermarkId}
+                  setSelectedWatermarkId={setSelectedWatermarkId}
+                  watermarkPosition={watermarkPosition}
+                  setWatermarkPosition={setWatermarkPosition}
+                  watermarkOpacity={watermarkOpacity}
+                  setWatermarkOpacity={setWatermarkOpacity}
+                  watermarkScale={watermarkScale}
+                  setWatermarkScale={setWatermarkScale}
+                  onNavigateToWatermarks={() => navigate('marcas')}
+                />
               )}
             </Card>
           </div>
         </div>
       </div>
 
-
-
       {/* Modal de Confirmação de Exclusão do Studio */}
-      <ConfirmModal
-        isOpen={isDeleteStudioModalOpen && Boolean(currentVideo)}
+      <StudioDeleteModal
+        isOpen={isDeleteStudioModalOpen}
+        isLoading={isDeletingFromStudio}
+        currentVideo={currentVideo}
         onClose={() => setIsDeleteStudioModalOpen(false)}
         onConfirm={async () => {
           setIsDeletingFromStudio(true);
@@ -2253,15 +1193,6 @@ export const StudioPage: React.FC = () => {
             setIsDeletingFromStudio(false);
           }
         }}
-        title="Excluir do Studio"
-        icon="delete_forever"
-        message="Tem certeza de que deseja remover este vídeo do Studio?"
-        itemTitle={currentVideo?.title || 'Vídeo Selecionado'}
-        itemSubtitle={currentVideo?.url}
-        warningText="O arquivo de vídeo temporário baixado no servidor e suas configurações de corte/legendas salvas serão excluídos."
-        confirmText="Confirmar Exclusão"
-        isLoading={isDeletingFromStudio}
-        variant="danger"
       />
     </AppShell>
   );
