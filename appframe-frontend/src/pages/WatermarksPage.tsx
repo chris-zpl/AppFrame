@@ -6,9 +6,12 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
-import { cn } from '../lib/utils';
-import { watermarksService } from '../services/watermarks.service';
 import { toast } from 'sonner';
+import {
+  watermarksService,
+  WatermarkUploadDropzone,
+  WatermarkGrid,
+} from '../features/watermarks';
 
 export const WatermarksPage: React.FC = () => {
   const { navigate } = useNavigation();
@@ -62,14 +65,6 @@ export const WatermarksPage: React.FC = () => {
     },
   });
 
-  const formatFileSize = (bytes: number): string => {
-    if (!bytes) return '0 KB';
-    if (bytes >= 1048576) {
-      return `${(bytes / 1048576).toFixed(1)} MB`;
-    }
-    return `${Math.round(bytes / 1024)} KB`;
-  };
-
   const processFile = (file: File) => {
     setErrorMessage(null);
 
@@ -79,8 +74,9 @@ export const WatermarksPage: React.FC = () => {
       return;
     }
 
+    // Limite de 10 MB
     if (file.size > 10 * 1024 * 1024) {
-      setErrorMessage('O arquivo excede o limite máximo permitido de 10 MB.');
+      setErrorMessage('Arquivo muito grande: o tamanho máximo permitido é 10 MB.');
       return;
     }
 
@@ -92,20 +88,21 @@ export const WatermarksPage: React.FC = () => {
     setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
     setIsDragging(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       processFile(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
+    if (e.target.files && e.target.files[0]) {
       processFile(e.target.files[0]);
       e.target.value = '';
     }
@@ -114,6 +111,7 @@ export const WatermarksPage: React.FC = () => {
   const handleSetDefault = (id: string) => {
     setDefaultWatermarkId(id);
     localStorage.setItem('appframe_default_watermark_id', id);
+    toast.success('Marca d’água padrão para novos cortes atualizada.');
   };
 
   const handleDelete = (id: string) => {
@@ -168,183 +166,31 @@ export const WatermarksPage: React.FC = () => {
           className="hidden"
         />
 
-        {/* ================= DROPZONE COM BORDA TRACEJADA ÂMBAR ================= */}
-        <section className="mb-space-lg">
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={cn(
-              'relative rounded-2xl p-8 sm:p-10 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300',
-              'border-2 border-dashed bg-white dark:bg-surface-container-low/80 backdrop-blur-sm',
-              isDragging
-                ? 'border-primary bg-primary/10 shadow-[0_0_30px_rgba(242,190,94,0.25)] scale-[1.01]'
-                : 'border-primary/60 hover:border-primary hover:bg-neutral-50 dark:hover:bg-surface-container-low shadow-sm dark:shadow-[0_8px_24px_rgba(0,0,0,0.3)]'
-            )}
-          >
-            <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-surface-container-highest flex items-center justify-center text-primary mb-3 shadow-[0_0_20px_rgba(212,163,70,0.2)]">
-              <span
-                className={cn(
-                  'material-symbols-outlined text-[34px]',
-                  uploadMutation.isPending && 'animate-spin'
-                )}
-              >
-                {uploadMutation.isPending ? 'sync' : 'cloud_upload'}
-              </span>
-            </div>
+        {/* DROPZONE */}
+        <WatermarkUploadDropzone
+          isDragging={isDragging}
+          isPending={uploadMutation.isPending}
+          errorMessage={errorMessage}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        />
 
-            <h3 className="font-title-md text-title-md font-bold text-on-surface mb-1">
-              {uploadMutation.isPending
-                ? 'Processando e salvando imagem PNG...'
-                : 'Arraste seu arquivo PNG transparente aqui'}
-            </h3>
-            <p className="font-body-sm text-body-sm text-on-surface-variant max-w-md mb-3">
-              Suporta formato nativo PNG com fundo transparente para sobreposição exata nas bordas do vídeo.
-            </p>
-
-            <div className="flex items-center gap-3 text-label-sm font-label-sm text-outline">
-              <span className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-[14px] text-primary">check_circle</span>
-                Transparência nativa (Alpha channel)
-              </span>
-              <span>•</span>
-              <span>Até 10 MB</span>
-            </div>
-
-            {/* Mensagem de Erro de Formato */}
-            {errorMessage && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="mt-4 p-3 rounded-xl bg-error-container/40 border border-error/40 text-error text-body-sm font-body-sm flex items-center gap-2 animate-in fade-in"
-              >
-                <span className="material-symbols-outlined text-[18px]">error</span>
-                <span>{errorMessage}</span>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ================= GRADE DE LOGOS SALVOS OU ESTADO VAZIO ================= */}
+        {/* GRADE DE LOGOS SALVOS OU ESTADO VAZIO */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
             <span className="text-on-surface-variant text-sm">Carregando marcas d'água...</span>
           </div>
         ) : watermarks.length > 0 ? (
-          <section className="flex flex-col gap-space-md">
-            <div className="flex items-center justify-between">
-              <span className="font-title-sm text-title-sm font-bold text-on-surface">
-                Marcas Cadastradas ({watermarks.length})
-              </span>
-              <span className="text-label-sm font-label-sm text-on-surface-variant">
-                O fundo xadrez valida o canal de transparência
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-space-md">
-              {watermarks.map((wm) => {
-                const isDefault = defaultWatermarkId === wm.id;
-                return (
-                  <Card
-                    key={wm.id}
-                    className={cn(
-                      'overflow-hidden bg-white dark:bg-surface-container border transition-all duration-300 hover:-translate-y-1 shadow-md dark:shadow-lg flex flex-col',
-                      isDefault
-                        ? 'border-primary/50 shadow-[0_0_15px_rgba(212,163,70,0.15)] ring-1 ring-primary/30'
-                        : 'border-neutral-200 dark:border-surface-container-high hover:border-primary/40'
-                    )}
-                  >
-                    {/* Fundo Xadrez (Checkerboard) para Testar Transparência do Canal Alfa */}
-                    <div
-                      className={cn(
-                        'relative w-full h-44 flex items-center justify-center p-6 overflow-hidden',
-                        'bg-[linear-gradient(45deg,#cbd5e1_25%,transparent_25%),linear-gradient(-45deg,#cbd5e1_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#cbd5e1_75%),linear-gradient(-45deg,transparent_75%,#cbd5e1_75%)]',
-                        'dark:bg-[linear-gradient(45deg,#232732_25%,transparent_25%),linear-gradient(-45deg,#232732_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#232732_75%),linear-gradient(-45deg,transparent_75%,#232732_75%)]',
-                        'bg-[size:16px_16px] bg-[position:0_0,0_8px,8px_-8px,-8px_0] bg-neutral-100 dark:bg-[#141720]'
-                      )}
-                    >
-                      <img
-                        src={wm.url || watermarksService.getFileUrl(wm.id)}
-                        alt={wm.original_name}
-                        className="max-h-full max-w-full object-contain filter drop-shadow-md transition-transform hover:scale-105"
-                      />
-
-                      {/* Badge de Padrão */}
-                      {isDefault && (
-                        <div className="absolute top-2.5 left-2.5 bg-primary text-on-primary font-bold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[12px]">star</span>
-                          <span>Padrão Studio</span>
-                        </div>
-                      )}
-
-                      <div className="absolute top-2.5 right-2.5 bg-black/70 backdrop-blur-sm text-outline font-mono text-[10px] px-2 py-0.5 rounded-md uppercase text-neutral-200">
-                        PNG Alpha
-                      </div>
-                    </div>
-
-                    {/* Informações e Metadados Tabulares */}
-                    <div className="p-4 flex flex-col flex-1 justify-between gap-3 bg-white dark:bg-surface-container">
-                      <div>
-                        <h4
-                          className="font-title-sm text-title-sm font-bold text-on-surface truncate"
-                          title={wm.original_name}
-                        >
-                          {wm.original_name}
-                        </h4>
-
-                        {/* Metadados Tabulares */}
-                        <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-neutral-200 dark:border-surface-container-highest/60 text-center font-mono tabular-nums">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] text-outline uppercase font-sans">Tamanho</span>
-                            <span className="text-label-md font-bold text-primary">
-                              {formatFileSize(wm.file_size)}
-                            </span>
-                          </div>
-                          <div className="flex flex-col border-l border-neutral-200 dark:border-surface-container-highest/60">
-                            <span className="text-[10px] text-outline uppercase font-sans">Data</span>
-                            <span className="text-label-md font-bold text-on-surface-variant">
-                              {new Date(wm.created_at).toLocaleDateString('pt-BR')}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Ações */}
-                      <div className="flex items-center justify-between gap-2 pt-2">
-                        {!isDefault ? (
-                          <button
-                            type="button"
-                            onClick={() => handleSetDefault(wm.id)}
-                            className="text-label-sm font-label-sm text-primary hover:underline font-semibold cursor-pointer"
-                          >
-                            Tornar Padrão
-                          </button>
-                        ) : (
-                          <span className="text-label-sm font-label-sm text-primary font-medium">
-                            Logo Ativo
-                          </span>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => setDeleteConfirmId(wm.id)}
-                          className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-                          title="Excluir marca d'água"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">
-                            delete
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          </section>
+          <WatermarkGrid
+            watermarks={watermarks}
+            defaultWatermarkId={defaultWatermarkId}
+            onSetDefault={handleSetDefault}
+            onConfirmDelete={(id) => setDeleteConfirmId(id)}
+          />
         ) : (
-          /* ================= ESTADO VAZIO USANDO <EmptyState> ================= */
           <EmptyState
             icon="branding_watermark"
             title="Nenhuma marca d'água cadastrada no AppFrame"

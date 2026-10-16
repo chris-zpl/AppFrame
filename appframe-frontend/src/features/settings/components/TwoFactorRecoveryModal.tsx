@@ -1,0 +1,72 @@
+import React from 'react';
+import { Card, Button } from '../../../components/ui';
+import { toast } from 'sonner';
+
+interface TwoFactorRecoveryModalProps {
+  isOpen: boolean;
+  recoveryCodes: string[];
+  onClose: () => void;
+}
+
+export const TwoFactorRecoveryModal: React.FC<TwoFactorRecoveryModalProps> = ({
+  isOpen,
+  recoveryCodes,
+  onClose,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in">
+      <Card className="w-full max-w-md p-6 bg-surface-container border border-surface-container-high shadow-2xl flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-primary">
+            <span className="material-symbols-outlined text-[24px]">key</span>
+            <h3 className="font-title-md text-title-md font-bold text-on-surface">
+              Códigos de Recuperação (2FA)
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-outline hover:text-on-surface p-1 rounded-lg cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        <p className="font-body-sm text-body-sm text-on-surface-variant">
+          Estes códigos são de uso único. Mantenha-os guardados em local seguro:
+        </p>
+
+        <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-surface-container-lowest border border-surface-container-highest font-mono text-center text-label-md text-primary font-bold">
+          {recoveryCodes.map((code, idx) => (
+            <span key={idx} className="p-1 rounded bg-surface-container">
+              {code}
+            </span>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 mt-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              navigator.clipboard.writeText(recoveryCodes.join('\n'));
+              toast.info('Copiado para a área de transferência!');
+            }}
+            leftIcon={
+              <span className="material-symbols-outlined text-[16px]">content_copy</span>
+            }
+          >
+            Copiar Códigos
+          </Button>
+          <Button
+            variant="primary"
+            onClick={onClose}
+          >
+            Fechar
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+};
