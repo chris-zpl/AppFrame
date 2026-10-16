@@ -997,6 +997,17 @@ export class AuthService {
       return { success: true, message: genericMessage };
     }
 
+    // Proteção contra múltiplos cliques / envio concorrente duplicado (cooldown de 30s)
+    const cooldownKey = `pwd_reset_cooldown:${user.id}`;
+    const inCooldown = await this.redisService.get(cooldownKey);
+    if (inCooldown) {
+      this.logger.warn(
+        `Solicitação de redefinição recente em andamento para ${user.email}. Disparo duplicado suprimido.`,
+      );
+      return { success: true, message: genericMessage };
+    }
+    await this.redisService.set(cooldownKey, '1', 'EX', 30);
+
     // 1. Gera token criptograficamente seguro (32 bytes = 64 chars hex)
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = this.hashToken(rawToken);

@@ -8,12 +8,164 @@ import {
   type AdminUser,
   type AdminSession,
   type SmtpConfig,
+  type AdminAuditLog,
 } from '../services/admin.service';
 import { AppShell } from '../components/layout/AppShell';
 import { Button, Badge, Card, ConfirmModal } from '../components/ui';
 import { cn } from '../lib/utils';
 
-type AdminTab = 'users' | 'youtube' | 'gemini' | 'smtp';
+type AdminTab = 'users' | 'youtube' | 'gemini' | 'smtp' | 'audit';
+
+const getAuditEventBadge = (action: string) => {
+  switch (action) {
+    case 'PASSWORD_RESET_REQUESTED':
+      return {
+        label: 'Redefinição Solicitada',
+        icon: 'lock_reset',
+        className: 'bg-amber-500/15 text-amber-400 border border-amber-500/30',
+      };
+    case 'PASSWORD_RESET_COMPLETED':
+      return {
+        label: 'Senha Redefinida (Link)',
+        icon: 'key',
+        className: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
+      };
+    case 'PASSWORD_CHANGED':
+      return {
+        label: 'Senha Alterada',
+        icon: 'password',
+        className: 'bg-blue-500/15 text-blue-400 border border-blue-500/30',
+      };
+    case 'PROFILE_EMAIL_CHANGED':
+      return {
+        label: 'E-mail Alterado',
+        icon: 'mail',
+        className: 'bg-purple-500/15 text-purple-400 border border-purple-500/30',
+      };
+    case 'PROFILE_NAME_CHANGED':
+      return {
+        label: 'Nome Alterado',
+        icon: 'badge',
+        className: 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30',
+      };
+    case 'GOOGLE_ACCOUNT_LINKED':
+      return {
+        label: 'Google Vinculado',
+        icon: 'link',
+        className: 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30',
+      };
+    case 'GOOGLE_ACCOUNT_UNLINKED':
+      return {
+        label: 'Google Desvinculado',
+        icon: 'link_off',
+        className: 'bg-orange-500/15 text-orange-400 border border-orange-500/30',
+      };
+    case 'TWO_FACTOR_ENABLED':
+      return {
+        label: '2FA Ativado',
+        icon: 'verified_user',
+        className: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
+      };
+    case 'TWO_FACTOR_DISABLED':
+      return {
+        label: '2FA Desativado',
+        icon: 'gpp_bad',
+        className: 'bg-red-500/15 text-red-400 border border-red-500/30',
+      };
+    case 'SESSION_REVOKED':
+      return {
+        label: 'Sessão Encerrada',
+        icon: 'logout',
+        className: 'bg-rose-500/15 text-rose-400 border border-rose-500/30',
+      };
+    case 'ALL_SESSIONS_REVOKED':
+      return {
+        label: 'Todas Sessões Encerradas',
+        icon: 'power_settings_new',
+        className: 'bg-red-500/20 text-red-300 border border-red-500/40',
+      };
+    default:
+      return {
+        label: action,
+        icon: 'info',
+        className: 'bg-surface-container-highest text-on-surface-variant border border-surface-container-highest',
+      };
+  }
+};
+
+const parseDevice = (ua: string | null) => {
+  if (!ua) return 'Dispositivo Desconhecido';
+  if (ua.includes('iPhone')) return 'iPhone (iOS)';
+  if (ua.includes('iPad')) return 'iPad (iOS)';
+  if (ua.includes('Android')) return 'Android Mobile';
+  if (ua.includes('Macintosh') || ua.includes('Mac OS')) return 'Mac / macOS';
+  if (ua.includes('Windows')) return 'Windows PC';
+  if (ua.includes('Linux')) return 'Linux PC';
+  return 'Web / Outro';
+};
+
+const renderMetadata = (meta: Record<string, any> | null) => {
+  if (!meta || Object.keys(meta).length === 0) {
+    return <span className="text-outline text-xs italic">Sem detalhes adicionais</span>;
+  }
+  return (
+    <div className="flex flex-wrap gap-1.5 max-w-md">
+      {meta.oldEmail && meta.newEmail && (
+        <span className="px-2 py-0.5 rounded text-[11px] bg-purple-500/10 text-purple-300 font-mono border border-purple-500/20">
+          {meta.oldEmail} ➔ {meta.newEmail}
+        </span>
+      )}
+      {meta.oldName && meta.newName && (
+        <span className="px-2 py-0.5 rounded text-[11px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+          {meta.oldName} ➔ {meta.newName}
+        </span>
+      )}
+      {meta.googleEmail && (
+        <span className="px-2 py-0.5 rounded text-[11px] bg-cyan-500/10 text-cyan-300 font-mono border border-cyan-500/20">
+          Google: {meta.googleEmail}
+        </span>
+      )}
+      {meta.email && (
+        <span className="px-2 py-0.5 rounded text-[11px] bg-amber-500/10 text-amber-300 font-mono border border-amber-500/20">
+          E-mail: {meta.email}
+        </span>
+      )}
+      {meta.userFound === false && (
+        <span className="px-2 py-0.5 rounded text-[11px] bg-red-500/15 text-red-400 border border-red-500/20 font-semibold">
+          E-mail não cadastrado
+        </span>
+      )}
+      {meta.reason && (
+        <span className="px-2 py-0.5 rounded text-[11px] bg-surface-container-high text-on-surface-variant">
+          Motivo: {meta.reason}
+        </span>
+      )}
+      {Object.entries(meta)
+        .filter(
+          ([k]) =>
+            ![
+              'oldEmail',
+              'newEmail',
+              'oldName',
+              'newName',
+              'googleEmail',
+              'email',
+              'userFound',
+              'reason',
+              'googleId',
+            ].includes(k)
+        )
+        .map(([k, v]) => (
+          <span
+            key={k}
+            className="px-2 py-0.5 rounded text-[11px] bg-surface-container-high text-outline font-mono"
+          >
+            {k}: {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+          </span>
+        ))}
+    </div>
+  );
+};
 
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
@@ -33,9 +185,9 @@ export const AdminPage: React.FC = () => {
     }
   }, [user, isAdmin, navigate]);
 
-  // Se o usuário for ADMIN (não super-admin), limita a aba a 'users'
+  // Se o usuário for ADMIN (não super-admin), permite 'users' e 'audit'
   useEffect(() => {
-    if (!isSuperAdmin && activeTab !== 'users') {
+    if (!isSuperAdmin && activeTab !== 'users' && activeTab !== 'audit') {
       setActiveTab('users');
     }
   }, [isSuperAdmin, activeTab]);
@@ -71,6 +223,22 @@ export const AdminPage: React.FC = () => {
     queryFn: adminService.getSmtpConfig,
     enabled: isSuperAdmin,
   });
+
+  const {
+    data: auditLogs = [],
+    isLoading: isLoadingAudit,
+    refetch: refetchAudit,
+    isRefetching: isRefetchingAudit,
+  } = useQuery<AdminAuditLog[]>({
+    queryKey: ['admin-audit-logs'],
+    queryFn: () => adminService.getAuditLogs(),
+    enabled: isAdmin,
+    refetchInterval: activeTab === 'audit' ? 10000 : false,
+  });
+
+  // ================= ESTADOS DO TAB AUDITORIA =================
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditActionFilter, setAuditActionFilter] = useState('ALL');
 
   // ================= ESTADOS DO TAB YOUTUBE =================
   const [cookiesInput, setCookiesInput] = useState('');
@@ -325,6 +493,39 @@ export const AdminPage: React.FC = () => {
   const totalActiveSessionsCount = sessions.length;
   const totalRendersCount = users.reduce((acc, u) => acc + (u.total_renders || 0), 0);
 
+  // Estatísticas e Filtros de Auditoria
+  const auditPasswordCount = auditLogs.filter((l) => l.action.includes('PASSWORD')).length;
+  const auditProfileCount = auditLogs.filter(
+    (l) => l.action.includes('PROFILE') || l.action.includes('GOOGLE')
+  ).length;
+  const auditSecurityCount = auditLogs.filter(
+    (l) => l.action.includes('SESSION') || l.action.includes('TWO_FACTOR')
+  ).length;
+
+  const filteredAuditLogs = auditLogs.filter((log) => {
+    if (auditActionFilter !== 'ALL' && log.action !== auditActionFilter) {
+      return false;
+    }
+    if (!auditSearch.trim()) return true;
+    const term = auditSearch.toLowerCase();
+    const targetUser = users.find((u) => u.id === log.user_id);
+    const userName = targetUser?.name?.toLowerCase() || '';
+    const userEmail = targetUser?.email?.toLowerCase() || '';
+    const metaStr = JSON.stringify(log.metadata || {}).toLowerCase();
+    const ip = (log.ip_address || '').toLowerCase();
+    const action = log.action.toLowerCase();
+    const ua = (log.user_agent || '').toLowerCase();
+
+    return (
+      action.includes(term) ||
+      userName.includes(term) ||
+      userEmail.includes(term) ||
+      ip.includes(term) ||
+      metaStr.includes(term) ||
+      ua.includes(term)
+    );
+  });
+
   return (
     <AppShell
       currentPath="admin"
@@ -369,6 +570,25 @@ export const AdminPage: React.FC = () => {
               <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20 text-white font-mono">
                 {totalUsersCount}
               </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('audit')}
+              className={cn(
+                'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
+                activeTab === 'audit'
+                  ? 'bg-primary text-on-primary shadow-sm'
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+              )}
+            >
+              <span className="material-symbols-outlined text-[18px]">policy</span>
+              <span>Auditoria de Segurança</span>
+              {auditLogs.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20 text-white font-mono">
+                  {auditLogs.length}
+                </span>
+              )}
             </button>
 
             {isSuperAdmin && (
@@ -1131,6 +1351,279 @@ export const AdminPage: React.FC = () => {
                 >
                   Disparar Teste
                 </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* ================= ABA 5: AUDITORIA DE SEGURANÇA ================= */}
+        {activeTab === 'audit' && (
+          <div className="flex flex-col gap-6">
+            {/* Cards de Métricas de Auditoria */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="p-4 flex flex-col gap-1 border-surface-container-highest bg-surface-container-lowest">
+                <span className="text-[12px] font-semibold text-outline uppercase tracking-wider">
+                  Total de Eventos
+                </span>
+                <span className="text-display-sm font-bold text-on-surface">
+                  {auditLogs.length}
+                </span>
+                <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] text-primary">history</span>
+                  Histórico de segurança persistido
+                </span>
+              </Card>
+
+              <Card className="p-4 flex flex-col gap-1 border-surface-container-highest bg-surface-container-lowest">
+                <span className="text-[12px] font-semibold text-outline uppercase tracking-wider">
+                  Recuperação de Senha
+                </span>
+                <span className="text-display-sm font-bold text-amber-400">
+                  {auditPasswordCount}
+                </span>
+                <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] text-amber-400">lock_reset</span>
+                  Solicitações e trocas
+                </span>
+              </Card>
+
+              <Card className="p-4 flex flex-col gap-1 border-surface-container-highest bg-surface-container-lowest">
+                <span className="text-[12px] font-semibold text-outline uppercase tracking-wider">
+                  Perfil & Contas
+                </span>
+                <span className="text-display-sm font-bold text-purple-400">
+                  {auditProfileCount}
+                </span>
+                <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] text-purple-400">manage_accounts</span>
+                  E-mails, nomes e Google OAuth
+                </span>
+              </Card>
+
+              <Card className="p-4 flex flex-col gap-1 border-surface-container-highest bg-surface-container-lowest">
+                <span className="text-[12px] font-semibold text-outline uppercase tracking-wider">
+                  Sessões & 2FA
+                </span>
+                <span className="text-display-sm font-bold text-emerald-400">
+                  {auditSecurityCount}
+                </span>
+                <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] text-emerald-400">security</span>
+                  Autenticações e revogações
+                </span>
+              </Card>
+            </div>
+
+            {/* Tabela de Logs de Auditoria */}
+            <Card className="p-6 border-surface-container-highest bg-surface-container-lowest flex flex-col gap-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[22px] text-primary">
+                      policy
+                    </span>
+                    <h3 className="text-title-md font-bold text-on-surface">
+                      Trilha de Auditoria e Eventos de Segurança
+                    </h3>
+                  </div>
+                  <p className="text-body-sm text-on-surface-variant">
+                    Registro imutável de ações críticas: recuperação de senhas, trocas de credenciais, vinculações e encerramento de sessões.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => refetchAudit()}
+                    isLoading={isLoadingAudit || isRefetchingAudit}
+                    leftIcon={
+                      <span
+                        className={cn(
+                          'material-symbols-outlined text-[18px]',
+                          (isLoadingAudit || isRefetchingAudit) && 'animate-spin'
+                        )}
+                      >
+                        refresh
+                      </span>
+                    }
+                  >
+                    Atualizar
+                  </Button>
+                </div>
+              </div>
+
+              {/* Barra de Filtros e Busca */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+                <div className="relative flex-1">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">
+                    search
+                  </span>
+                  <input
+                    type="text"
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    placeholder="Buscar por usuário, e-mail, endereço IP, ação ou detalhe..."
+                    className="w-full bg-surface-container border border-surface-container-highest rounded-xl pl-10 pr-4 py-2 text-body-sm text-on-surface outline-none focus:border-primary placeholder:text-outline"
+                  />
+                  {auditSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setAuditSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <select
+                    value={auditActionFilter}
+                    onChange={(e) => setAuditActionFilter(e.target.value)}
+                    className="bg-surface-container border border-surface-container-highest rounded-xl px-3 py-2 text-body-sm text-on-surface outline-none focus:border-primary cursor-pointer"
+                  >
+                    <option value="ALL">Todas as Ações</option>
+                    <option value="PASSWORD_RESET_REQUESTED">Redefinição Solicitada</option>
+                    <option value="PASSWORD_RESET_COMPLETED">Senha Redefinida (Link)</option>
+                    <option value="PASSWORD_CHANGED">Senha Alterada (Logado)</option>
+                    <option value="PROFILE_EMAIL_CHANGED">E-mail Alterado</option>
+                    <option value="PROFILE_NAME_CHANGED">Nome Alterado</option>
+                    <option value="GOOGLE_ACCOUNT_LINKED">Google Vinculado</option>
+                    <option value="GOOGLE_ACCOUNT_UNLINKED">Google Desvinculado</option>
+                    <option value="TWO_FACTOR_ENABLED">2FA Ativado</option>
+                    <option value="TWO_FACTOR_DISABLED">2FA Desativado</option>
+                    <option value="SESSION_REVOKED">Sessão Encerrada</option>
+                    <option value="ALL_SESSIONS_REVOKED">Todas Sessões Encerradas</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Tabela de Registros */}
+              <div className="overflow-x-auto rounded-xl border border-surface-container-highest">
+                <table className="w-full text-left border-collapse text-body-sm">
+                  <thead>
+                    <tr className="bg-surface-container border-b border-surface-container-highest text-outline text-[11px] uppercase tracking-wider">
+                      <th className="p-3">Data / Hora</th>
+                      <th className="p-3">Evento / Ação</th>
+                      <th className="p-3">Usuário</th>
+                      <th className="p-3">Origem (IP & Dispositivo)</th>
+                      <th className="p-3">Detalhes / Metadados</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-container-highest">
+                    {filteredAuditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="p-8 text-center text-outline">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <span className="material-symbols-outlined text-[36px] text-outline/50">
+                              manage_search
+                            </span>
+                            <span className="text-body-md font-medium text-on-surface-variant">
+                              Nenhum registro de auditoria encontrado
+                            </span>
+                            <span className="text-body-sm text-outline">
+                              {auditSearch || auditActionFilter !== 'ALL'
+                                ? 'Experimente ajustar os filtros ou limpar o termo de pesquisa.'
+                                : 'Os eventos de segurança aparecerão aqui conforme as ações forem executadas.'}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredAuditLogs.map((log) => {
+                        const badgeInfo = getAuditEventBadge(log.action);
+                        const matchedUser = log.user_id ? users.find((u) => u.id === log.user_id) : null;
+                        const deviceName = parseDevice(log.user_agent);
+
+                        return (
+                          <tr
+                            key={log.id}
+                            className="hover:bg-surface-container-low/50 transition-colors"
+                          >
+                            {/* Data / Hora */}
+                            <td className="p-3 font-mono text-xs text-on-surface-variant whitespace-nowrap">
+                              <div className="flex flex-col">
+                                <span className="text-on-surface font-semibold">
+                                  {new Date(log.created_at).toLocaleDateString('pt-BR')}
+                                </span>
+                                <span className="text-[11px] text-outline">
+                                  {new Date(log.created_at).toLocaleTimeString('pt-BR')}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Evento / Ação */}
+                            <td className="p-3">
+                              <span
+                                className={cn(
+                                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap',
+                                  badgeInfo.className
+                                )}
+                              >
+                                <span className="material-symbols-outlined text-[16px]">
+                                  {badgeInfo.icon}
+                                </span>
+                                {badgeInfo.label}
+                              </span>
+                            </td>
+
+                            {/* Usuário */}
+                            <td className="p-3">
+                              {matchedUser ? (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-[11px] shrink-0">
+                                    {matchedUser.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="font-semibold text-on-surface truncate">
+                                      {matchedUser.name}
+                                    </span>
+                                    <span className="text-[11px] text-outline font-mono truncate">
+                                      {matchedUser.email}
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : log.metadata?.email ? (
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-on-surface">
+                                    {log.metadata.email}
+                                  </span>
+                                  <span className="text-[10px] text-outline">
+                                    (Identificado por e-mail)
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-outline text-xs italic">
+                                  Sistema / Anônimo
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Origem (IP & Dispositivo) */}
+                            <td className="p-3">
+                              <div className="flex flex-col text-xs">
+                                <span className="font-mono text-on-surface font-medium">
+                                  {log.ip_address || '127.0.0.1 (Local)'}
+                                </span>
+                                <span
+                                  className="text-[11px] text-outline truncate max-w-[200px]"
+                                  title={log.user_agent || undefined}
+                                >
+                                  {deviceName}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Detalhes / Metadados */}
+                            <td className="p-3">
+                              {renderMetadata(log.metadata)}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             </Card>
           </div>

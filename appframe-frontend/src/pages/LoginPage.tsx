@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useAuth, isPublicAuthRoute } from '../contexts/AuthContext';
@@ -26,6 +26,7 @@ export const LoginPage: React.FC = () => {
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
+  const isForgotSubmittingRef = useRef(false);
 
   // Retorna usuário já autenticado para a tela em que estava, impedindo acesso ao login
   useEffect(() => {
@@ -353,7 +354,8 @@ export const LoginPage: React.FC = () => {
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
-                  if (!forgotEmail) return;
+                  if (!forgotEmail || forgotLoading || isForgotSubmittingRef.current) return;
+                  isForgotSubmittingRef.current = true;
                   setForgotLoading(true);
                   setForgotError(null);
                   try {
@@ -365,6 +367,7 @@ export const LoginPage: React.FC = () => {
                     );
                   } finally {
                     setForgotLoading(false);
+                    isForgotSubmittingRef.current = false;
                   }
                 }}
                 className="flex flex-col gap-4"

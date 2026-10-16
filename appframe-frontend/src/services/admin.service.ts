@@ -132,4 +132,22 @@ export const adminService = {
     const res = await api.post<{ success: boolean; message: string }>('/admin/settings/smtp/test', { toEmail });
     return res.data;
   },
+
+  // Logs de Auditoria de Segurança
+  async getAuditLogs(userId?: string): Promise<AdminAuditLog[]> {
+    const res = await api.get<AdminAuditLog[]>('/admin/users/audit-logs', {
+      params: userId ? { userId } : undefined,
+    });
+    return res.data;
+  },
 };
+
+export interface AdminAuditLog {
+  id: string;
+  user_id: string | null;
+  action: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  metadata: Record<string, any> | null;
+  created_at: string;
+}
