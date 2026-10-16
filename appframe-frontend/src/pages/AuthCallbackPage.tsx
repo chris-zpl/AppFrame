@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, isPublicAuthRoute } from '../contexts/AuthContext';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
 import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
@@ -12,8 +12,12 @@ export const AuthCallbackPage: React.FC = () => {
   const [statusText, setStatusText] = useState('Capturando credenciais do Google OAuth...');
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(25);
+  const hasProcessedRef = useRef(false);
 
   useEffect(() => {
+    if (hasProcessedRef.current) return;
+    hasProcessedRef.current = true;
+
     const processCallback = async () => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
@@ -34,7 +38,7 @@ export const AuthCallbackPage: React.FC = () => {
           setStatusText('Desafio de Dois Fatores (2FA) detectado...');
           setProgress(75);
           setTimeout(() => {
-            window.location.replace(`/2fa?tempToken=${encodeURIComponent(tempToken)}`);
+            navigate(`/2fa?tempToken=${encodeURIComponent(tempToken)}`, { replace: true });
           }, 400);
           return;
         }
@@ -51,8 +55,17 @@ export const AuthCallbackPage: React.FC = () => {
 
         setStatusText('Sessão estabelecida! Redirecionando para o Workspace...');
         setProgress(100);
+
+        let target = '/varredura';
+        try {
+          const lastActive = sessionStorage.getItem('appframe_last_active_route');
+          if (lastActive && !isPublicAuthRoute(lastActive)) {
+            target = lastActive;
+          }
+        } catch {}
+
         setTimeout(() => {
-          window.location.replace('/varredura');
+          navigate(target, { replace: true });
         }, 300);
       } catch (err: any) {
         setError(err.message || 'Ocorreu um erro ao sincronizar a conta do Google.');

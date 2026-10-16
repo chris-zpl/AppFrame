@@ -38,8 +38,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const profileRequestPromiseRef = useRef<Promise<UserProfile | null> | null>(null);
 
   const refreshProfile = useCallback(async (tokenOverride?: string): Promise<UserProfile | null> => {
-    // Se já existe uma requisição em andamento e não há override, retorna a Promise ativa
-    if (profileRequestPromiseRef.current && !tokenOverride) {
+    // Se já existe uma requisição em andamento, retorna a Promise ativa
+    if (profileRequestPromiseRef.current) {
       return profileRequestPromiseRef.current;
     }
 
@@ -78,9 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     })();
 
-    if (!tokenOverride) {
-      profileRequestPromiseRef.current = requestPromise;
-    }
+    profileRequestPromiseRef.current = requestPromise;
     return requestPromise;
   }, []);
 
@@ -106,6 +104,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 2. Desvincular checagem de autenticação da navegação: roda exclusivamente na montagem
   useEffect(() => {
     const initialPath = window.location.pathname;
+
+    // Se estiver na rota de callback do OAuth, NÃO dispara initAuth,
+    // pois a AuthCallbackPage processa o token recebido de forma dedicada
+    if (initialPath.startsWith('/auth/callback') || initialPath === '/auth-callback') {
+      setIsLoading(false);
+      return;
+    }
+
     let hasStoredSession = false;
     try {
       hasStoredSession =
@@ -153,98 +159,110 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 3. Sincronização no método de login:
   // Aguarda confirmação das credenciais e atualiza o estado de 'user' em memória ANTES de liberar o fluxo
-  const login = async (
-    email: string,
-    password: string,
-  ): Promise<{ requires2fa?: boolean; tempToken?: string; user?: UserProfile }> => {
-    setIsLoading(true);
-    try {
-      const data = await authService.login({ email, password });
-      if (data.requires2fa || data.require_2fa) {
-        setIsLoading(false);
-        return { requires2fa: true, tempToken: data.tempToken || data.temp_token };
-      }
-
-      let resolvedUser = data.user || (data as any)?.data?.user;
-      if (!resolvedUser || !resolvedUser.id) {
-        resolvedUser = await refreshProfile();
-      } else {
-        setUser(resolvedUser);
-      }
-
-      if (resolvedUser && resolvedUser.id) {
-        try {
-          localStorage.setItem('appframe_has_session', 'true');
-        } catch {}
-      }
-
-      setIsLoading(false);
-      return { requires2fa: false, user: resolvedUser || undefined };
-    } catch (error) {
-      setIsLoading(false);
-      throw error;
-    }
-  };
-
-  const register = async (
-    name: string,
-    email: string,
-    password: string,
-  ): Promise<{ user?: UserProfile }> => {
-    setIsLoading(true);
-    try {
-      const data = await authService.register({ name, email, password });
-      setIsLoading(false);
-      return { user: data.user || (data as any)?.data?.user || undefined };
-    } catch (error) {
-      setIsLoading(false);
-      throw error;
-    }
-  };
-
-  const verify2fa = async (
-    tempToken: string,
-    token: string,
-  ): Promise<{ user?: UserProfile }> => {
-    setIsLoading(true);
-    try {
-      const data = await authService.verify2fa({ tempToken, token });
-      let resolvedUser = data.user || (data as any)?.data?.user;
-      if (!resolvedUser || !resolvedUser.id) {
-        resolvedUser = await refreshProfile();
-      } else {
-        setUser(resolvedUser);
-      }
-
-      if (resolvedUser && resolvedUser.id) {
-        try {
-          localStorage.setItem('appframe_has_session', 'true');
-        } catch {}
-      }
-
-      setIsLoading(false);
-      return { user: resolvedUser || undefined };
-    } catch (error) {
-      setIsLoading(false);
-      throw error;
-    }
-  };
-
-  const handleOAuthCallback = async (accessToken?: string, _refreshToken?: string) => {
-    setIsLoading(true);
-    try {
+  const login = useCallback(
+    async (
+      email: string,
+      password: string,
+    ): Promise<{ requires2fa?: boolean; tempToken?: string; user?: UserProfile }> => {
+      setIsLoading(true);
       try {
-        localStorage.setItem('appframe_has_session', 'true');
-        sessionStorage.setItem('appframe_has_session', 'true');
-      } catch {}
-      const profile = await refreshProfile(accessToken);
-      if (profile && profile.id) {
-        setUser(profile);
+        const data = await authService.login({ email, password });
+        if (data.requires2fa || data.require_2fa) {
+          setIsLoading(false);
+          return { requires2fa: true, tempToken: data.tempToken || data.temp_token };
+        }
+
+        let resolvedUser = data.user || (data as any)?.data?.user;
+        if (!resolvedUser || !resolvedUser.id) {
+          resolvedUser = await refreshProfile();
+        } else {
+          setUser(resolvedUser);
+        }
+
+        if (resolvedUser && resolvedUser.id) {
+          try {
+            localStorage.setItem('appframe_has_session', 'true');
+          } catch {}
+        }
+
+        setIsLoading(false);
+        return { requires2fa: false, user: resolvedUser || undefined };
+      } catch (error) {
+        setIsLoading(false);
+        throw error;
       }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    [refreshProfile],
+  );
+
+  const register = useCallback(
+    async (
+      name: string,
+      email: string,
+      password: string,
+    ): Promise<{ user?: UserProfile }> => {
+      setIsLoading(true);
+      try {
+        const data = await authService.register({ name, email, password });
+        setIsLoading(false);
+        return { user: data.user || (data as any)?.data?.user || undefined };
+      } catch (error) {
+        setIsLoading(false);
+        throw error;
+      }
+    },
+    [],
+  );
+
+  const verify2fa = useCallback(
+    async (
+      tempToken: string,
+      token: string,
+    ): Promise<{ user?: UserProfile }> => {
+      setIsLoading(true);
+      try {
+        const data = await authService.verify2fa({ tempToken, token });
+        let resolvedUser = data.user || (data as any)?.data?.user;
+        if (!resolvedUser || !resolvedUser.id) {
+          resolvedUser = await refreshProfile();
+        } else {
+          setUser(resolvedUser);
+        }
+
+        if (resolvedUser && resolvedUser.id) {
+          try {
+            localStorage.setItem('appframe_has_session', 'true');
+          } catch {}
+        }
+
+        setIsLoading(false);
+        return { user: resolvedUser || undefined };
+      } catch (error) {
+        setIsLoading(false);
+        throw error;
+      }
+    },
+    [refreshProfile],
+  );
+
+  const handleOAuthCallback = useCallback(
+    async (accessToken?: string, _refreshToken?: string) => {
+      setIsLoading(true);
+      try {
+        try {
+          localStorage.setItem('appframe_has_session', 'true');
+          sessionStorage.setItem('appframe_has_session', 'true');
+        } catch {}
+        const profile = await refreshProfile(accessToken);
+        if (profile && profile.id) {
+          setUser(profile);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [refreshProfile],
+  );
 
   return (
     <AuthContext.Provider
