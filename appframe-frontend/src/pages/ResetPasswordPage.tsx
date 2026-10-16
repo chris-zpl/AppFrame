@@ -1,6 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { authService, calculatePasswordStrength } from '../features/auth';
+import {
+  useResetPasswordForm,
+  PasswordStrengthIndicator,
+  ResetPasswordSuccess,
+  ResetPasswordInvalidToken,
+  AuthFooter,
+} from '../features/auth';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
 import { ThemeToggle } from '../components/common/ThemeToggle';
 import { Card } from '../components/ui/Card';
@@ -12,54 +18,22 @@ export const ResetPasswordPage: React.FC = () => {
   const navigate = useNavigate();
   const token = searchParams.get('token') || '';
 
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSuccess, setIsSuccess] = useState(false);
-
-  const passwordStrength = useMemo(() => calculatePasswordStrength(newPassword), [newPassword]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-
-    if (!token) {
-      setErrorMessage('Token de redefinição não encontrado na URL. Solicite um novo link.');
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setErrorMessage('A nova senha deve ter no mínimo 8 caracteres.');
-      return;
-    }
-
-    if (!passwordStrength.isStrong) {
-      setErrorMessage('Por favor, crie uma senha mais forte com no mínimo 8 caracteres, números e símbolos.');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setErrorMessage('As senhas não coincidem.');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await authService.resetPassword({ token, newPassword });
-      setIsSuccess(true);
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Não foi possível redefinir a senha. O token pode ter expirado ou ser inválido.';
-      setErrorMessage(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const {
+    newPassword,
+    setNewPassword,
+    confirmPassword,
+    setConfirmPassword,
+    showPassword,
+    setShowPassword,
+    showConfirmPassword,
+    setShowConfirmPassword,
+    isLoading,
+    errorMessage,
+    setErrorMessage,
+    isSuccess,
+    passwordStrength,
+    handleResetSubmit,
+  } = useResetPasswordForm({ token });
 
   return (
     <div className="relative min-h-screen w-full flex flex-col justify-between bg-surface overflow-x-hidden selection:bg-primary/20 selection:text-primary">
@@ -86,58 +60,13 @@ export const ResetPasswordPage: React.FC = () => {
       {/* Main Content Card */}
       <main className="flex-1 flex items-center justify-center px-4 py-8 z-10">
         <div className="w-full max-w-[460px]">
-          <Card
-            variant="auth"
-            className="w-full p-6 md:p-8"
-          >
+          <Card variant="auth" className="w-full p-6 md:p-8">
             {isSuccess ? (
-              <div className="flex flex-col items-center text-center gap-4 py-4">
-                <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
-                  <span className="material-symbols-outlined text-[32px]">
-                    check_circle
-                  </span>
-                </div>
-                <div>
-                  <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface mb-2">
-                    Senha Alterada!
-                  </h2>
-                  <p className="font-body-md text-body-md text-on-surface-variant max-w-sm">
-                    Sua senha foi redefinida com sucesso. Todas as sessões anteriores foram desconectadas por segurança.
-                  </p>
-                </div>
-                <Button
-                  variant="primary"
-                  className="mt-4 w-full"
-                  onClick={() => navigate('/login')}
-                >
-                  Ir para o Login
-                </Button>
-              </div>
+              <ResetPasswordSuccess onNavigateLogin={() => navigate('/login')} />
             ) : !token ? (
-              <div className="flex flex-col items-center text-center gap-4 py-4">
-                <div className="w-14 h-14 rounded-full bg-error/10 text-error flex items-center justify-center border border-error/20">
-                  <span className="material-symbols-outlined text-[32px]">
-                    link_off
-                  </span>
-                </div>
-                <div>
-                  <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface mb-2">
-                    Link Inválido
-                  </h2>
-                  <p className="font-body-md text-body-md text-on-surface-variant max-w-sm">
-                    Nenhum código de redefinição foi identificado na URL. Solicite uma nova recuperação na tela de login.
-                  </p>
-                </div>
-                <Button
-                  variant="primary"
-                  className="mt-4 w-full"
-                  onClick={() => navigate('/login')}
-                >
-                  Voltar ao Login
-                </Button>
-              </div>
+              <ResetPasswordInvalidToken onNavigateLogin={() => navigate('/login')} />
             ) : (
-              <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+              <form onSubmit={handleResetSubmit} className="flex flex-col gap-5">
                 <div className="text-center mb-2">
                   <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
                     <span className="material-symbols-outlined text-[26px]">
@@ -193,48 +122,8 @@ export const ResetPasswordPage: React.FC = () => {
                       }
                     />
 
-                    {/* Indicador Visual Dinâmico de Força de Senha (4 barras) */}
-                    <div className="flex flex-col gap-1.5 mt-1">
-                      <div className="grid grid-cols-4 gap-1.5">
-                        <div
-                          className={`h-1 rounded-full transition-all duration-300 ${
-                            passwordStrength.score >= 1 ? passwordStrength.colorClass : 'bg-surface-container-highest'
-                          }`}
-                        />
-                        <div
-                          className={`h-1 rounded-full transition-all duration-300 ${
-                            passwordStrength.score >= 2 ? passwordStrength.colorClass : 'bg-surface-container-highest'
-                          }`}
-                        />
-                        <div
-                          className={`h-1 rounded-full transition-all duration-300 ${
-                            passwordStrength.score >= 3 ? passwordStrength.colorClass : 'bg-surface-container-highest'
-                          }`}
-                        />
-                        <div
-                          className={`h-1 rounded-full transition-all duration-300 ${
-                            passwordStrength.score >= 4 ? passwordStrength.colorClass : 'bg-surface-container-highest'
-                          }`}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-neutral-600 dark:text-on-surface-variant">
-                          <span className="material-symbols-outlined text-[14px] text-primary">
-                            verified_user
-                          </span>
-                          <span className="font-label-sm text-label-sm">
-                            Mínimo de 8 caracteres, números e símbolos
-                          </span>
-                        </div>
-                        <span
-                          className={`font-label-sm text-label-sm font-semibold transition-colors ${
-                            passwordStrength.score >= 3 ? 'text-[#B8851B] dark:text-primary' : 'text-neutral-600 dark:text-on-surface-variant'
-                          }`}
-                        >
-                          {passwordStrength.label}
-                        </span>
-                      </div>
-                    </div>
+                    {/* Indicador Visual Dinâmico de Força de Senha */}
+                    <PasswordStrengthIndicator passwordStrength={passwordStrength} />
                   </div>
 
                   <Input
@@ -295,9 +184,7 @@ export const ResetPasswordPage: React.FC = () => {
       </main>
 
       {/* Rodapé Institucional */}
-      <footer className="w-full text-center py-4 text-label-sm font-label-sm text-neutral-500 dark:text-[#949DAF] z-10">
-        AppFrame © 2026 • Executive Video Intelligence
-      </footer>
+      <AuthFooter showLegalLinks={false} />
     </div>
   );
 };
