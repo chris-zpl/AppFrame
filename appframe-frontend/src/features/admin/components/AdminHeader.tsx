@@ -8,13 +8,15 @@ export interface AdminHeaderProps {
 export const AdminHeader: React.FC<AdminHeaderProps> = ({ isSuperAdmin }) => {
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2.5">
+      <div className="flex flex-row md:flex-col items-start gap-2.5">
+        <div className="flex flex-row gap-2.5">
         <span className="material-symbols-outlined text-[28px] text-primary">
           admin_panel_settings
         </span>
         <h1 className="text-headline-sm font-bold text-on-surface">
           Painel Administrativo
         </h1>
+        </div>
         <Badge variant={isSuperAdmin ? 'primary' : 'neutral'} className="font-bold">
           {isSuperAdmin ? 'SUPER ADMIN' : 'ADMINISTRADOR'}
         </Badge>

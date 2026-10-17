@@ -1,6 +1,6 @@
 import React from 'react';
-import { cn } from '../../../lib/utils';
 import type { AdminTab } from '../interfaces';
+import { AdminTabButton } from './AdminTabButton';
 
 export interface AdminNavigationTabsProps {
   activeTab: AdminTab;
@@ -23,107 +23,58 @@ export const AdminNavigationTabs: React.FC<AdminNavigationTabsProps> = ({
 }) => {
   return (
     <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container border border-surface-container-highest overflow-x-auto">
-      <button
-        type="button"
+      <AdminTabButton
+        isActive={activeTab === 'users'}
         onClick={() => onSelectTab('users')}
-        className={cn(
-          'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
-          activeTab === 'users'
-            ? 'bg-primary text-on-primary shadow-sm'
-            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-        )}
-      >
-        <span className="material-symbols-outlined text-[18px]">group</span>
-        <span>Usuários & Sessões</span>
-        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20 text-white font-mono">
-          {usersCount}
-        </span>
-      </button>
+        icon="group"
+        label="Usuários & Sessões"
+        count={usersCount}
+      />
 
-      <button
-        type="button"
+      <AdminTabButton
+        isActive={activeTab === 'audit'}
         onClick={() => onSelectTab('audit')}
-        className={cn(
-          'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
-          activeTab === 'audit'
-            ? 'bg-primary text-on-primary shadow-sm'
-            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-        )}
-      >
-        <span className="material-symbols-outlined text-[18px]">policy</span>
-        <span>Auditoria de Segurança</span>
-        {auditCount > 0 && (
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/20 text-white font-mono">
-            {auditCount}
-          </span>
-        )}
-      </button>
+        icon="policy"
+        label="Auditoria de Segurança"
+        count={auditCount > 0 ? auditCount : undefined}
+      />
 
       {isSuperAdmin && (
         <>
-          <button
-            type="button"
+          <AdminTabButton
+            isActive={activeTab === 'youtube'}
             onClick={() => onSelectTab('youtube')}
-            className={cn(
-              'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
-              activeTab === 'youtube'
-                ? 'bg-primary text-on-primary shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-            )}
-          >
-            <span className="material-symbols-outlined text-[18px]">smart_display</span>
-            <span>YouTube (Sessão Global)</span>
-            {hasYoutubeCookies && (
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            )}
-          </button>
+            icon="smart_display"
+            label="YouTube (Sessão Global)"
+            hasStatusDot={hasYoutubeCookies}
+          />
 
-          <button
-            type="button"
+          <AdminTabButton
+            isActive={activeTab === 'gemini'}
             onClick={() => onSelectTab('gemini')}
-            className={cn(
-              'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
-              activeTab === 'gemini'
-                ? 'bg-primary text-on-primary shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-            )}
-          >
-            <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-            <span>Google Gemini AI</span>
-            {isGeminiConfigured && (
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            )}
-          </button>
+            icon="auto_awesome"
+            label="Google Gemini AI"
+            hasStatusDot={isGeminiConfigured}
+          />
 
-          <button
-            type="button"
+          <AdminTabButton
+            isActive={activeTab === 'smtp'}
             onClick={() => onSelectTab('smtp')}
-            className={cn(
-              'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
-              activeTab === 'smtp'
-                ? 'bg-primary text-on-primary shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-            )}
-          >
-            <span className="material-symbols-outlined text-[18px]">mail</span>
-            <span>Servidor SMTP</span>
-          </button>
+            icon="mail"
+            label="Servidor SMTP"
+          />
 
-          <button
-            type="button"
+          <AdminTabButton
+            isActive={activeTab === 'legal'}
             onClick={() => onSelectTab('legal')}
-            className={cn(
-              'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
-              activeTab === 'legal'
-                ? 'bg-primary text-on-primary shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-            )}
-          >
-            <span className="material-symbols-outlined text-[18px]">gavel</span>
-            <span>Termos & Privacidade</span>
-          </button>
+            icon="gavel"
+            label="Termos & Privacidade"
+          />
         </>
       )}
     </div>
   );
 };
+
+export { AdminTabButton };
+export type { AdminTabButtonProps } from './AdminTabButton';
