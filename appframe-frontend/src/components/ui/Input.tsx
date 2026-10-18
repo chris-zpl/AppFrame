@@ -71,8 +71,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             disabled={disabled}
             className={cn(
               'w-full rounded-lg bg-white dark:bg-surface-container-lowest text-neutral-900 dark:text-on-surface',
-              'placeholder:text-neutral-400 dark:placeholder:text-outline border border-neutral-300 dark:border-transparent transition-all duration-200',
-              'focus:outline-none focus:bg-white dark:focus:bg-surface-container-low focus:border-primary/80 dark:focus:border-primary/50 focus:ring-1 focus:ring-primary/40',
+              'placeholder:text-neutral-400 dark:placeholder:text-outline border border-neutral-300 dark:border-transparent',
+              'outline-none focus:outline-none focus-visible:outline-none',
+              'transition-colors duration-150',
+              'focus:bg-white dark:focus:bg-surface-container-low focus:border-primary/80 dark:focus:border-primary/50 focus:ring-1 focus:ring-primary/40 focus:ring-offset-0 focus:ring-offset-transparent',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               effectiveSize === 'sm' && 'h-9 text-body-sm rounded-lg',
               effectiveSize === 'md' && 'h-11 text-body-md rounded-lg',

@@ -48,6 +48,13 @@
   main > :last-child {
     margin-bottom: 0 !important;
   }
+
+  input,
+  textarea,
+  select {
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 /* Oculta scrollbar mantendo rolagem nativa */
