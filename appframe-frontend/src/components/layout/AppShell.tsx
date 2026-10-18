@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { AppFrameLogo } from '../common/AppFrameLogo';
 import { ThemeToggle } from '../common/ThemeToggle';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../features/auth';
 import { LegalModal, useLegalModal } from '../../features/legal';
 
 export type AppNavigationPath = 'varredura' | 'studio' | 'marcas-dagua' | 'historico' | 'configuracoes' | 'admin';

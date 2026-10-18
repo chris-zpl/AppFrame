@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import { AppShell } from '../components/layout/AppShell';
 import {
   type AdminTab,
@@ -19,7 +18,7 @@ import {
   useAdminGuard,
   useAdminMutations,
 } from '../features/admin';
-import { isSuperAdminUser, isAdminUser } from '../features/auth';
+import { useAuth, isSuperAdminUser, isAdminUser } from '../features/auth';
 
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();

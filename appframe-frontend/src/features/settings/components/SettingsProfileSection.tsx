@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, Input, Button } from '../../../components/ui';
 
 import { useSettingsContext } from '../context';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../auth';
 
 export interface SettingsProfileSectionProps {
   name?: string;

@@ -7,7 +7,7 @@ import { DeleteAccountModal } from './DeleteAccountModal';
 import { EmailChangeModal } from './EmailChangeModal';
 import { EmailChangeBlockedModal } from './EmailChangeBlockedModal';
 import { useSettingsContext } from '../context';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../auth';
 
 export interface SettingsModalsProps {
   // TwoFactorSetup

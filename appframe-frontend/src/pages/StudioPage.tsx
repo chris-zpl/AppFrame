@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../features/auth';
 import { AppShell } from '../components/layout/AppShell';
 import {
   StudioProvider,

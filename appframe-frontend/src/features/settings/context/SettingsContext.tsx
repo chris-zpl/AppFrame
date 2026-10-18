@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../auth';
 import { useNavigation } from '../../../contexts/NavigationContext';
 import { toast } from 'sonner';
 import { useSettings } from '../hooks/useSettings';

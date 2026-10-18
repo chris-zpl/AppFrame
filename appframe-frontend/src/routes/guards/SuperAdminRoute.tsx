@@ -1,7 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { isSuperAdminUser } from '../../features/auth';
+import { useAuth, isSuperAdminUser } from '../../features/auth';
 
 export const SuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading, user } = useAuth();

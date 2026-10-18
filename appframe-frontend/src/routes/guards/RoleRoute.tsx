@@ -1,7 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { hasRole } from '../../features/auth';
+import { useAuth, hasRole } from '../../features/auth';
 
 export interface RoleRouteProps {
   roles: ('SUPER_ADMIN' | 'ADMIN' | 'USER')[];
