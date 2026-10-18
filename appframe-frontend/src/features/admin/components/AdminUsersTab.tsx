@@ -201,7 +201,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                     </td>
 
                     <td className="p-3 text-right">
-                      {!isTargetSuper && (
+                      {!isTargetSuper && !isSelf && (
                         <Button
                           size="sm"
                           variant={u.is_active ? 'ghost' : 'primary'}

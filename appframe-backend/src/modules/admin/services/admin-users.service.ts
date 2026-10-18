@@ -199,6 +199,13 @@ export class AdminUsersService {
       throw new ForbiddenException('O Super Admin não pode ser desativado.');
     }
 
+    if (
+      targetUserId === adminUser.userId ||
+      (targetUser.email && targetUser.email.toLowerCase() === adminUser.email.toLowerCase())
+    ) {
+      throw new ForbiddenException('Você não pode alterar o status da sua própria conta de administrador.');
+    }
+
     const isSuperAdmin =
       adminUser.role === UserRole.SUPER_ADMIN ||
       adminUser.email.toLowerCase() === 'christian.zimpel@gmail.com';

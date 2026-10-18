@@ -62,6 +62,10 @@ export const useAdminMutations = ({ currentUser }: UseAdminMutationsProps) => {
       toast.error('O Super-Administrador fundador não pode ser desativado.');
       return;
     }
+    if (targetUser.id === currentUser?.id || targetUser.email === currentUser?.email) {
+      toast.error('Você não pode alterar o status da sua própria conta de administrador.');
+      return;
+    }
     const nextStatus = !targetUser.is_active;
     try {
       await adminService.updateUserStatus(targetUser.id, nextStatus);
