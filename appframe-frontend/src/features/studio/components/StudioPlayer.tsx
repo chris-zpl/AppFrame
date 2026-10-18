@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, Button } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import { toast } from 'sonner';
-import type { AspectRatio } from '../interfaces';
+import type { AspectRatio } from '../types';
 import { formatStudioTime as formatTime } from '../utils';
 
 import type { StudioVideoQueueItem } from '../../history';

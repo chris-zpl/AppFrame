@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { LegalDocType } from '../interfaces';
+import type { LegalDocType } from '../types';
 
 export const useLegalModal = (defaultDoc: LegalDocType = 'terms') => {
   const [isOpen, setIsOpen] = useState(false);

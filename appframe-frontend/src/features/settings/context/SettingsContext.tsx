@@ -3,7 +3,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useNavigation } from '../../../contexts/NavigationContext';
 import { toast } from 'sonner';
 import { useSettings } from '../hooks/useSettings';
-import type { SettingsSection } from '../interfaces';
+import type { SettingsSection } from '../types';
 
 export interface SettingsContextType extends ReturnType<typeof useSettings> {
   activeSection: SettingsSection;

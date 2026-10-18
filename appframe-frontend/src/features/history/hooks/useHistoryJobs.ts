@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { mediaService } from '../services';
-import type { VideoJobItem, HistoryFilterType } from '../interfaces';
+import type { VideoJobItem, HistoryFilterType } from '../types';
 import { filterHistoryJobs } from '../utils';
 
 export const useHistoryJobs = () => {

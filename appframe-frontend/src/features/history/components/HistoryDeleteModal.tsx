@@ -1,6 +1,6 @@
 import React from 'react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
-import type { VideoJobItem } from '../interfaces';
+import type { VideoJobItem } from '../types';
 
 export interface HistoryDeleteModalProps {
   job: VideoJobItem | null;

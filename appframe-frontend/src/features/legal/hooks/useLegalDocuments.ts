@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { publicLegalService } from '../services';
-import type { LegalDocumentsResponse } from '../interfaces';
+import type { LegalDocumentsResponse } from '../types';
 
 export const useLegalDocuments = (enabled = true) => {
   return useQuery<LegalDocumentsResponse>({

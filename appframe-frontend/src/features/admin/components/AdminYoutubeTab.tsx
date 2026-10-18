@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Badge, Button } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
-import type { YouTubeCookiesStatus } from '../interfaces';
+import type { YouTubeCookiesStatus } from '../types';
 
 export interface AdminYoutubeTabProps {
   ytStatus: YouTubeCookiesStatus | undefined;

@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import { toast } from 'sonner';
-import type { FontFamily, SubtitleMode } from '../interfaces';
+import type { FontFamily, SubtitleMode } from '../types';
 import type { GeminiSubtitleSegment } from '../../history';
 
 import { useStudioContext } from '../context';

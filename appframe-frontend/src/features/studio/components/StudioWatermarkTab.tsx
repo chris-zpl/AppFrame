@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import { API_BASE_URL } from '../../../lib/api';
-import type { WatermarkPosition } from '../interfaces';
+import type { WatermarkPosition } from '../types';
 import { MATRIX_POSITIONS } from '../constants';
 
 import { useStudioContext } from '../context';

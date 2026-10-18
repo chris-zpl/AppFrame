@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ScannerFilterType, ChannelMeta, ScrapedVideoCardData } from '../interfaces';
+import type { ScannerFilterType, ChannelMeta, ScrapedVideoCardData } from '../types';
 
 import { useScannerContext } from '../context';
 

@@ -3,7 +3,7 @@ import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { cn } from '../../../lib/utils';
-import type { VideoJobItem } from '../interfaces';
+import type { VideoJobItem } from '../types';
 import { formatDuration, getThumbnailUrl } from '../utils';
 
 interface HistoryJobCardProps {

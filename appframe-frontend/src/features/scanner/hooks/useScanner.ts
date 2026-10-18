@@ -6,7 +6,7 @@ import type {
   ScrapedVideoCardData,
   ChannelMeta,
   ScannerFilterType,
-} from '../interfaces';
+} from '../types';
 import { calculatePageNumbers, mapScannedItems } from '../utils';
 
 export const useScanner = () => {

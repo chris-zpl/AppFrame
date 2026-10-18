@@ -1,6 +1,11 @@
-import React from 'react';
 import { cn } from '../../../lib/utils';
-import type { LegalTabSwitcherProps } from '../interfaces';
+import type { LegalDocType } from '../types';
+
+export interface LegalTabSwitcherProps {
+  activeDoc: LegalDocType;
+  onSelectDoc: (doc: LegalDocType) => void;
+  className?: string;
+}
 
 export const LegalTabSwitcher: React.FC<LegalTabSwitcherProps> = ({
   activeDoc,

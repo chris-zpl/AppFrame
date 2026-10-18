@@ -4,7 +4,7 @@ import type {
   LegalDocumentItem,
   LegalVariables,
   LegalDocumentsResponse,
-} from '../../legal/interfaces';
+} from '../../legal/types';
 
 export type { LegalDocumentItem, LegalVariables, LegalDocumentsResponse };
 

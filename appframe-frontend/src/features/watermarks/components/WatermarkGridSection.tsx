@@ -1,7 +1,7 @@
 import React from 'react';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { WatermarkGrid } from './WatermarkGrid';
-import type { WatermarkItem } from '../interfaces';
+import type { WatermarkItem } from '../types';
 
 import { useWatermarksContext } from '../context';
 

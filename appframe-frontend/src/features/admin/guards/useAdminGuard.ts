@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import type { AdminTab } from '../interfaces';
+import type { AdminTab } from '../types';
 
 interface UseAdminGuardOptions {
   user: { id?: string; email?: string | null; role?: string | null } | null;

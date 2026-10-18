@@ -1,6 +1,6 @@
 import React from 'react';
 import { ConfirmModal } from '../../../components/ui';
-import type { AdminSession } from '../interfaces';
+import type { AdminSession } from '../types';
 
 interface RevokeSessionModalProps {
   session: AdminSession | null;

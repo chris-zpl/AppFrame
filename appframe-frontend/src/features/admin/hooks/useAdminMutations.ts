@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { adminService, legalService } from '../services';
-import type { AdminUser, SmtpConfig, SaveLegalSettingsDto } from '../interfaces';
+import type { AdminUser, SmtpConfig, SaveLegalSettingsDto } from '../types';
 import { isSuperAdminUser } from '../../auth';
 
 interface UseAdminMutationsProps {

@@ -1,5 +1,5 @@
 import api from '../../../lib/api';
-import type { LegalDocumentsResponse } from '../interfaces';
+import type { LegalDocumentsResponse } from '../types';
 
 export const publicLegalService = {
   /**

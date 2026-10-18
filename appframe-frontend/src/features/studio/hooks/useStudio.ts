@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { mediaService, type StudioVideoQueueItem } from '../../history';
-import type { FontFamily, SubtitleMode } from '../interfaces';
+import type { FontFamily, SubtitleMode } from '../types';
 import { useStudioQueue } from './useStudioQueue';
 import { useStudioWatermark } from './useStudioWatermark';
 import { useStudioPlayer } from './useStudioPlayer';

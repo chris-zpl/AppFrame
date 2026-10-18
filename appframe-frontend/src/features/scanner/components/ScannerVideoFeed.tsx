@@ -4,7 +4,7 @@ import { VideoCard } from '../../../components/common/VideoCard';
 import { ScannerChannelHeader } from './ScannerChannelHeader';
 import { ScannerPagination } from './ScannerPagination';
 import { ScannerVideoSkeleton } from './ScannerVideoSkeleton';
-import type { ScrapedVideoCardData, ChannelMeta } from '../interfaces';
+import type { ScrapedVideoCardData, ChannelMeta } from '../types';
 
 import { useScannerContext } from '../context';
 

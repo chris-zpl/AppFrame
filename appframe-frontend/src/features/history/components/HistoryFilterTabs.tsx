@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '../../../lib/utils';
-import type { HistoryFilterType, VideoJobItem } from '../interfaces';
+import type { HistoryFilterType, VideoJobItem } from '../types';
 
 import { useHistoryContext } from '../context';
 

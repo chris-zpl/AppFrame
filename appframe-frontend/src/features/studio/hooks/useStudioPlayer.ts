@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { API_BASE_URL } from '../../../lib/api';
 import { mediaService, type StudioVideoQueueItem } from '../../history';
-import type { AspectRatio } from '../interfaces';
+import type { AspectRatio } from '../types';
 
 export interface UseStudioPlayerProps {
   currentVideo: StudioVideoQueueItem | null;

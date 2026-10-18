@@ -1,6 +1,9 @@
 import React from 'react';
 import { Button } from '../../../components/ui/Button';
-import type { LegalModalFooterProps } from '../interfaces';
+
+export interface LegalModalFooterProps {
+  onClose: () => void;
+}
 
 export const LegalModalFooter: React.FC<LegalModalFooterProps> = ({ onClose }) => {
   return (

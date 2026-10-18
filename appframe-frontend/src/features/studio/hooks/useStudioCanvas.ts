@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { WatermarkItem } from '../../watermarks';
-import type { AspectRatio, FontFamily, SubtitleMode, WatermarkPosition } from '../interfaces';
+import type { AspectRatio, FontFamily, SubtitleMode, WatermarkPosition } from '../types';
 import type { SubtitleSegmentData } from '../../history';
 import { wrapCanvasText } from '../utils';
 

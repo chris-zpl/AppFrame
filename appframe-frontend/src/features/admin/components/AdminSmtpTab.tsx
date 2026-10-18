@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Input, VisibilityToggle } from '../../../components/ui';
-import type { SmtpConfig } from '../interfaces';
+import type { SmtpConfig } from '../types';
 
 export interface AdminSmtpTabProps {
   initialConfig?: SmtpConfig;

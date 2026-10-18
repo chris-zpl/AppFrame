@@ -1,5 +1,5 @@
 import React from 'react';
-import type { AdminSession } from '../interfaces';
+import type { AdminSession } from '../types';
 import { RevokeSessionModal } from './RevokeSessionModal';
 import { ResetLegalModal } from './ResetLegalModal';
 

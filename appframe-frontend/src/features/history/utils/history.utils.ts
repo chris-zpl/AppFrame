@@ -1,4 +1,4 @@
-import type { VideoJobItem, HistoryFilterType } from '../interfaces';
+import type { VideoJobItem, HistoryFilterType } from '../types';
 
 export function filterHistoryJobs(jobs: VideoJobItem[], filter: HistoryFilterType): VideoJobItem[] {
   return jobs.filter((j) => {

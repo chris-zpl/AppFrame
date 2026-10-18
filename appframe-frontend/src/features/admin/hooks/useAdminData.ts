@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { adminService, legalService } from '../services';
-import type { AdminTab, AdminAuditLog } from '../interfaces';
+import type { AdminTab, AdminAuditLog } from '../types';
 
 interface UseAdminDataOptions {
   isAdmin: boolean;

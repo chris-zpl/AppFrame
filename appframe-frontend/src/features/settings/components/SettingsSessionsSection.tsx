@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, Button } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
-import type { UserSessionItem } from '../interfaces';
+import type { UserSessionItem } from '../types';
 
 import { useSettingsContext } from '../context';
 

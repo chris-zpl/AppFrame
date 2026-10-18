@@ -1,5 +1,5 @@
 import React from 'react';
-import type { AdminTab } from '../interfaces';
+import type { AdminTab } from '../types';
 import { AdminTabButton } from './AdminTabButton';
 
 export interface AdminNavigationTabsProps {

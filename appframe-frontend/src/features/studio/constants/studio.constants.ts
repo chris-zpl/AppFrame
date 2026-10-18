@@ -1,4 +1,4 @@
-import type { FontFamily, WatermarkPosition } from '../interfaces';
+import type { FontFamily, WatermarkPosition } from '../types';
 
 export const FONT_FAMILIES: FontFamily[] = [
   'Plus Jakarta Sans',

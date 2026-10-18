@@ -8,7 +8,7 @@ import {
   type SubtitleLineData,
   type SubtitleSegmentData,
 } from '../../history';
-import type { AspectRatio, FontFamily, SubtitleMode, WatermarkPosition } from '../interfaces';
+import type { AspectRatio, FontFamily, SubtitleMode, WatermarkPosition } from '../types';
 
 export interface UseStudioRenderProps {
   currentVideo: StudioVideoQueueItem | null;

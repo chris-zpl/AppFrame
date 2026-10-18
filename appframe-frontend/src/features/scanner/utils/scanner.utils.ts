@@ -1,4 +1,4 @@
-import type { ScrapedVideoCardData, ChannelMeta } from '../interfaces';
+import type { ScrapedVideoCardData, ChannelMeta } from '../types';
 
 export const formatDurationAccumulated = (seconds: number): string => {
   const hrs = Math.floor(seconds / 3600);

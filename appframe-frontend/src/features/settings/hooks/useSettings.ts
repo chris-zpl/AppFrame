@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { authService } from '../services';
-import type { UserSessionItem } from '../interfaces';
+import type { UserSessionItem } from '../types';
 import { mapActiveSessionToItem, extractApiErrorMessage } from '../utils';
 
 interface UseSettingsProps {

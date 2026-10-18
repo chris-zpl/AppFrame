@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { mediaService, type GeminiSubtitleSegment } from '../../history';
-import type { SubtitleMode } from '../interfaces';
+import type { SubtitleMode } from '../types';
 
 interface UseStudioSubtitlesProps {
   isGeminiConnected: boolean;

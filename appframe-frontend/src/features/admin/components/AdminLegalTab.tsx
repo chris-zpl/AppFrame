@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { marked } from 'marked';
 import { Card, Badge, Button, Input } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
-import type { SaveLegalSettingsDto, LegalDocumentsResponse } from '../interfaces';
+import type { SaveLegalSettingsDto, LegalDocumentsResponse } from '../types';
 
 export interface AdminLegalTabProps {
   initialSettings?: LegalDocumentsResponse;

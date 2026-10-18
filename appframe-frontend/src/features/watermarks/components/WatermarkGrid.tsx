@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
-import type { WatermarkItem } from '../interfaces';
+import type { WatermarkItem } from '../types';
 import { formatFileSize } from '../utils';
 import { watermarksService } from '../services';
 

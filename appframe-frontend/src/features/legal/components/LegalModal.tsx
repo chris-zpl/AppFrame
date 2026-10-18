@@ -4,7 +4,13 @@ import { useLegalDocuments } from '../hooks';
 import { LegalModalHeader } from './LegalModalHeader';
 import { LegalModalContent } from './LegalModalContent';
 import { LegalModalFooter } from './LegalModalFooter';
-import type { LegalModalProps, LegalDocType } from '../interfaces';
+import type { LegalDocType } from '../types';
+
+export interface LegalModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialDoc?: LegalDocType;
+}
 
 export const LegalModal: React.FC<LegalModalProps> = ({
   isOpen,

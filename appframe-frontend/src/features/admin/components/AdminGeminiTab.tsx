@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Card, Badge, Button, Input, VisibilityToggle } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
-import type { GeminiStatus } from "../interfaces";
+import type { GeminiStatus } from "../types";
 
 export interface AdminGeminiTabProps {
   geminiStatus: GeminiStatus | undefined;

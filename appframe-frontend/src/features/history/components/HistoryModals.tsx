@@ -1,5 +1,5 @@
 import React from 'react';
-import type { VideoJobItem } from '../interfaces';
+import type { VideoJobItem } from '../types';
 import { HistoryErrorModal } from './HistoryErrorModal';
 import { HistoryDeleteModal } from './HistoryDeleteModal';
 

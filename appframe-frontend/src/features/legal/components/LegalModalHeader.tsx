@@ -1,7 +1,14 @@
 import React from 'react';
 import { Badge } from '../../../components/ui/Badge';
 import { LegalTabSwitcher } from './LegalTabSwitcher';
-import type { LegalModalHeaderProps } from '../interfaces';
+import type { LegalDocType } from '../types';
+
+export interface LegalModalHeaderProps {
+  activeDoc: LegalDocType;
+  onSelectDoc: (doc: LegalDocType) => void;
+  onClose: () => void;
+  updatedAt?: string;
+}
 
 export const LegalModalHeader: React.FC<LegalModalHeaderProps> = ({
   activeDoc,

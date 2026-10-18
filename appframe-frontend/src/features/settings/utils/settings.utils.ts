@@ -1,5 +1,5 @@
 import type { ActiveSession } from '../../auth';
-import type { UserSessionItem } from '../interfaces';
+import type { UserSessionItem } from '../types';
 
 export const extractBrowserFromUserAgent = (userAgent?: string | null): string => {
   if (!userAgent) return 'Navegador Web';

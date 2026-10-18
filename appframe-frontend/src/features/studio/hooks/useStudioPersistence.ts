@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import type { StudioVideoQueueItem, SubtitleSegmentData } from '../../history';
-import type { AspectRatio, FontFamily, SubtitleMode, WatermarkPosition } from '../interfaces';
+import type { AspectRatio, FontFamily, SubtitleMode, WatermarkPosition } from '../types';
 import type { WatermarkItem } from '../../watermarks';
 
 export interface UseStudioPersistenceProps {

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ChannelMeta } from '../interfaces';
+import type { ChannelMeta } from '../types';
 
 interface ScannerChannelHeaderProps {
   channelMeta: ChannelMeta;

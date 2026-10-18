@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, Badge, Button } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
-import type { AdminUser, AdminSession } from '../interfaces';
+import type { AdminUser, AdminSession } from '../types';
 import { isSuperAdminUser } from '../../auth';
 import { AdminSessionsList } from './AdminSessionsList';
 

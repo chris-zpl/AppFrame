@@ -1,7 +1,7 @@
 import React from 'react';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { HistoryJobCard } from './HistoryJobCard';
-import type { VideoJobItem } from '../interfaces';
+import type { VideoJobItem } from '../types';
 
 import { useHistoryContext } from '../context';
 

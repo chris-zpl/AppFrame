@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Card, Button, Input } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
-import type { AdminAuditLog, AdminUser } from "../interfaces";
+import type { AdminAuditLog, AdminUser } from "../types";
 import { getAuditEventBadge, parseDevice } from "../constants";
 import { AdminAuditMetadata } from "./AdminAuditMetadata";
 import { AdminPaginationControls } from "./AdminPaginationControls";

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge, Button } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
-import type { AspectRatio } from '../interfaces';
+import type { AspectRatio } from '../types';
 
 import { useStudioContext } from '../context';
 

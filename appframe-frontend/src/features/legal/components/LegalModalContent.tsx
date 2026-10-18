@@ -1,5 +1,9 @@
 import React from 'react';
-import type { LegalModalContentProps } from '../interfaces';
+
+export interface LegalModalContentProps {
+  isLoading: boolean;
+  parsedHtml: string;
+}
 
 export const LegalModalContent: React.FC<LegalModalContentProps> = ({
   isLoading,

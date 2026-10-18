@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '../../../lib/utils';
-import type { SettingsSection } from '../interfaces';
+import type { SettingsSection } from '../types';
 
 import { useSettingsContext } from '../context';
 

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { watermarksService, type WatermarkItem } from '../../watermarks';
-import type { WatermarkPosition } from '../interfaces';
+import type { WatermarkPosition } from '../types';
 import type { StudioVideoQueueItem } from '../../history';
 
 export interface UseStudioWatermarkProps {

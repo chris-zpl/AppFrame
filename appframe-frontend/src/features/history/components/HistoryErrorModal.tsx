@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
-import type { VideoJobItem } from '../interfaces';
+import type { VideoJobItem } from '../types';
 
 interface HistoryErrorModalProps {
   job: VideoJobItem | null;

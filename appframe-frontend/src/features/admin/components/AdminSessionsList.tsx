@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, Badge, Button } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
-import type { AdminSession } from '../interfaces';
+import type { AdminSession } from '../types';
 
 interface AdminSessionsListProps {
   sessions: AdminSession[];
