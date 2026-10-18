@@ -250,7 +250,7 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       expect(statusResult.success).toBe(true);
     });
 
-    it('deve permitir que administradores comuns alterem papéis de usuários, exceto super-admin e a si próprios', async () => {
+    it('deve impedir que administradores comuns alterem papéis de usuários, restringindo a função ao super-admin', async () => {
       const adminActor = {
         userId: 'admin-actor-id',
         email: 'admin@empresa.com',
@@ -267,46 +267,36 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       };
       mockUserRepo.findOne.mockResolvedValue(normalUser);
 
-      // Admin altera papel de usuário comum para ADMIN com sucesso
-      const res = await adminUsersService.updateUserRole(adminActor, 'user-id-789', UserRole.ADMIN);
-      expect(res.role).toBe(UserRole.ADMIN);
-      expect(mockAuditService.logEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'user-id-789',
-          action: SecurityAuditEvent.USER_ROLE_CHANGED,
-          metadata: expect.objectContaining({
-            performedBy: 'admin@empresa.com',
-            newRole: UserRole.ADMIN,
-          }),
-        }),
-      );
-
-      // Admin tenta alterar o Super Admin -> Rejeitado
-      mockUserRepo.findOne.mockResolvedValue({
-        id: 'super-admin-id',
-        email: 'christian.zimpel@gmail.com',
-        role: UserRole.SUPER_ADMIN,
-        is_active: true,
-      });
+      // Administrador comum tentando alterar papel de usuário -> Rejeitado
       await expect(
-        adminUsersService.updateUserRole(adminActor, 'super-admin-id', UserRole.USER)
-      ).rejects.toThrow('O perfil do Super Admin da plataforma não pode ser alterado.');
+        adminUsersService.updateUserRole(adminActor, 'user-id-789', UserRole.ADMIN)
+      ).rejects.toThrow(ForbiddenException);
 
-      // Admin tenta alterar seu próprio papel -> Rejeitado
+      await expect(
+        adminUsersService.updateUserRole(adminActor, 'user-id-789', UserRole.ADMIN)
+      ).rejects.toThrow('Apenas o Super Admin pode alterar permissões e níveis de acesso de usuários.');
+
+      // Super Admin tenta alterar seu próprio papel -> Rejeitado
+      const otherSuperAdminActor = {
+        userId: 'super-actor-id',
+        email: 'super2@empresa.com',
+        role: UserRole.SUPER_ADMIN,
+        sessionId: 'sess-super2',
+      };
       mockUserRepo.findOne.mockResolvedValue({
-        id: 'admin-actor-id',
-        email: 'admin@empresa.com',
+        id: 'super-actor-id',
+        email: 'super2@empresa.com',
         role: UserRole.ADMIN,
         is_active: true,
       });
       await expect(
-        adminUsersService.updateUserRole(adminActor, 'admin-actor-id', UserRole.USER)
+        adminUsersService.updateUserRole(otherSuperAdminActor, 'super-actor-id', UserRole.USER)
       ).rejects.toThrow('Você não pode alterar seu próprio perfil de acesso.');
 
-      // Admin tenta promover alguém a Super Admin -> Rejeitado
+      // Super Admin tenta promover alguém a Super Admin -> Rejeitado
       mockUserRepo.findOne.mockResolvedValue(normalUser);
       await expect(
-        adminUsersService.updateUserRole(adminActor, 'user-id-789', UserRole.SUPER_ADMIN)
+        adminUsersService.updateUserRole(superAdminActor, 'user-id-789', UserRole.SUPER_ADMIN)
       ).rejects.toThrow('Apenas christian.zimpel@gmail.com pode deter o perfil Super Admin.');
     });
 

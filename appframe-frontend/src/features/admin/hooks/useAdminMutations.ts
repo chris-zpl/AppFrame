@@ -28,6 +28,10 @@ export const useAdminMutations = ({ currentUser }: UseAdminMutationsProps) => {
     targetUser: AdminUser,
     newRole: 'SUPER_ADMIN' | 'ADMIN' | 'USER'
   ) => {
+    if (!isSuperAdminUser(currentUser)) {
+      toast.error('Apenas o Super-Administrador pode alterar o nível de acesso de usuários.');
+      return;
+    }
     if (isSuperAdminUser(targetUser)) {
       toast.error('O Super-Administrador da plataforma não pode ter seu papel alterado.');
       return;

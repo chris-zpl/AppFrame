@@ -9,7 +9,8 @@ interface AdminUsersTabProps {
   users: AdminUser[];
   sessions: AdminSession[];
   currentUser: { id?: string; email?: string } | null;
-  isAdmin: boolean;
+  isAdmin?: boolean;
+  isSuperAdmin?: boolean;
   onRoleChange: (targetUser: AdminUser, newRole: 'SUPER_ADMIN' | 'ADMIN' | 'USER') => void;
   onStatusToggle: (targetUser: AdminUser) => void;
   onRevokeSession: (session: AdminSession) => void;
@@ -19,11 +20,12 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   users,
   sessions,
   currentUser,
-  isAdmin,
+  isSuperAdmin: isSuperAdminProp,
   onRoleChange,
   onStatusToggle,
   onRevokeSession,
 }) => {
+  const isSuperAdmin = isSuperAdminProp ?? (currentUser ? isSuperAdminUser(currentUser) : false);
   const totalUsersCount = users.length;
   const activeUsersCount = users.filter((u) => u.is_active).length;
   const totalActiveSessionsCount = sessions.length;
@@ -104,7 +106,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
               {users.map((u) => {
                 const isTargetSuper = isSuperAdminUser(u);
                 const isSelf = u.id === currentUser?.id || u.email === currentUser?.email;
-                const canChangeRole = isAdmin && !isTargetSuper && !isSelf;
+                const canChangeRole = isSuperAdmin && !isTargetSuper && !isSelf;
 
                 return (
                   <tr

@@ -120,11 +120,10 @@ export class AdminUsersService {
     const isSuperAdmin =
       adminUser.role === UserRole.SUPER_ADMIN ||
       adminUser.email.toLowerCase() === 'christian.zimpel@gmail.com';
-    const isAdmin = isSuperAdmin || adminUser.role === UserRole.ADMIN;
 
-    if (!isAdmin) {
+    if (!isSuperAdmin) {
       throw new ForbiddenException(
-        'Apenas administradores podem alterar permissões e níveis de acesso de usuários.',
+        'Apenas o Super Admin pode alterar permissões e níveis de acesso de usuários.',
       );
     }
 

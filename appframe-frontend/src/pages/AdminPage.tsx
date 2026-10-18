@@ -125,6 +125,7 @@ export const AdminPage: React.FC = () => {
             sessions={sessions}
             currentUser={user}
             isAdmin={isAdmin}
+            isSuperAdmin={isSuperAdmin}
             onRoleChange={handleRoleChange}
             onStatusToggle={handleStatusToggle}
             onRevokeSession={(sess) => setSessionToRevoke(sess)}
