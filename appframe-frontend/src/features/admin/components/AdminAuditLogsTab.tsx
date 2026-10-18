@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
-import { Card, Button } from '../../../components/ui';
-import { cn } from '../../../lib/utils';
-import type { AdminAuditLog, AdminUser } from '../interfaces';
-import { getAuditEventBadge, parseDevice } from '../constants';
-import { AdminAuditMetadata } from './AdminAuditMetadata';
+import React, { useMemo } from "react";
+import { Card, Button, Input } from "../../../components/ui";
+import { cn } from "../../../lib/utils";
+import type { AdminAuditLog, AdminUser } from "../interfaces";
+import { getAuditEventBadge, parseDevice } from "../constants";
+import { AdminAuditMetadata } from "./AdminAuditMetadata";
+import { AdminPaginationControls } from "./AdminPaginationControls";
 
 interface AdminAuditLogsTabProps {
   auditLogs: AdminAuditLog[];
@@ -37,29 +38,31 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
   setAuditPageSize,
 }) => {
   // Estatísticas de Auditoria
-  const auditPasswordCount = auditLogs.filter((l) => l.action.includes('PASSWORD')).length;
+  const auditPasswordCount = auditLogs.filter((l) =>
+    l.action.includes("PASSWORD"),
+  ).length;
   const auditProfileCount = auditLogs.filter(
-    (l) => l.action.includes('PROFILE') || l.action.includes('GOOGLE')
+    (l) => l.action.includes("PROFILE") || l.action.includes("GOOGLE"),
   ).length;
   const auditSecurityCount = auditLogs.filter(
-    (l) => l.action.includes('SESSION') || l.action.includes('TWO_FACTOR')
+    (l) => l.action.includes("SESSION") || l.action.includes("TWO_FACTOR"),
   ).length;
 
   // Filtragem dos Logs
   const filteredAuditLogs = useMemo(() => {
     return auditLogs.filter((log) => {
-      if (auditActionFilter !== 'ALL' && log.action !== auditActionFilter) {
+      if (auditActionFilter !== "ALL" && log.action !== auditActionFilter) {
         return false;
       }
       if (!auditSearch.trim()) return true;
       const term = auditSearch.toLowerCase();
       const targetUser = users.find((u) => u.id === log.user_id);
-      const userName = targetUser?.name?.toLowerCase() || '';
-      const userEmail = targetUser?.email?.toLowerCase() || '';
+      const userName = targetUser?.name?.toLowerCase() || "";
+      const userEmail = targetUser?.email?.toLowerCase() || "";
       const metaStr = JSON.stringify(log.metadata || {}).toLowerCase();
-      const ip = (log.ip_address || '').toLowerCase();
+      const ip = (log.ip_address || "").toLowerCase();
       const action = log.action.toLowerCase();
-      const ua = (log.user_agent || '').toLowerCase();
+      const ua = (log.user_agent || "").toLowerCase();
 
       return (
         action.includes(term) ||
@@ -73,7 +76,10 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
   }, [auditLogs, auditActionFilter, auditSearch, users]);
 
   // Paginação dos Registros de Auditoria
-  const totalAuditPages = Math.max(1, Math.ceil(filteredAuditLogs.length / auditPageSize));
+  const totalAuditPages = Math.max(
+    1,
+    Math.ceil(filteredAuditLogs.length / auditPageSize),
+  );
   const safeAuditPage = Math.min(Math.max(1, auditPage), totalAuditPages);
 
   const paginatedAuditLogs = useMemo(() => {
@@ -81,11 +87,15 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
     return filteredAuditLogs.slice(startIndex, startIndex + auditPageSize);
   }, [filteredAuditLogs, safeAuditPage, auditPageSize]);
 
-  const auditStartRecord = filteredAuditLogs.length > 0 ? (safeAuditPage - 1) * auditPageSize + 1 : 0;
-  const auditEndRecord = Math.min(safeAuditPage * auditPageSize, filteredAuditLogs.length);
+  const auditStartRecord =
+    filteredAuditLogs.length > 0 ? (safeAuditPage - 1) * auditPageSize + 1 : 0;
+  const auditEndRecord = Math.min(
+    safeAuditPage * auditPageSize,
+    filteredAuditLogs.length,
+  );
 
   const auditPageNumbers = useMemo(() => {
-    const pages: (number | 'ellipsis-start' | 'ellipsis-end')[] = [];
+    const pages: (number | "ellipsis-start" | "ellipsis-end")[] = [];
     if (totalAuditPages <= 7) {
       for (let i = 1; i <= totalAuditPages; i++) pages.push(i);
       return pages;
@@ -95,9 +105,9 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
     const start = Math.max(2, safeAuditPage - 1);
     const end = Math.min(totalAuditPages - 1, safeAuditPage + 1);
 
-    if (start > 2) pages.push('ellipsis-start');
+    if (start > 2) pages.push("ellipsis-start");
     for (let i = start; i <= end; i++) pages.push(i);
-    if (end < totalAuditPages - 1) pages.push('ellipsis-end');
+    if (end < totalAuditPages - 1) pages.push("ellipsis-end");
 
     pages.push(totalAuditPages);
     return pages;
@@ -114,21 +124,25 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
           <span className="text-display-sm font-bold text-on-surface">
             {auditLogs.length}
           </span>
-          <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
-            <span className="material-symbols-outlined text-[14px] text-primary">history</span>
+          <span className="text-[11px] text-on-surface-variant flex items-center gap-1 truncate">
+            <span className="material-symbols-outlined text-[14px] text-primary">
+              history
+            </span>
             Histórico de segurança persistido
           </span>
         </Card>
 
         <Card className="p-4 flex flex-col gap-1 border-surface-container-highest bg-surface-container-lowest">
-          <span className="text-[12px] font-semibold text-outline uppercase tracking-wider">
+          <span className="text-[12px] font-semibold text-outline uppercase tracking-wider truncate">
             Recuperação de Senha
           </span>
           <span className="text-display-sm font-bold text-amber-400">
             {auditPasswordCount}
           </span>
           <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
-            <span className="material-symbols-outlined text-[14px] text-amber-400">lock_reset</span>
+            <span className="material-symbols-outlined text-[14px] text-amber-400">
+              lock_reset
+            </span>
             Solicitações e trocas
           </span>
         </Card>
@@ -140,8 +154,10 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
           <span className="text-display-sm font-bold text-purple-400">
             {auditProfileCount}
           </span>
-          <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
-            <span className="material-symbols-outlined text-[14px] text-purple-400">manage_accounts</span>
+          <span className="text-[11px] text-on-surface-variant flex items-center gap-1 truncate">
+            <span className="material-symbols-outlined text-[14px] text-purple-400">
+              manage_accounts
+            </span>
             E-mails, nomes e Google OAuth
           </span>
         </Card>
@@ -153,8 +169,10 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
           <span className="text-display-sm font-bold text-emerald-400">
             {auditSecurityCount}
           </span>
-          <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
-            <span className="material-symbols-outlined text-[14px] text-emerald-400">security</span>
+          <span className="text-[11px] text-on-surface-variant flex items-center gap-1 truncate">
+            <span className="material-symbols-outlined text-[14px] text-emerald-400">
+              security
+            </span>
             Autenticações e revogações
           </span>
         </Card>
@@ -173,7 +191,8 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
               </h3>
             </div>
             <p className="text-body-sm text-on-surface-variant">
-              Registro imutável de ações críticas: recuperação de senhas, trocas de credenciais, vinculações e encerramento de sessões.
+              Registro imutável de ações críticas: recuperação de senhas, trocas
+              de credenciais, vinculações e encerramento de sessões.
             </p>
           </div>
 
@@ -185,8 +204,8 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
               leftIcon={
                 <span
                   className={cn(
-                    'material-symbols-outlined text-[18px]',
-                    (isLoadingAudit || isRefetchingAudit) && 'animate-spin'
+                    "material-symbols-outlined text-[18px]",
+                    (isLoadingAudit || isRefetchingAudit) && "animate-spin",
                   )}
                 >
                   refresh
@@ -199,67 +218,76 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
         </div>
 
         {/* Barra de Filtros e Busca */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
-          <div className="relative flex-1">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">
-              search
-            </span>
-            <input
-              type="text"
-              value={auditSearch}
-              onChange={(e) => setAuditSearch(e.target.value)}
-              placeholder="Buscar por usuário, e-mail, endereço IP, ação ou detalhe..."
-              className="w-full bg-surface-container border border-surface-container-highest rounded-xl pl-10 pr-4 py-2 text-body-sm text-on-surface outline-none focus:border-primary placeholder:text-outline"
-            />
-            {auditSearch && (
-              <button
-                type="button"
-                onClick={() => setAuditSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[18px]">close</span>
-              </button>
-            )}
-          </div>
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 pt-2">
+          <Input
+            size="sm"
+            type="text"
+            value={auditSearch}
+            onChange={(e) => setAuditSearch(e.target.value)}
+            placeholder="Buscar por usuário, e-mail, endereço IP, ação ou detalhe..."
+            containerClassName="flex-1"
+            leftIcon={
+              <span className="material-symbols-outlined text-[18px]">
+                search
+              </span>
+            }
+            rightElement={
+              auditSearch ? (
+                <button
+                  type="button"
+                  onClick={() => setAuditSearch("")}
+                  className="text-outline hover:text-on-surface cursor-pointer flex items-center justify-center p-0.5"
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    close
+                  </span>
+                </button>
+              ) : undefined
+            }
+          />
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-1 items-center flex-wrap">
             <select
               value={auditActionFilter}
               onChange={(e) => setAuditActionFilter(e.target.value)}
-              className="bg-surface-container border border-surface-container-highest rounded-xl px-3 py-2 text-body-sm text-on-surface outline-none focus:border-primary cursor-pointer"
+              className="w-full bg-surface-container border border-surface-container-highest rounded-xl px-3 py-2 text-body-sm text-on-surface outline-none focus:border-primary cursor-pointer"
             >
               <option value="ALL">Todas as Ações</option>
-              <option value="USER_ROLE_CHANGED">Perfil / Função Alterada</option>
+              <option value="USER_ROLE_CHANGED">
+                Perfil / Função Alterada
+              </option>
               <option value="USER_BLOCKED">Usuário Bloqueado</option>
               <option value="USER_UNBLOCKED">Usuário Desbloqueado</option>
               <option value="GEMINI_KEY_SAVED">Chave Gemini Salva</option>
               <option value="GEMINI_KEY_DELETED">Chave Gemini Removida</option>
-              <option value="YOUTUBE_COOKIES_SAVED">Cookies YouTube Salvos</option>
-              <option value="YOUTUBE_COOKIES_DELETED">Cookies YouTube Removidos</option>
-              <option value="LEGAL_DOCUMENTS_UPDATED">Termos & Privacidade Atualizados</option>
-              <option value="PASSWORD_RESET_REQUESTED">Redefinição Solicitada</option>
-              <option value="PASSWORD_RESET_COMPLETED">Senha Redefinida (Link)</option>
+              <option value="YOUTUBE_COOKIES_SAVED">
+                Cookies YouTube Salvos
+              </option>
+              <option value="YOUTUBE_COOKIES_DELETED">
+                Cookies YouTube Removidos
+              </option>
+              <option value="LEGAL_DOCUMENTS_UPDATED">
+                Termos & Privacidade Atualizados
+              </option>
+              <option value="PASSWORD_RESET_REQUESTED">
+                Redefinição Solicitada
+              </option>
+              <option value="PASSWORD_RESET_COMPLETED">
+                Senha Redefinida (Link)
+              </option>
               <option value="PASSWORD_CHANGED">Senha Alterada (Logado)</option>
               <option value="PROFILE_EMAIL_CHANGED">E-mail Alterado</option>
               <option value="PROFILE_NAME_CHANGED">Nome Alterado</option>
               <option value="GOOGLE_ACCOUNT_LINKED">Google Vinculado</option>
-              <option value="GOOGLE_ACCOUNT_UNLINKED">Google Desvinculado</option>
+              <option value="GOOGLE_ACCOUNT_UNLINKED">
+                Google Desvinculado
+              </option>
               <option value="TWO_FACTOR_ENABLED">2FA Ativado</option>
               <option value="TWO_FACTOR_DISABLED">2FA Desativado</option>
               <option value="SESSION_REVOKED">Sessão Encerrada</option>
-              <option value="ALL_SESSIONS_REVOKED">Todas Sessões Encerradas</option>
-            </select>
-
-            <select
-              value={auditPageSize}
-              onChange={(e) => setAuditPageSize(Number(e.target.value))}
-              className="bg-surface-container border border-surface-container-highest rounded-xl px-3 py-2 text-body-sm text-on-surface outline-none focus:border-primary cursor-pointer font-medium"
-              title="Quantidade de registros exibidos por página"
-            >
-              <option value={10}>10 por página</option>
-              <option value={25}>25 por página</option>
-              <option value={50}>50 por página</option>
-              <option value={100}>100 por página</option>
+              <option value="ALL_SESSIONS_REVOKED">
+                Todas Sessões Encerradas
+              </option>
             </select>
           </div>
         </div>
@@ -288,9 +316,9 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
                         Nenhum registro de auditoria encontrado
                       </span>
                       <span className="text-body-sm text-outline">
-                        {auditSearch || auditActionFilter !== 'ALL'
-                          ? 'Experimente ajustar os filtros ou limpar o termo de pesquisa.'
-                          : 'Os eventos de segurança aparecerão aqui conforme as ações forem executadas.'}
+                        {auditSearch || auditActionFilter !== "ALL"
+                          ? "Experimente ajustar os filtros ou limpar o termo de pesquisa."
+                          : "Os eventos de segurança aparecerão aqui conforme as ações forem executadas."}
                       </span>
                     </div>
                   </td>
@@ -298,22 +326,28 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
               ) : (
                 paginatedAuditLogs.map((log) => {
                   const badgeInfo = getAuditEventBadge(log.action);
-                  const matchedUser = log.user_id ? users.find((u) => u.id === log.user_id) : null;
+                  const matchedUser = log.user_id
+                    ? users.find((u) => u.id === log.user_id)
+                    : null;
                   const deviceName = parseDevice(log.user_agent);
 
                   return (
                     <tr
                       key={log.id}
-                      className="hover:bg-surface-container-low/50 transition-colors"
+                      className="dark:hover:bg-inverse-on-surface hover:bg-on-surface/50 transition-colors"
                     >
                       {/* Data / Hora */}
                       <td className="p-3 font-mono text-xs text-on-surface-variant whitespace-nowrap">
                         <div className="flex flex-col">
                           <span className="text-on-surface font-semibold">
-                            {new Date(log.created_at).toLocaleDateString('pt-BR')}
+                            {new Date(log.created_at).toLocaleDateString(
+                              "pt-BR",
+                            )}
                           </span>
                           <span className="text-[11px] text-outline">
-                            {new Date(log.created_at).toLocaleTimeString('pt-BR')}
+                            {new Date(log.created_at).toLocaleTimeString(
+                              "pt-BR",
+                            )}
                           </span>
                         </div>
                       </td>
@@ -322,8 +356,8 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
                       <td className="p-3">
                         <span
                           className={cn(
-                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap',
-                            badgeInfo.className
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap",
+                            badgeInfo.className,
                           )}
                         >
                           <span className="material-symbols-outlined text-[16px]">
@@ -378,7 +412,7 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
                       <td className="p-3">
                         <div className="flex flex-col text-xs">
                           <span className="font-mono text-on-surface font-medium">
-                            {log.ip_address || '127.0.0.1 (Local)'}
+                            {log.ip_address || "127.0.0.1 (Local)"}
                           </span>
                           <span
                             className="text-[11px] text-outline truncate max-w-[200px]"
@@ -403,13 +437,18 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
 
         {/* Barra de Paginação */}
         {filteredAuditLogs.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-surface-container-highest">
+          <div className="flex flex-row items-center gap-4 pt-4 border-t border-surface-container-highest">
             {/* Informações de Registros e Seletor de Itens por Página */}
-            <div className="flex items-center gap-4 flex-wrap text-body-sm text-outline">
+            <div className="w-full flex justify-between items-center gap-4 shrink-0 text-body-sm text-outline">
               <span>
-                Mostrando <strong className="text-on-surface">{auditStartRecord}</strong> a{' '}
-                <strong className="text-on-surface">{auditEndRecord}</strong> de{' '}
-                <strong className="text-on-surface">{filteredAuditLogs.length}</strong> eventos
+                Mostrando{" "}
+                <strong className="text-on-surface">{auditStartRecord}</strong>{" "}
+                a <strong className="text-on-surface">{auditEndRecord}</strong>{" "}
+                de{" "}
+                <strong className="text-on-surface">
+                  {filteredAuditLogs.length}
+                </strong>{" "}
+                eventos
               </span>
 
               <div className="flex items-center gap-1.5">
@@ -426,83 +465,15 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
                 </select>
               </div>
             </div>
-
-            {/* Controles de Navegação de Página */}
-            {totalAuditPages > 1 && (
-              <div className="flex items-center gap-1.5 flex-wrap justify-center">
-                <button
-                  type="button"
-                  disabled={safeAuditPage <= 1}
-                  onClick={() => setAuditPage(1)}
-                  title="Primeira Página"
-                  className="p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center justify-center cursor-pointer border border-surface-container-highest"
-                >
-                  <span className="material-symbols-outlined text-[18px]">first_page</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={safeAuditPage <= 1}
-                  onClick={() => setAuditPage((prev) => Math.max(1, prev - 1))}
-                  className="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs font-medium text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-surface-container-highest"
-                >
-                  <span className="material-symbols-outlined text-[16px]">chevron_left</span>
-                  <span>Anterior</span>
-                </button>
-
-                {auditPageNumbers.map((pageItem) => {
-                  if (pageItem === 'ellipsis-start' || pageItem === 'ellipsis-end') {
-                    return (
-                      <span
-                        key={pageItem}
-                        className="px-2 py-1 text-outline font-mono select-none text-xs"
-                      >
-                        ...
-                      </span>
-                    );
-                  }
-
-                  const isActive = pageItem === safeAuditPage;
-                  return (
-                    <button
-                      key={pageItem}
-                      type="button"
-                      onClick={() => setAuditPage(pageItem)}
-                      className={cn(
-                        'min-w-[32px] h-8 px-2 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-center font-medium',
-                        isActive
-                          ? 'bg-primary text-neutral-950 font-bold shadow-sm'
-                          : 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-surface-container-highest'
-                      )}
-                    >
-                      {pageItem}
-                    </button>
-                  );
-                })}
-
-                <button
-                  type="button"
-                  disabled={safeAuditPage >= totalAuditPages}
-                  onClick={() => setAuditPage((prev) => Math.min(totalAuditPages, prev + 1))}
-                  className="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs font-medium text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-surface-container-highest"
-                >
-                  <span>Próxima</span>
-                  <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={safeAuditPage >= totalAuditPages}
-                  onClick={() => setAuditPage(totalAuditPages)}
-                  title="Última Página"
-                  className="p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center justify-center cursor-pointer border border-surface-container-highest"
-                >
-                  <span className="material-symbols-outlined text-[18px]">last_page</span>
-                </button>
-              </div>
-            )}
           </div>
         )}
+        {/* Controles de Navegação de Página */}
+        <AdminPaginationControls
+          currentPage={safeAuditPage}
+          totalPages={totalAuditPages}
+          pageNumbers={auditPageNumbers}
+          onPageChange={setAuditPage}
+        />
       </Card>
     </div>
   );

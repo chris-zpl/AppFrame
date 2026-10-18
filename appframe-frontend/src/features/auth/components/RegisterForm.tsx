@@ -1,7 +1,5 @@
 import React from 'react';
-import { Input } from '../../../components/ui/Input';
-import { Button } from '../../../components/ui/Button';
-import { Checkbox } from '../../../components/ui/Checkbox';
+import { Input, Button, Checkbox, VisibilityToggle } from '../../../components/ui';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 import type { PasswordStrengthResult } from '../utils/password.utils';
 
@@ -88,16 +86,11 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             </span>
           }
           rightElement={
-            <button
-              type="button"
-              onClick={onToggleShowPassword}
-              aria-label="Mostrar ou ocultar senha"
-              className="p-1 text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[18px]">
-                {showPassword ? 'visibility_off' : 'visibility'}
-              </span>
-            </button>
+            <VisibilityToggle
+              isVisible={showPassword}
+              onToggle={onToggleShowPassword}
+              ariaLabel="Mostrar ou ocultar senha"
+            />
           }
         />
 

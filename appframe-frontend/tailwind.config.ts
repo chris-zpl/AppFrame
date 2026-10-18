@@ -56,6 +56,7 @@ const config: Config = {
         'tertiary-fixed-dim': '#eec14b',
         'error': '#ffb4ab',
         'primary-container': '#d4a346',
+        'primary-container-high': '#e0b04a',
       },
       borderRadius: {
         'DEFAULT': '0.25rem',

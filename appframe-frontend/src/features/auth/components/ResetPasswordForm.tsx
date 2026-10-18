@@ -1,6 +1,5 @@
 import React from 'react';
-import { Input } from '../../../components/ui/Input';
-import { Button } from '../../../components/ui/Button';
+import { Input, Button, VisibilityToggle } from '../../../components/ui';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 import type { PasswordStrengthResult } from '../utils/password.utils';
 
@@ -77,16 +76,11 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
               </span>
             }
             rightElement={
-              <button
-                type="button"
-                onClick={onToggleShowPassword}
-                aria-label="Mostrar ou ocultar senha"
-                className="text-on-surface-variant hover:text-on-surface p-1 transition-colors flex items-center justify-center cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  {showPassword ? 'visibility_off' : 'visibility'}
-                </span>
-              </button>
+              <VisibilityToggle
+                isVisible={showPassword}
+                onToggle={onToggleShowPassword}
+                ariaLabel="Mostrar ou ocultar senha"
+              />
             }
           />
 
@@ -109,16 +103,11 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
             </span>
           }
           rightElement={
-            <button
-              type="button"
-              onClick={onToggleShowConfirmPassword}
-              aria-label="Mostrar ou ocultar confirmação de senha"
-              className="text-on-surface-variant hover:text-on-surface p-1 transition-colors flex items-center justify-center cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[18px]">
-                {showConfirmPassword ? 'visibility_off' : 'visibility'}
-              </span>
-            </button>
+            <VisibilityToggle
+              isVisible={showConfirmPassword}
+              onToggle={onToggleShowConfirmPassword}
+              ariaLabel="Mostrar ou ocultar confirmação de senha"
+            />
           }
         />
       </div>

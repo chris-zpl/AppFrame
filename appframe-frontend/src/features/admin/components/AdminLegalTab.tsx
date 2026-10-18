@@ -1,6 +1,6 @@
 import React from 'react';
 import { marked } from 'marked';
-import { Card, Badge, Button } from '../../../components/ui';
+import { Card, Badge, Button, Input } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import type { SaveLegalSettingsDto } from '../interfaces';
 
@@ -53,29 +53,6 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
             </p>
           </div>
         </div>
-
-        <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onResetLegal}
-            isLoading={isResettingLegal}
-            className="text-error border-error/30 hover:bg-error/10 hover:border-error/50"
-            leftIcon={<span className="material-symbols-outlined text-[18px]">restart_alt</span>}
-          >
-            Restaurar Padrão
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            size="sm"
-            isLoading={isSavingLegal}
-            leftIcon={<span className="material-symbols-outlined text-[18px]">save</span>}
-          >
-            Salvar Documentos
-          </Button>
-        </div>
       </Card>
 
       {/* Parâmetros Globais Dinâmicos */}
@@ -93,90 +70,89 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-sm font-semibold text-on-surface">
-              Razão Social / Nome do Desenvolvedor
-            </label>
-            <input
-              type="text"
-              value={legalForm.companyName || ''}
-              onChange={(e) => setLegalForm((prev) => ({ ...prev, companyName: e.target.value }))}
-              placeholder="Ex: AppFrame Tecnologia Ltda"
-              className="w-full px-3.5 py-2 rounded-xl bg-surface-container border border-surface-container-highest text-on-surface text-body-sm focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
+          <Input
+            size="sm"
+            label="Razão Social / Nome do Desenvolvedor"
+            type="text"
+            value={legalForm.companyName || ''}
+            onChange={(e) => setLegalForm((prev) => ({ ...prev, companyName: e.target.value }))}
+            placeholder="Ex: AppFrame Tecnologia Ltda"
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-sm font-semibold text-on-surface">
-              E-mail de Suporte / Contato
-            </label>
-            <input
-              type="email"
-              value={legalForm.contactEmail || ''}
-              onChange={(e) => setLegalForm((prev) => ({ ...prev, contactEmail: e.target.value }))}
-              placeholder="Ex: contato@appframe.io"
-              className="w-full px-3.5 py-2 rounded-xl bg-surface-container border border-surface-container-highest text-on-surface text-body-sm focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
+          <Input
+            size="sm"
+            label="E-mail de Suporte / Contato"
+            type="email"
+            value={legalForm.contactEmail || ''}
+            onChange={(e) => setLegalForm((prev) => ({ ...prev, contactEmail: e.target.value }))}
+            placeholder="Ex: contato@appframe.io"
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-sm font-semibold text-on-surface">
-              Canal DPO / Encarregado de Privacidade
-            </label>
-            <input
-              type="email"
-              value={legalForm.dpoEmail || ''}
-              onChange={(e) => setLegalForm((prev) => ({ ...prev, dpoEmail: e.target.value }))}
-              placeholder="Ex: privacidade@appframe.io"
-              className="w-full px-3.5 py-2 rounded-xl bg-surface-container border border-surface-container-highest text-on-surface text-body-sm focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
+          <Input
+            size="sm"
+            label="Canal DPO / Encarregado de Privacidade"
+            type="email"
+            value={legalForm.dpoEmail || ''}
+            onChange={(e) => setLegalForm((prev) => ({ ...prev, dpoEmail: e.target.value }))}
+            placeholder="Ex: privacidade@appframe.io"
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-sm font-semibold text-on-surface">
-              Cidade / Foro de Eleição Jurídico
-            </label>
-            <input
-              type="text"
-              value={legalForm.forumCity || ''}
-              onChange={(e) => setLegalForm((prev) => ({ ...prev, forumCity: e.target.value }))}
-              placeholder="Ex: Curitiba / PR"
-              className="w-full px-3.5 py-2 rounded-xl bg-surface-container border border-surface-container-highest text-on-surface text-body-sm focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
+          <Input
+            size="sm"
+            label="Cidade / Foro de Eleição Jurídico"
+            type="text"
+            value={legalForm.forumCity || ''}
+            onChange={(e) => setLegalForm((prev) => ({ ...prev, forumCity: e.target.value }))}
+            placeholder="Ex: Curitiba / PR"
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-sm font-semibold text-on-surface">
-              Tempo de Retenção de Mídias
-            </label>
-            <input
-              type="text"
-              value={legalForm.retentionPeriod || ''}
-              onChange={(e) => setLegalForm((prev) => ({ ...prev, retentionPeriod: e.target.value }))}
-              placeholder="Ex: 24 horas"
-              className="w-full px-3.5 py-2 rounded-xl bg-surface-container border border-surface-container-highest text-on-surface text-body-sm focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
+          <Input
+            size="sm"
+            label="Tempo de Retenção de Mídias"
+            type="text"
+            value={legalForm.retentionPeriod || ''}
+            onChange={(e) => setLegalForm((prev) => ({ ...prev, retentionPeriod: e.target.value }))}
+            placeholder="Ex: 24 horas"
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-sm font-semibold text-on-surface">
-              URL Oficial da Plataforma
-            </label>
-            <input
-              type="url"
-              value={legalForm.websiteUrl || ''}
-              onChange={(e) => setLegalForm((prev) => ({ ...prev, websiteUrl: e.target.value }))}
-              placeholder="Ex: https://appframe.io"
-              className="w-full px-3.5 py-2 rounded-xl bg-surface-container border border-surface-container-highest text-on-surface text-body-sm focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
+          <Input
+            size="sm"
+            label="URL Oficial da Plataforma"
+            type="url"
+            value={legalForm.websiteUrl || ''}
+            onChange={(e) => setLegalForm((prev) => ({ ...prev, websiteUrl: e.target.value }))}
+            placeholder="Ex: https://appframe.io"
+          />
+        </div>
+        <div className="flex justify-end gap-2 flex-col sm:flex-row self-auto">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onResetLegal}
+            isLoading={isResettingLegal}
+            className="bg-red-500/20 dark:text-red-400 text-red-600 border-error/30 hover:bg-red-500 hover:border-error/50 order-2 sm:order-1"
+            leftIcon={<span className="material-symbols-outlined text-[18px]">restart_alt</span>}
+          >
+            Restaurar Padrão
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            isLoading={isSavingLegal}
+            leftIcon={<span className="material-symbols-outlined text-[18px]">save</span>}
+            className="order-1 sm:order-2"
+          >
+            Salvar Documentos
+          </Button>
         </div>
       </Card>
 
       {/* Card com Editor Markdown e Preview dos Documentos */}
       <Card className="p-6 border-surface-container-highest bg-surface-container-lowest flex flex-col gap-4">
         {/* Barra de Seleção de Documento e Modo de Exibição */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-surface-container-highest">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-surface-container-highest">
           {/* Switcher Termos vs Privacidade */}
           <div className="flex items-center p-1 bg-surface-container rounded-xl border border-surface-container-highest">
             <button
@@ -208,7 +184,7 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
           </div>
 
           {/* Switcher Editor vs Preview */}
-          <div className="flex items-center p-1 bg-surface-container rounded-xl border border-surface-container-highest self-end sm:self-auto">
+          <div className="flex items-center p-1 bg-surface-container rounded-xl border border-surface-container-highest">
             <button
               type="button"
               onClick={() => {
@@ -263,7 +239,7 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
           ) : (
             <div className="p-6 sm:p-8 rounded-xl bg-surface-container border border-surface-container-highest max-h-[700px] overflow-y-auto">
               <div
-                className="prose prose-invert max-w-none text-body-md text-on-surface-variant leading-relaxed [&_h1]:text-title-lg [&_h1]:font-bold [&_h1]:text-on-surface [&_h1]:mb-3 [&_h2]:text-title-md [&_h2]:font-bold [&_h2]:text-on-surface [&_h3]:text-title-sm [&_h3]:font-bold [&_h3]:text-on-surface [&_h4]:text-label-lg [&_h4]:font-bold [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_table]:w-full [&_table]:border-collapse [&_th]:bg-surface-container-high [&_th]:p-3 [&_th]:border [&_th]:border-surface-container-highest [&_td]:p-3 [&_td]:border [&_td]:border-surface-container-highest"
+                className="prose prose-invert max-w-none text-body-md text-on-surface-variant leading-relaxed [&_h1]:text-title-lg [&_h1]:font-bold dark:[&_h1]:text-on-surface [&_h1]:text-surface-bright [&_h1]:mb-3 [&_h2]:text-title-md [&_h2]:font-bold [&_h2]:text-on-surface [&_h3]:text-title-sm [&_h3]:font-bold dark:[&_h3]:text-on-surface [&_h3]:text-surface-bright [&_h4]:text-label-lg [&_h4]:font-bold [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_table]:w-full [&_table]:border-collapse [&_th]:bg-surface-container-high [&_th]:p-3 [&_th]:border [&_th]:border-surface-container-highest [&_td]:p-3 [&_td]:border [&_td]:border-surface-container-highest"
                 dangerouslySetInnerHTML={{
                   __html: marked.parse(legalForm.termsOfService || '') as string,
                 }}
@@ -287,7 +263,7 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
         ) : (
           <div className="p-6 sm:p-8 rounded-xl bg-surface-container border border-surface-container-highest max-h-[700px] overflow-y-auto">
             <div
-              className="prose prose-invert max-w-none text-body-md text-on-surface-variant leading-relaxed [&_h1]:text-title-lg [&_h1]:font-bold [&_h1]:text-on-surface [&_h1]:mb-3 [&_h2]:text-title-md [&_h2]:font-bold [&_h2]:text-on-surface [&_h3]:text-title-sm [&_h3]:font-bold [&_h3]:text-on-surface [&_h4]:text-label-lg [&_h4]:font-bold [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_table]:w-full [&_table]:border-collapse [&_th]:bg-surface-container-high [&_th]:p-3 [&_th]:border [&_th]:border-surface-container-highest [&_td]:p-3 [&_td]:border [&_td]:border-surface-container-highest"
+              className="prose prose-invert max-w-none text-body-md text-on-surface-variant leading-relaxed [&_h1]:text-title-lg [&_h1]:font-bold dark:[&_h1]:text-on-surface [&_h1]:text-surface-bright [&_h1]:mb-3 [&_h2]:text-title-md [&_h2]:font-bold [&_h2]:text-on-surface [&_h3]:text-title-sm [&_h3]:font-bold dark:[&_h3]:text-on-surface [&_h3]:text-surface-bright [&_h4]:text-label-lg [&_h4]:font-bold [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_table]:w-full [&_table]:border-collapse [&_th]:bg-surface-container-high [&_th]:text-neutral-200 [&_th]:p-3 [&_th]:border [&_th]:border-surface-container-highest [&_td]:p-3 [&_td]:border [&_td]:border-surface-container-highest"
               dangerouslySetInnerHTML={{
                 __html: marked.parse(legalForm.privacyPolicy || '') as string,
               }}

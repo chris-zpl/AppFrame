@@ -34,7 +34,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
       {/* Cards de Métricas */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="p-4 flex flex-col gap-1 border-surface-container-highest bg-surface-container-lowest">
-          <span className="text-[12px] font-semibold text-outline uppercase tracking-wider">
+          <span className="text-[12px] font-semibold text-outline uppercase tracking-wider truncate">
             Total de Usuários
           </span>
           <span className="text-[28px] font-extrabold text-on-surface">
@@ -52,7 +52,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
         </Card>
 
         <Card className="p-4 flex flex-col gap-1 border-surface-container-highest bg-surface-container-lowest">
-          <span className="text-[12px] font-semibold text-outline uppercase tracking-wider">
+          <span className="text-[12px] font-semibold text-outline uppercase tracking-wider truncate">
             Sessões Online Agora
           </span>
           <span className="text-[28px] font-extrabold text-primary">
@@ -81,7 +81,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
               Usuários Cadastrados
             </h2>
           </div>
-          <span className="text-body-xs text-on-surface-variant">
+          <span className="text-body-xs text-on-surface-variant truncate">
             {users.length} usuários registrados
           </span>
         </div>
@@ -109,14 +109,14 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                 return (
                   <tr
                     key={u.id}
-                    className="hover:bg-surface-container-low/50 transition-colors"
+                    className="dark:hover:bg-inverse-on-surface hover:bg-on-surface/50 transition-colors"
                   >
                     <td className="p-3 font-semibold text-on-surface">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-xs">
+                        <div className="w-7 h-7 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-xs shrink-0">
                           {u.name.charAt(0).toUpperCase()}
                         </div>
-                        <span>{u.name}</span>
+                        <span className="truncate">{u.name}</span>
                       </div>
                     </td>
 
@@ -165,14 +165,14 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                         className={cn(
                           'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold',
                           u.is_active
-                            ? 'bg-emerald-500/15 text-emerald-400'
-                            : 'bg-error/15 text-error'
+                            ? 'bg-emerald-500/15 dark:text-emerald-400 text-emerald-600'
+                            : 'bg-red-500/20 dark:text-red-400 text-red-600'
                         )}
                       >
                         <span
                           className={cn(
                             'w-1.5 h-1.5 rounded-full',
-                            u.is_active ? 'bg-emerald-400' : 'bg-error'
+                            u.is_active ? 'bg-green-400' : 'bg-red-400'
                           )}
                         />
                         {u.is_active ? 'Ativo' : 'Bloqueado'}
@@ -182,7 +182,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                     <td className="p-3 font-mono text-xs">
                       <span
                         className={cn(
-                          'px-2 py-0.5 rounded-md font-bold',
+                          'px-2 py-0.5 rounded-md font-bold truncate',
                           u.active_sessions_count > 0
                             ? 'bg-primary/15 text-primary'
                             : 'text-outline'
@@ -208,7 +208,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                           onClick={() => onStatusToggle(u)}
                           className={cn(
                             'text-xs py-1 h-7',
-                            u.is_active && 'text-error hover:text-error hover:bg-error/10'
+                            u.is_active && 'text-error-container hover:text-error hover:bg-error-container'
                           )}
                         >
                           {u.is_active ? 'Bloquear' : 'Desbloquear'}

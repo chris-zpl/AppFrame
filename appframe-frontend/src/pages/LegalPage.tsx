@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LegalModal } from '../components/legal/LegalModal';
+import { LegalModal } from '../features/legal';
 import { AppFrameLogo } from '../components/common/AppFrameLogo';
 import { Button } from '../components/ui/Button';
 

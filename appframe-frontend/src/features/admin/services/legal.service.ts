@@ -1,26 +1,12 @@
 import api from '../../../lib/api';
 
-export interface LegalDocumentItem {
-  raw: string;
-  rendered: string;
-  updatedAt: string;
-}
+import type {
+  LegalDocumentItem,
+  LegalVariables,
+  LegalDocumentsResponse,
+} from '../../legal/interfaces';
 
-export interface LegalVariables {
-  publishDate: string;
-  companyName: string;
-  contactEmail: string;
-  dpoEmail: string;
-  websiteUrl: string;
-  forumCity: string;
-  retentionPeriod: string;
-}
-
-export interface LegalDocumentsResponse {
-  terms: LegalDocumentItem;
-  privacy: LegalDocumentItem;
-  variables: LegalVariables;
-}
+export type { LegalDocumentItem, LegalVariables, LegalDocumentsResponse };
 
 export interface SaveLegalSettingsDto {
   termsOfService?: string;

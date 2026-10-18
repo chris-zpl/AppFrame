@@ -4,7 +4,7 @@ import { cn } from '../../lib/utils';
 import { AppFrameLogo } from '../common/AppFrameLogo';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { useAuth } from '../../contexts/AuthContext';
-import { LegalModal } from '../legal';
+import { LegalModal, useLegalModal } from '../../features/legal';
 
 export type AppNavigationPath = 'varredura' | 'studio' | 'marcas-dagua' | 'historico' | 'configuracoes' | 'admin';
 
@@ -39,8 +39,13 @@ export const AppShell: React.FC<AppShellProps> = ({
   children,
 }) => {
   const [activePath, setActivePath] = useState<AppNavigationPath>(currentPath);
-  const [legalModalOpen, setLegalModalOpen] = useState(false);
-  const [legalModalDoc, setLegalModalDoc] = useState<'terms' | 'privacy'>('terms');
+  const {
+    isOpen: legalModalOpen,
+    activeDoc: legalModalDoc,
+    openTerms: handleOpenTerms,
+    openPrivacy: handleOpenPrivacy,
+    close: handleCloseLegal,
+  } = useLegalModal();
   const routerNavigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -88,7 +93,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-full bg-surface text-on-surface flex flex-col antialiased selection:bg-primary/20 selection:text-primary">
+    <div className="min-h-screen min-w-[375px] bg-surface text-on-surface flex flex-col antialiased selection:bg-primary/20 selection:text-primary">
       {/* ================= HEADER FIXO 64px COM ALTO CONTRASTE ================= */}
       <header className="fixed top-0 w-full z-40 bg-white/95 dark:bg-[#10131a]/90 backdrop-blur-xl border-b border-neutral-200 dark:border-surface-container-high/60 shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-colors">
         <div className="h-16 max-w-7xl mx-auto px-4 md:px-margin flex items-center justify-between gap-space-md">
@@ -210,20 +215,14 @@ export const AppShell: React.FC<AppShellProps> = ({
           <div className="flex items-center gap-space-lg font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
             <button
               type="button"
-              onClick={() => {
-                setLegalModalDoc('privacy');
-                setLegalModalOpen(true);
-              }}
+              onClick={handleOpenPrivacy}
               className="hover:text-primary transition-colors cursor-pointer"
             >
               Privacidade
             </button>
             <button
               type="button"
-              onClick={() => {
-                setLegalModalDoc('terms');
-                setLegalModalOpen(true);
-              }}
+              onClick={handleOpenTerms}
               className="hover:text-primary transition-colors cursor-pointer"
             >
               Termos de Serviço
@@ -238,7 +237,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       {/* Modal de Documentos Legais */}
       <LegalModal
         isOpen={legalModalOpen}
-        onClose={() => setLegalModalOpen(false)}
+        onClose={handleCloseLegal}
         initialDoc={legalModalDoc}
       />
     </div>

@@ -37,9 +37,9 @@ export const Badge: React.FC<BadgeProps> = ({
     'status-processing':
       'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-label-sm font-label-sm text-amber-500 border border-amber-500/30 shadow-[0_0_12px_rgba(212,163,70,0.15)]',
     'status-completed':
-      'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-label-sm font-label-sm text-emerald-500 border border-emerald-500/30',
+      'truncate items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-label-sm font-label-sm text-emerald-500 border border-emerald-500/30',
     'status-failed':
-      'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/15 text-label-sm font-label-sm text-rose-500 border border-rose-500/30',
+      'truncate items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/15 text-label-sm font-label-sm text-rose-500 border border-rose-500/30',
     count:
       'px-1.5 py-0.5 rounded-full bg-primary/20 text-label-sm font-label-sm font-semibold',
     neutral:
@@ -52,7 +52,7 @@ export const Badge: React.FC<BadgeProps> = ({
   return (
     <span
       className={cn(
-        'inline-flex items-center',
+        'items-center',
         variantStyles[variant],
         className,
       )}

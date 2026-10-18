@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Button } from '../../../components/ui';
+import { Card, Button, Input, VisibilityToggle } from '../../../components/ui';
 import type { SmtpConfig } from '../interfaces';
 
 interface AdminSmtpTabProps {
@@ -47,97 +47,74 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
         </div>
 
         <form onSubmit={onSaveSmtp} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-sm font-bold text-outline">
-              Servidor SMTP (Host)
-            </label>
-            <input
-              type="text"
-              value={smtpForm.host}
-              onChange={(e) => setSmtpForm({ ...smtpForm, host: e.target.value })}
-              placeholder="smtp.gmail.com / smtp.resend.com"
-              className="bg-surface-container border border-surface-container-highest rounded-xl px-3.5 py-2 text-body-sm text-on-surface outline-none focus:border-primary"
-              required
-            />
-          </div>
+          <Input
+            size="sm"
+            label="Servidor SMTP (Host)"
+            labelClassName="font-bold text-outline text-label-sm"
+            type="text"
+            value={smtpForm.host}
+            onChange={(e) => setSmtpForm({ ...smtpForm, host: e.target.value })}
+            placeholder="smtp.gmail.com / smtp.resend.com"
+            required
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-sm font-bold text-outline">
-              Porta
-            </label>
-            <input
-              type="number"
-              value={smtpForm.port}
-              onChange={(e) => setSmtpForm({ ...smtpForm, port: Number(e.target.value) })}
-              placeholder="587 ou 465"
-              className="bg-surface-container border border-surface-container-highest rounded-xl px-3.5 py-2 text-body-sm text-on-surface outline-none focus:border-primary"
-              required
-            />
-          </div>
+          <Input
+            size="sm"
+            label="Porta"
+            labelClassName="font-bold text-outline text-label-sm"
+            type="number"
+            value={smtpForm.port}
+            onChange={(e) => setSmtpForm({ ...smtpForm, port: Number(e.target.value) })}
+            placeholder="587 ou 465"
+            required
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-sm font-bold text-outline">
-              Usuário SMTP
-            </label>
-            <input
-              type="text"
-              value={smtpForm.user}
-              onChange={(e) => setSmtpForm({ ...smtpForm, user: e.target.value })}
-              placeholder="usuario@dominio.com"
-              className="bg-surface-container border border-surface-container-highest rounded-xl px-3.5 py-2 text-body-sm text-on-surface outline-none focus:border-primary"
-            />
-          </div>
+          <Input
+            size="sm"
+            label="Usuário SMTP"
+            labelClassName="font-bold text-outline text-label-sm"
+            type="text"
+            value={smtpForm.user}
+            onChange={(e) => setSmtpForm({ ...smtpForm, user: e.target.value })}
+            placeholder="usuario@dominio.com"
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-sm font-bold text-outline">
-              Senha SMTP
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type={showSmtpPassword ? 'text' : 'password'}
-                value={smtpForm.password}
-                onChange={(e) => setSmtpForm({ ...smtpForm, password: e.target.value })}
-                placeholder="••••••••••••"
-                className="w-full bg-surface-container border border-surface-container-highest rounded-xl pl-3.5 pr-10 py-2 text-body-sm text-on-surface outline-none focus:border-primary"
+          <Input
+            size="sm"
+            label="Senha SMTP"
+            labelClassName="font-bold text-outline text-label-sm"
+            type={showSmtpPassword ? 'text' : 'password'}
+            value={smtpForm.password}
+            onChange={(e) => setSmtpForm({ ...smtpForm, password: e.target.value })}
+            placeholder="••••••••••••"
+            rightElement={
+              <VisibilityToggle
+                isVisible={showSmtpPassword}
+                onToggle={() => setShowSmtpPassword((v) => !v)}
               />
-              <button
-                type="button"
-                onClick={() => setShowSmtpPassword((v) => !v)}
-                className="absolute right-2.5 text-outline hover:text-on-surface cursor-pointer p-1"
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  {showSmtpPassword ? 'visibility_off' : 'visibility'}
-                </span>
-              </button>
-            </div>
-          </div>
+            }
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-sm font-bold text-outline">
-              Nome do Remetente
-            </label>
-            <input
-              type="text"
-              value={smtpForm.fromName}
-              onChange={(e) => setSmtpForm({ ...smtpForm, fromName: e.target.value })}
-              placeholder="AppFrame"
-              className="bg-surface-container border border-surface-container-highest rounded-xl px-3.5 py-2 text-body-sm text-on-surface outline-none focus:border-primary"
-            />
-          </div>
+          <Input
+            size="sm"
+            label="Nome do Remetente"
+            labelClassName="font-bold text-outline text-label-sm"
+            type="text"
+            value={smtpForm.fromName}
+            onChange={(e) => setSmtpForm({ ...smtpForm, fromName: e.target.value })}
+            placeholder="AppFrame"
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-label-sm font-bold text-outline">
-              E-mail do Remetente (From)
-            </label>
-            <input
-              type="email"
-              value={smtpForm.fromEmail}
-              onChange={(e) => setSmtpForm({ ...smtpForm, fromEmail: e.target.value })}
-              placeholder="no-reply@appframe.io"
-              className="bg-surface-container border border-surface-container-highest rounded-xl px-3.5 py-2 text-body-sm text-on-surface outline-none focus:border-primary"
-              required
-            />
-          </div>
+          <Input
+            size="sm"
+            label="E-mail do Remetente (From)"
+            labelClassName="font-bold text-outline text-label-sm"
+            type="email"
+            value={smtpForm.fromEmail}
+            onChange={(e) => setSmtpForm({ ...smtpForm, fromEmail: e.target.value })}
+            placeholder="no-reply@appframe.io"
+            required
+          />
 
           <div className="md:col-span-2 flex items-center gap-2 pt-1">
             <input
@@ -180,12 +157,13 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
         </div>
 
         <div className="flex flex-col md:flex-row items-center gap-3">
-          <input
+          <Input
+            size="sm"
             type="email"
             value={testEmailInput}
             onChange={(e) => setTestEmailInput(e.target.value)}
             placeholder={currentUserEmail || 'destino@dominio.com'}
-            className="w-full bg-surface-container border border-surface-container-highest rounded-xl px-3.5 py-2 text-body-sm text-on-surface outline-none focus:border-primary"
+            containerClassName="flex-1"
           />
           <Button
             variant="outline"

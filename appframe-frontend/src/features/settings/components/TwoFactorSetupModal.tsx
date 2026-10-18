@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Button } from '../../../components/ui';
+import { Card, Button, Input } from '../../../components/ui';
 import { toast } from 'sonner';
 
 interface TwoFactorSetupModalProps {
@@ -98,21 +98,18 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
             </div>
 
             {/* 2. Confirmação com 6 Dígitos */}
-            <div className="flex flex-col gap-1">
-              <label className="text-label-sm font-label-sm text-on-surface font-semibold">
-                2. Digite o código de 6 dígitos gerado no app:
-              </label>
-              <input
-                type="text"
-                maxLength={6}
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
-                required
-                disabled={isSubmitting}
-                className="w-full text-center tracking-[0.5em] font-mono text-[24px] font-bold p-2.5 rounded-xl bg-surface-container-lowest border border-surface-container-highest text-primary outline-none focus:border-primary"
-              />
-            </div>
+            <Input
+              label="2. Digite o código de 6 dígitos gerado no app:"
+              labelClassName="text-label-sm font-label-sm text-on-surface font-semibold"
+              type="text"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="000000"
+              required
+              disabled={isSubmitting}
+              className="text-center tracking-[0.5em] font-mono text-[24px] font-bold h-12"
+            />
 
             <div className="flex items-center justify-end gap-2 mt-2">
               <Button

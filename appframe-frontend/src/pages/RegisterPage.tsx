@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
 import {
   useGuestGuard,
@@ -8,12 +8,17 @@ import {
   AuthFooter,
 } from '../features/auth';
 import { ThemeToggle } from '../components/common/ThemeToggle';
-import { LegalModal } from '../components/legal';
+import { LegalModal, useLegalModal } from '../features/legal';
 
 export const RegisterPage: React.FC = () => {
   const { navigate } = useNavigation();
-  const [legalModalOpen, setLegalModalOpen] = useState(false);
-  const [legalModalDoc, setLegalModalDoc] = useState<'terms' | 'privacy'>('terms');
+  const {
+    isOpen: legalModalOpen,
+    activeDoc: legalModalDoc,
+    openTerms: handleOpenTerms,
+    openPrivacy: handleOpenPrivacy,
+    close: handleCloseLegal,
+  } = useLegalModal();
 
   useGuestGuard();
 
@@ -80,14 +85,8 @@ export const RegisterPage: React.FC = () => {
             onSubmit={handleRegisterSubmit}
             onGoogleSignup={handleGoogleSignup}
             onNavigateLogin={() => navigate('login')}
-            onOpenTerms={() => {
-              setLegalModalDoc('terms');
-              setLegalModalOpen(true);
-            }}
-            onOpenPrivacy={() => {
-              setLegalModalDoc('privacy');
-              setLegalModalOpen(true);
-            }}
+            onOpenTerms={handleOpenTerms}
+            onOpenPrivacy={handleOpenPrivacy}
           />
         </div>
       </main>
@@ -98,7 +97,7 @@ export const RegisterPage: React.FC = () => {
       {/* Modal de Documentos Legais (disparado pelo link no checkbox) */}
       <LegalModal
         isOpen={legalModalOpen}
-        onClose={() => setLegalModalOpen(false)}
+        onClose={handleCloseLegal}
         initialDoc={legalModalDoc}
       />
     </div>

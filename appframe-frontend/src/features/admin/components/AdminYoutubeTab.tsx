@@ -94,7 +94,7 @@ export const AdminYoutubeTab: React.FC<AdminYoutubeTabProps> = ({
               </span>
             </div>
             <label className="cursor-pointer">
-              <span className="px-3 py-1.5 rounded-lg bg-surface-container-highest hover:bg-primary hover:text-on-primary text-xs font-bold transition-colors">
+              <span className="truncate px-1.5 py-1.5 rounded-lg bg-surface-container-highest hover:bg-primary hover:text-on-primary text-xs font-bold transition-colors">
                 Selecionar Arquivo
               </span>
               <input

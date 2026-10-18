@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { LegalModal } from '../../../components/legal';
+import React from 'react';
+import { LegalModal, useLegalModal } from '../../legal';
 
 interface AuthFooterProps {
   showLegalLinks?: boolean;
@@ -8,8 +8,7 @@ interface AuthFooterProps {
 export const AuthFooter: React.FC<AuthFooterProps> = ({
   showLegalLinks = true,
 }) => {
-  const [legalModalOpen, setLegalModalOpen] = useState(false);
-  const [legalModalDoc, setLegalModalDoc] = useState<'terms' | 'privacy'>('terms');
+  const { isOpen, activeDoc, openTerms, openPrivacy, close } = useLegalModal();
 
   return (
     <>
@@ -21,10 +20,7 @@ export const AuthFooter: React.FC<AuthFooterProps> = ({
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  setLegalModalDoc('terms');
-                  setLegalModalOpen(true);
-                }}
+                onClick={openTerms}
                 className="hover:text-primary transition-colors cursor-pointer hover:underline"
               >
                 Termos de Serviço
@@ -32,10 +28,7 @@ export const AuthFooter: React.FC<AuthFooterProps> = ({
               <span>•</span>
               <button
                 type="button"
-                onClick={() => {
-                  setLegalModalDoc('privacy');
-                  setLegalModalOpen(true);
-                }}
+                onClick={openPrivacy}
                 className="hover:text-primary transition-colors cursor-pointer hover:underline"
               >
                 Política de Privacidade
@@ -47,9 +40,9 @@ export const AuthFooter: React.FC<AuthFooterProps> = ({
 
       {showLegalLinks && (
         <LegalModal
-          isOpen={legalModalOpen}
-          onClose={() => setLegalModalOpen(false)}
-          initialDoc={legalModalDoc}
+          isOpen={isOpen}
+          onClose={close}
+          initialDoc={activeDoc}
         />
       )}
     </>

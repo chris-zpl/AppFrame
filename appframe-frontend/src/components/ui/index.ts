@@ -5,3 +5,4 @@ export * from './Checkbox';
 export * from './Badge';
 export * from './EmptyState';
 export * from './ConfirmModal';
+export * from './VisibilityToggle';

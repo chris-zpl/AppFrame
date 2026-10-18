@@ -30,7 +30,7 @@ export const AdminTabButton: React.FC<AdminTabButtonProps> = ({
         'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-label-md font-semibold transition-all cursor-pointer whitespace-nowrap',
         isActive
           ? 'bg-primary text-on-primary shadow-sm'
-          : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high',
+          : 'text-on-surface-variant hover:text-surface hover:bg-inverse-surface',
         className
       )}
     >
@@ -41,8 +41,8 @@ export const AdminTabButton: React.FC<AdminTabButtonProps> = ({
           className={cn(
             'px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold',
             isActive
-              ? 'bg-on-primary/15 text-on-primary'
-              : 'bg-black/20 text-white dark:bg-surface-container-highest dark:text-on-surface-variant'
+              ? 'bg-on-primary/15 text-surface'
+              : 'bg-black/20 text-surface dark:bg-surface-container-highest dark:text-on-surface-variant'
           )}
         >
           {count}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Button } from '../../../components/ui';
+import { Card, Button, Input } from '../../../components/ui';
 
 interface TwoFactorDisableModalProps {
   isOpen: boolean;
@@ -44,7 +44,7 @@ export const TwoFactorDisableModal: React.FC<TwoFactorDisableModalProps> = ({
             Informe o código atual de 6 dígitos gerado pelo seu aplicativo autenticador para confirmar a desativação do 2FA:
           </p>
 
-          <input
+          <Input
             type="text"
             maxLength={6}
             value={code}
@@ -52,7 +52,7 @@ export const TwoFactorDisableModal: React.FC<TwoFactorDisableModalProps> = ({
             placeholder="000000"
             required
             disabled={isDisabling}
-            className="w-full text-center tracking-[0.5em] font-mono text-[24px] font-bold p-2.5 rounded-xl bg-surface-container-lowest border border-surface-container-highest text-primary outline-none focus:border-primary"
+            className="text-center tracking-[0.5em] font-mono text-[24px] font-bold h-12"
           />
 
           <div className="flex items-center justify-end gap-2 mt-2">

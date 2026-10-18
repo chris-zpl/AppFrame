@@ -11,14 +11,14 @@ export const getAuditEventBadge = (rawAction: string): AuditEventBadgeInfo => {
       return {
         label: 'Termos & Privacidade Atualizados',
         icon: 'gavel',
-        className: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
+        className: 'bg-emerald-500/15 dark:text-emerald-400 text-emerald-600 border border-emerald-500/30',
       };
     case 'USER_ROLE_CHANGED':
     case 'ROLE_CHANGED':
       return {
         label: 'Perfil / Função Alterada',
         icon: 'admin_panel_settings',
-        className: 'bg-purple-500/20 text-purple-400 border border-purple-500/40',
+        className: 'bg-purple-500/20 dark:text-purple-400 text-purple-600 border border-purple-500/40',
       };
     case 'USER_BLOCKED':
       return {
@@ -30,7 +30,7 @@ export const getAuditEventBadge = (rawAction: string): AuditEventBadgeInfo => {
       return {
         label: 'Usuário Desbloqueado',
         icon: 'check_circle',
-        className: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
+        className: 'bg-emerald-500/15 dark:text-emerald-400 text-emerald-600 border border-emerald-500/30',
       };
     case 'GEMINI_KEY_SAVED':
       return {
@@ -60,7 +60,7 @@ export const getAuditEventBadge = (rawAction: string): AuditEventBadgeInfo => {
       return {
         label: 'Redefinição Solicitada',
         icon: 'lock_reset',
-        className: 'bg-amber-500/15 text-amber-400 border border-amber-500/30',
+        className: 'bg-amber-500/15 text-amber-700 border border-amber-500/30',
       };
     case 'PASSWORD_RESET_COMPLETED':
       return {

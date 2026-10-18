@@ -39,7 +39,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           className={cn(
             'w-full h-11 px-4 rounded-lg bg-white hover:bg-neutral-50 transition-all duration-200 cursor-pointer',
             'flex items-center justify-between shadow-sm active:scale-[0.99]',
-            'border border-black/15 border-neutral-300 dark:border-transparent dark:hover:ring-2 dark:hover:ring-[#D4A346]/40',
+            'border border-black/15 border-neutral-300 dark:border-transparent dark:hover:ring-2 dark:hover:ring-primary-container/40',
             disabled && 'opacity-60 cursor-not-allowed',
             className,
           )}
@@ -75,7 +75,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary:
-        'bg-[#D4A346] hover:bg-[#E0B04A] text-[#0F1115] font-bold shadow-[0_4px_20px_-2px_rgba(212,163,70,0.35)] hover:shadow-[0_0_24px_rgba(212,163,70,0.45)] active:scale-[0.99]',
+        'bg-primary-container hover:bg-primary-container-high text-surface font-bold shadow-[0_4px_20px_-2px_rgba(212,163,70,0.35)] hover:shadow-[0_0_24px_rgba(212,163,70,0.45)] active:scale-[0.99]',
       secondary:
         'bg-neutral-100 hover:bg-neutral-900 text-neutral-800 hover:text-white dark:bg-[#1E222D] dark:hover:bg-[#282D3C] dark:text-[#F8F9FA] dark:hover:text-white transition-colors font-semibold shadow-sm border border-neutral-200 dark:border-outline/10',
       outline:
