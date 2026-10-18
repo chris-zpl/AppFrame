@@ -244,4 +244,73 @@ describe('1. Auditoria de Vazamento de Dados Sensíveis nos Endpoints (E2E)', ()
     expect(bodyStr).not.toContain('SELECT * FROM');
     expect(res.body.debug).toBeUndefined();
   });
+
+  it('1.7 UserResponseDto - não deve vazar google_id numérico bruto e deve prover is_google_linked', () => {
+    const { UserResponseDto } = require('../src/modules/users/dto/response/user-response.dto');
+    const { instanceToPlain } = require('class-transformer');
+
+    const userWithGoogle = {
+      ...mockUser,
+      google_id: '109823471092834719283',
+      google_email: 'google@appframe.io',
+      auth_provider: 'google',
+    };
+
+    const dto = UserResponseDto.fromEntity(userWithGoogle);
+    const plain = instanceToPlain(dto);
+
+    expect(plain.is_google_linked).toBe(true);
+    expect(plain.google_id).toBeNull();
+    expect(plain.google_email).toBe('google@appframe.io');
+    expect(plain.password_hash).toBeUndefined();
+    expect(plain.totp_secret).toBeUndefined();
+    expect(plain.recovery_codes).toBeUndefined();
+  });
+
+  it('1.8 WatermarkResponseDto - não deve expor storage_path interno do servidor', () => {
+    const { WatermarkResponseDto } = require('../src/modules/watermarks/dto/response/watermark-response.dto');
+    const { instanceToPlain } = require('class-transformer');
+
+    const mockWatermark = {
+      id: 'w0000000-0000-0000-0000-000000000001',
+      user_id: mockUser.id,
+      original_name: 'logo.png',
+      storage_path: '/app/storage/watermarks/sensitive_internal_path.png',
+      mime_type: 'image/png',
+      file_size: 1024,
+      created_at: new Date(),
+    };
+
+    const dto = WatermarkResponseDto.fromEntity(mockWatermark);
+    const plain = instanceToPlain(dto);
+
+    expect(plain.storage_path).toBeUndefined();
+    expect(plain.url).toBe('/api/v1/watermarks/w0000000-0000-0000-0000-000000000001/file');
+    expect(plain.original_name).toBe('logo.png');
+  });
+
+  it('1.9 VideoJobResponseDto - não deve expor final_video_path interno do servidor', () => {
+    const { VideoJobResponseDto } = require('../src/modules/media/dto/response/video-job-response.dto');
+    const { instanceToPlain } = require('class-transformer');
+
+    const mockJob = {
+      id: 'j0000000-0000-0000-0000-000000000001',
+      user_id: mockUser.id,
+      source_url: 'https://youtube.com/watch?v=123',
+      platform: 'youtube',
+      aspect_ratio: '9:16',
+      status: 'completed',
+      progress: 100,
+      final_video_path: '/app/storage/renders/sensitive_rendered_video.mp4',
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+
+    const dto = VideoJobResponseDto.fromEntity(mockJob);
+    const plain = instanceToPlain(dto);
+
+    expect(plain.final_video_path).toBeUndefined();
+    expect(plain.id).toBe('j0000000-0000-0000-0000-000000000001');
+    expect(plain.status).toBe('completed');
+  });
 });

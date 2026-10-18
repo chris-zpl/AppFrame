@@ -987,7 +987,7 @@ export class AuthService {
       action: SecurityAuditEvent.GOOGLE_ACCOUNT_LINKED,
       ipAddress: meta?.ip,
       userAgent: meta?.userAgent,
-      metadata: { googleEmail: emailNormalized, googleId: profile.googleId },
+      metadata: { googleEmail: emailNormalized },
     });
 
     return { success: true, user: saved };

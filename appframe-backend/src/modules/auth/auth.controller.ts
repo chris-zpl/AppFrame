@@ -181,10 +181,9 @@ export class AuthController {
       );
     }
 
-    // Redirecionamento seguro para a aplicação cliente com os tokens
+    // Redirecionamento seguro para a aplicação cliente apenas com o access_token
     const redirectUrl = new URL(`${this.frontendUrl}/auth/callback`);
     redirectUrl.searchParams.set('token', authResult.access_token || '');
-    redirectUrl.searchParams.set('refreshToken', authResult.refresh_token || '');
 
     return res.redirect(redirectUrl.toString());
   }

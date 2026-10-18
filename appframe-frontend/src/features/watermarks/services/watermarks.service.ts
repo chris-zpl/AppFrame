@@ -4,7 +4,7 @@ export interface WatermarkItem {
   id: string;
   user_id: string;
   original_name: string;
-  storage_path: string;
+  storage_path?: string;
   mime_type: string;
   file_size: number;
   created_at: string;

@@ -125,7 +125,6 @@ export class GeminiController {
     @Body() dto: SynthesizeSpeechDto,
   ): Promise<{
     mimeType: string;
-    savedFilePath?: string;
     audioBase64: string;
     durationEstimateSeconds?: number;
   }> {
@@ -137,7 +136,6 @@ export class GeminiController {
 
     return {
       mimeType: result.mimeType,
-      savedFilePath: result.savedFilePath,
       audioBase64: result.audioBuffer.toString('base64'),
       durationEstimateSeconds: result.durationEstimateSeconds,
     };

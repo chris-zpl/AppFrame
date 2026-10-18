@@ -54,7 +54,7 @@ export class VideoJobResponseDto {
   @Expose()
   watermark_opacity: number | null;
 
-  @Expose()
+  @Exclude()
   final_video_path: string | null;
 
   @Expose()

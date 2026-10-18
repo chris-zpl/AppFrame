@@ -87,8 +87,6 @@ export class AdminSettingsService {
   getYouTubeCookiesStatus(): {
     configured: boolean;
     hasCookies: boolean;
-    path: string | null;
-    filePath: string | null;
     updatedAt: string | null;
     sizeBytes: number;
   } {
@@ -102,8 +100,6 @@ export class AdminSettingsService {
     return {
       configured: status.configured,
       hasCookies: status.configured,
-      path: status.path,
-      filePath: status.path,
       updatedAt: status.updatedAt,
       sizeBytes,
     };

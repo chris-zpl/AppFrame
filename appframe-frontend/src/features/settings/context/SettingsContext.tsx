@@ -56,7 +56,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
   const [revokeAllModal, setRevokeAllModal] = useState(false);
 
-  const isGoogleLinked = Boolean(user?.google_id || user?.auth_provider === 'google');
+  const isGoogleLinked = Boolean(user?.is_google_linked || user?.google_id || user?.auth_provider === 'google');
   const is2faEnabled = Boolean(user?.is_two_factor_enabled);
 
   const [prevUser, setPrevUser] = useState(user);

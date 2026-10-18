@@ -38,10 +38,13 @@ export class MediaController {
   @Roles(UserRole.SUPER_ADMIN)
   async getYouTubeCookiesStatus(): Promise<{
     configured: boolean;
-    path: string | null;
     updatedAt: string | null;
   }> {
-    return this.mediaService.getYouTubeCookiesStatus();
+    const status = this.mediaService.getYouTubeCookiesStatus();
+    return {
+      configured: status.configured,
+      updatedAt: status.updatedAt,
+    };
   }
 
   @Post('youtube-cookies')

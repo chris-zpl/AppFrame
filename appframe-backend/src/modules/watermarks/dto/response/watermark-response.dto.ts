@@ -12,7 +12,7 @@ export class WatermarkResponseDto {
   @Expose()
   original_name: string;
 
-  @Expose()
+  @Exclude()
   storage_path: string;
 
   @Expose()

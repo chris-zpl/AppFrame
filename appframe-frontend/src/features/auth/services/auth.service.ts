@@ -4,6 +4,7 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
+  is_google_linked?: boolean;
   google_id?: string | null;
   google_email?: string | null;
   email_changed_at?: string | null;

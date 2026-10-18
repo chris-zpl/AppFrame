@@ -21,6 +21,9 @@ export class UserResponseDto {
   is_active: boolean;
 
   @Expose()
+  is_google_linked: boolean;
+
+  @Expose()
   google_id: string | null;
 
   @Expose()
@@ -60,6 +63,8 @@ export class UserResponseDto {
       dto.role = user.role || UserRole.USER;
     }
     dto.is_active = user.is_active !== undefined ? user.is_active : true;
+    dto.is_google_linked = Boolean(user.google_id || user.auth_provider === AuthProvider.GOOGLE);
+    dto.google_id = null; // Higienizado: ID numérico interno do Google não deve vazar para a interface
     dto.google_email = user.google_email || null;
     dto.email_changed_at = user.email_changed_at || null;
     dto.has_gemini_key = false;

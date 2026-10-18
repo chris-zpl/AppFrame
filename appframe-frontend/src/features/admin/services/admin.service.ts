@@ -43,8 +43,8 @@ export interface GeminiStatus {
 }
 
 export interface YouTubeCookiesStatus {
+  configured?: boolean;
   hasCookies: boolean;
-  filePath?: string;
   updatedAt?: string | null;
   sizeBytes?: number;
 }
