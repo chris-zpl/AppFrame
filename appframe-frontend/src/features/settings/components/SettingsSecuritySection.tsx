@@ -1,6 +1,6 @@
-import React from 'react';
-import { Card, Input, Button } from '../../../components/ui';
-
+import React, { useState, useMemo } from 'react';
+import { Card, Input, Button, VisibilityToggle } from '../../../components/ui';
+import { PasswordStrengthIndicator, calculatePasswordStrength } from '../../auth';
 import { useSettingsContext } from '../context';
 
 export interface SettingsSecuritySectionProps {
@@ -19,6 +19,12 @@ export interface SettingsSecuritySectionProps {
   setConfirmPassword?: (val: string) => void;
   isChangingPassword?: boolean;
   onPasswordSubmit?: (e: React.FormEvent) => void;
+  showCurrentPassword?: boolean;
+  onToggleShowCurrentPassword?: () => void;
+  showNewPassword?: boolean;
+  onToggleShowNewPassword?: () => void;
+  showConfirmPassword?: boolean;
+  onToggleShowConfirmPassword?: () => void;
 }
 
 export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (props) => {
@@ -39,6 +45,27 @@ export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (
   const setConfirmPassword = props.setConfirmPassword ?? settings.setConfirmPassword;
   const isChangingPassword = props.isChangingPassword ?? settings.isChangingPassword;
   const onPasswordSubmit = props.onPasswordSubmit ?? settings.handlePasswordSubmit;
+
+  const [internalShowCurrentPassword, setInternalShowCurrentPassword] = useState(false);
+  const [internalShowNewPassword, setInternalShowNewPassword] = useState(false);
+  const [internalShowConfirmPassword, setInternalShowConfirmPassword] = useState(false);
+
+  const showCurrentPassword = props.showCurrentPassword ?? internalShowCurrentPassword;
+  const handleToggleShowCurrentPassword =
+    props.onToggleShowCurrentPassword ?? (() => setInternalShowCurrentPassword((v) => !v));
+
+  const showNewPassword = props.showNewPassword ?? internalShowNewPassword;
+  const handleToggleShowNewPassword =
+    props.onToggleShowNewPassword ?? (() => setInternalShowNewPassword((v) => !v));
+
+  const showConfirmPassword = props.showConfirmPassword ?? internalShowConfirmPassword;
+  const handleToggleShowConfirmPassword =
+    props.onToggleShowConfirmPassword ?? (() => setInternalShowConfirmPassword((v) => !v));
+
+  const passwordStrength = useMemo(
+    () => calculatePasswordStrength(newPassword || ''),
+    [newPassword]
+  );
   return (
     <div className="flex flex-col gap-space-md animate-in fade-in duration-200">
       {/* Card 2FA (TOTP) */}
@@ -140,7 +167,7 @@ export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (
         <form onSubmit={onPasswordSubmit} className="flex flex-col gap-4 max-w-xl">
           <Input
             label="Senha Atual (opcional se originada via Google)"
-            type="password"
+            type={showCurrentPassword ? 'text' : 'password'}
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             disabled={isChangingPassword}
@@ -148,31 +175,59 @@ export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (
             leftIcon={
               <span className="material-symbols-outlined text-[18px]">lock</span>
             }
-          />
-
-          <Input
-            label="Nova Senha"
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required
-            disabled={isChangingPassword}
-            placeholder="••••••••••••"
-            leftIcon={
-              <span className="material-symbols-outlined text-[18px]">vpn_key</span>
+            rightElement={
+              <VisibilityToggle
+                isVisible={showCurrentPassword}
+                onToggle={handleToggleShowCurrentPassword}
+                ariaLabel="Mostrar ou ocultar senha atual"
+              />
             }
           />
 
+          <div className="flex flex-col gap-1.5">
+            <Input
+              label="Nova Senha"
+              type={showNewPassword ? 'text' : 'password'}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              disabled={isChangingPassword}
+              minLength={8}
+              placeholder="Mínimo de 8 caracteres"
+              leftIcon={
+                <span className="material-symbols-outlined text-[18px]">vpn_key</span>
+              }
+              rightElement={
+                <VisibilityToggle
+                  isVisible={showNewPassword}
+                  onToggle={handleToggleShowNewPassword}
+                  ariaLabel="Mostrar ou ocultar nova senha"
+                />
+              }
+            />
+
+            {/* Indicador Visual Dinâmico de Força de Senha e Regras */}
+            <PasswordStrengthIndicator passwordStrength={passwordStrength} />
+          </div>
+
           <Input
             label="Confirmar Nova Senha"
-            type="password"
+            type={showConfirmPassword ? 'text' : 'password'}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
             disabled={isChangingPassword}
-            placeholder="••••••••••••"
+            minLength={8}
+            placeholder="Repita a nova senha"
             leftIcon={
-              <span className="material-symbols-outlined text-[18px]">vpn_key</span>
+              <span className="material-symbols-outlined text-[18px]">lock_clock</span>
+            }
+            rightElement={
+              <VisibilityToggle
+                isVisible={showConfirmPassword}
+                onToggle={handleToggleShowConfirmPassword}
+                ariaLabel="Mostrar ou ocultar confirmação de senha"
+              />
             }
           />
 

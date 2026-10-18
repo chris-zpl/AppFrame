@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { authService } from '../services';
 import type { UserSessionItem } from '../types';
 import { mapActiveSessionToItem, extractApiErrorMessage } from '../utils';
+import { calculatePasswordStrength } from '../../auth/utils';
 
 interface UseSettingsProps {
   refreshProfile: () => Promise<any>;
@@ -242,6 +243,13 @@ export const useSettings = ({
     e.preventDefault();
     if (newPassword.length < 8) {
       toast.error('A nova senha deve ter no mínimo 8 caracteres.');
+      return;
+    }
+    const passwordStrength = calculatePasswordStrength(newPassword);
+    if (!passwordStrength.isStrong) {
+      toast.error(
+        'Por favor, crie uma senha mais forte com no mínimo 8 caracteres, números e símbolos.'
+      );
       return;
     }
     if (newPassword !== confirmPassword) {
