@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigation } from '../../../contexts/NavigationContext';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../context';
 import { getAuthRedirectTarget } from '../utils';
 
 export interface UseAuthCallbackReturn {

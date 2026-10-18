@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useNavigation } from '../../../contexts/NavigationContext';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../context';
 import { authService } from '../services/auth.service';
 import { getAuthRedirectTarget } from '../utils/auth.helpers';
 import { API_BASE_URL } from '../../../lib/api';

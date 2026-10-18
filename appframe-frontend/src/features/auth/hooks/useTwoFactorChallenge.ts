@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../context';
 import { useNavigation } from '../../../contexts/NavigationContext';
 import { getAuthRedirectTarget } from '../utils/auth.helpers';
 import {
