@@ -5,6 +5,7 @@ import {
   useRegisterForm,
   RegisterHeader,
   RegisterCard,
+  RegisterForm,
   AuthFooter,
 } from '../features/auth';
 import { ThemeToggle } from '../components/common/ThemeToggle';
@@ -60,34 +61,38 @@ export const RegisterPage: React.FC = () => {
       <main className="flex-1 flex items-center justify-center py-6 sm:py-10 z-10 w-full">
         <div className="relative flex flex-col items-center justify-center w-full max-w-[440px] mx-auto">
           <RegisterCard
-            name={name}
-            email={email}
-            password={password}
-            showPassword={showPassword}
-            agreeTerms={agreeTerms}
             isLoading={isLoading}
             errorMessage={errorMessage}
-            passwordStrength={passwordStrength}
-            onNameChange={(val) => {
-              setName(val);
-              if (errorMessage) setErrorMessage(null);
-            }}
-            onEmailChange={(val) => {
-              setEmail(val);
-              if (errorMessage) setErrorMessage(null);
-            }}
-            onPasswordChange={(val) => {
-              setPassword(val);
-              if (errorMessage) setErrorMessage(null);
-            }}
-            onToggleShowPassword={() => setShowPassword(!showPassword)}
-            onAgreeTermsChange={setAgreeTerms}
-            onSubmit={handleRegisterSubmit}
             onGoogleSignup={handleGoogleSignup}
             onNavigateLogin={() => navigate('login')}
-            onOpenTerms={handleOpenTerms}
-            onOpenPrivacy={handleOpenPrivacy}
-          />
+          >
+            <RegisterForm
+              name={name}
+              email={email}
+              password={password}
+              showPassword={showPassword}
+              agreeTerms={agreeTerms}
+              isLoading={isLoading}
+              passwordStrength={passwordStrength}
+              onNameChange={(val) => {
+                setName(val);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              onEmailChange={(val) => {
+                setEmail(val);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              onPasswordChange={(val) => {
+                setPassword(val);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              onToggleShowPassword={() => setShowPassword(!showPassword)}
+              onAgreeTermsChange={setAgreeTerms}
+              onSubmit={handleRegisterSubmit}
+              onOpenTerms={handleOpenTerms}
+              onOpenPrivacy={handleOpenPrivacy}
+            />
+          </RegisterCard>
         </div>
       </main>
 

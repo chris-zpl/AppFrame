@@ -325,5 +325,9 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
 
     // Persistence
     handleResetStudio: persistence.handleResetStudio,
+
+    // Navigation & Params
+    navigate,
+    params,
   };
 };

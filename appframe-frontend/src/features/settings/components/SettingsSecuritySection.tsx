@@ -1,41 +1,44 @@
 import React from 'react';
 import { Card, Input, Button } from '../../../components/ui';
 
-interface SettingsSecuritySectionProps {
-  is2faEnabled: boolean;
-  isLoadingRecoveryCodes: boolean;
-  isGenerating2fa: boolean;
-  onOpenRecoveryCodesModal: () => void;
-  onOpenDisable2faModal: () => void;
-  onStart2FA: () => void;
-  passwordChangedSuccess: boolean;
-  currentPassword: string;
-  setCurrentPassword: (val: string) => void;
-  newPassword: string;
-  setNewPassword: (val: string) => void;
-  confirmPassword: string;
-  setConfirmPassword: (val: string) => void;
-  isChangingPassword: boolean;
-  onPasswordSubmit: (e: React.FormEvent) => void;
+import { useSettingsContext } from '../context';
+
+export interface SettingsSecuritySectionProps {
+  is2faEnabled?: boolean;
+  isLoadingRecoveryCodes?: boolean;
+  isGenerating2fa?: boolean;
+  onOpenRecoveryCodesModal?: () => void;
+  onOpenDisable2faModal?: () => void;
+  onStart2FA?: () => void;
+  passwordChangedSuccess?: boolean;
+  currentPassword?: string;
+  setCurrentPassword?: (val: string) => void;
+  newPassword?: string;
+  setNewPassword?: (val: string) => void;
+  confirmPassword?: string;
+  setConfirmPassword?: (val: string) => void;
+  isChangingPassword?: boolean;
+  onPasswordSubmit?: (e: React.FormEvent) => void;
 }
 
-export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = ({
-  is2faEnabled,
-  isLoadingRecoveryCodes,
-  isGenerating2fa,
-  onOpenRecoveryCodesModal,
-  onOpenDisable2faModal,
-  onStart2FA,
-  passwordChangedSuccess,
-  currentPassword,
-  setCurrentPassword,
-  newPassword,
-  setNewPassword,
-  confirmPassword,
-  setConfirmPassword,
-  isChangingPassword,
-  onPasswordSubmit,
-}) => {
+export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (props) => {
+  const settings = useSettingsContext();
+
+  const is2faEnabled = props.is2faEnabled ?? settings.is2faEnabled;
+  const isLoadingRecoveryCodes = props.isLoadingRecoveryCodes ?? settings.isLoadingRecoveryCodes;
+  const isGenerating2fa = props.isGenerating2fa ?? settings.isGenerating2fa;
+  const onOpenRecoveryCodesModal = props.onOpenRecoveryCodesModal ?? settings.handleOpenRecoveryCodesModal;
+  const onOpenDisable2faModal = props.onOpenDisable2faModal ?? (() => settings.setShowDisable2faModal(true));
+  const onStart2FA = props.onStart2FA ?? settings.handleStart2FA;
+  const passwordChangedSuccess = props.passwordChangedSuccess ?? settings.passwordChangedSuccess;
+  const currentPassword = props.currentPassword ?? settings.currentPassword;
+  const setCurrentPassword = props.setCurrentPassword ?? settings.setCurrentPassword;
+  const newPassword = props.newPassword ?? settings.newPassword;
+  const setNewPassword = props.setNewPassword ?? settings.setNewPassword;
+  const confirmPassword = props.confirmPassword ?? settings.confirmPassword;
+  const setConfirmPassword = props.setConfirmPassword ?? settings.setConfirmPassword;
+  const isChangingPassword = props.isChangingPassword ?? settings.isChangingPassword;
+  const onPasswordSubmit = props.onPasswordSubmit ?? settings.handlePasswordSubmit;
   return (
     <div className="flex flex-col gap-space-md animate-in fade-in duration-200">
       {/* Card 2FA (TOTP) */}

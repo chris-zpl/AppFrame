@@ -5,81 +5,84 @@ import { toast } from 'sonner';
 import type { FontFamily, SubtitleMode } from '../interfaces';
 import type { GeminiSubtitleSegment } from '../../history';
 
-interface StudioSubtitlesTabProps {
-  isGeminiConnected: boolean;
-  subtitleMode: SubtitleMode;
-  setSubtitleMode: (mode: SubtitleMode) => void;
-  staticText: string;
-  setStaticText: (val: string) => void;
-  isTranscribingAudio: boolean;
-  isGeneratingSubtitles: boolean;
-  hasCurrentVideo: boolean;
-  trimIn: number;
-  trimOut: number;
-  totalDuration: number;
-  handleTranscribeCurrentVideo: () => void;
-  showAdvancedGeminiOptions: boolean;
-  setShowAdvancedGeminiOptions: React.Dispatch<React.SetStateAction<boolean>>;
-  geminiPrompt: string;
-  setGeminiPrompt: (val: string) => void;
-  mediaFileInputRef: React.RefObject<HTMLInputElement | null>;
-  selectedMediaFile: File | null;
-  setSelectedMediaFile: (file: File | null) => void;
-  handleGenerateGeminiSubtitles: (prompt: string) => void;
-  dynamicSegments: GeminiSubtitleSegment[];
-  currentTime: number;
-  setCurrentTime: (t: number) => void;
-  fontFamily: FontFamily;
-  setFontFamily: (f: FontFamily) => void;
-  textColor: string;
-  setTextColor: (c: string) => void;
-  strokeColor: string;
-  setStrokeColor: (c: string) => void;
-  bgColor: string;
-  setBgColor: (c: string) => void;
-  fontSize: number;
-  setFontSize: (s: number) => void;
-  useBackgroundBox: boolean;
-  setUseBackgroundBox: (b: boolean) => void;
+import { useStudioContext } from '../context';
+
+export interface StudioSubtitlesTabProps {
+  isGeminiConnected?: boolean;
+  subtitleMode?: SubtitleMode;
+  setSubtitleMode?: (mode: SubtitleMode) => void;
+  staticText?: string;
+  setStaticText?: (val: string) => void;
+  isTranscribingAudio?: boolean;
+  isGeneratingSubtitles?: boolean;
+  hasCurrentVideo?: boolean;
+  trimIn?: number;
+  trimOut?: number;
+  totalDuration?: number;
+  handleTranscribeCurrentVideo?: () => void;
+  showAdvancedGeminiOptions?: boolean;
+  setShowAdvancedGeminiOptions?: React.Dispatch<React.SetStateAction<boolean>>;
+  geminiPrompt?: string;
+  setGeminiPrompt?: (val: string) => void;
+  mediaFileInputRef?: React.RefObject<HTMLInputElement | null>;
+  selectedMediaFile?: File | null;
+  setSelectedMediaFile?: (file: File | null) => void;
+  handleGenerateGeminiSubtitles?: (prompt: string) => void;
+  dynamicSegments?: GeminiSubtitleSegment[];
+  currentTime?: number;
+  setCurrentTime?: (t: number) => void;
+  fontFamily?: FontFamily;
+  setFontFamily?: (f: FontFamily) => void;
+  textColor?: string;
+  setTextColor?: (c: string) => void;
+  strokeColor?: string;
+  setStrokeColor?: (c: string) => void;
+  bgColor?: string;
+  setBgColor?: (c: string) => void;
+  fontSize?: number;
+  setFontSize?: (s: number) => void;
+  useBackgroundBox?: boolean;
+  setUseBackgroundBox?: (b: boolean) => void;
 }
 
-export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = ({
-  isGeminiConnected,
-  subtitleMode,
-  setSubtitleMode,
-  staticText,
-  setStaticText,
-  isTranscribingAudio,
-  isGeneratingSubtitles,
-  hasCurrentVideo,
-  trimIn,
-  trimOut,
-  totalDuration,
-  handleTranscribeCurrentVideo,
-  showAdvancedGeminiOptions,
-  setShowAdvancedGeminiOptions,
-  geminiPrompt,
-  setGeminiPrompt,
-  mediaFileInputRef,
-  selectedMediaFile,
-  setSelectedMediaFile,
-  handleGenerateGeminiSubtitles,
-  dynamicSegments,
-  currentTime,
-  setCurrentTime,
-  fontFamily,
-  setFontFamily,
-  textColor,
-  setTextColor,
-  strokeColor,
-  setStrokeColor,
-  bgColor,
-  setBgColor,
-  fontSize,
-  setFontSize,
-  useBackgroundBox,
-  setUseBackgroundBox,
-}) => {
+export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => {
+  const studio = useStudioContext();
+
+  const isGeminiConnected = props.isGeminiConnected ?? studio.isGeminiConnected;
+  const subtitleMode = props.subtitleMode ?? studio.subtitleMode;
+  const setSubtitleMode = props.setSubtitleMode ?? studio.setSubtitleMode;
+  const staticText = props.staticText ?? studio.staticText;
+  const setStaticText = props.setStaticText ?? studio.setStaticText;
+  const isTranscribingAudio = props.isTranscribingAudio ?? studio.isTranscribingAudio;
+  const isGeneratingSubtitles = props.isGeneratingSubtitles ?? studio.isGeneratingSubtitles;
+  const hasCurrentVideo = props.hasCurrentVideo ?? Boolean(studio.currentVideo);
+  const trimIn = props.trimIn ?? studio.trimIn;
+  const trimOut = props.trimOut ?? studio.trimOut;
+  const totalDuration = props.totalDuration ?? studio.totalDuration;
+  const handleTranscribeCurrentVideo = props.handleTranscribeCurrentVideo ?? studio.handleTranscribeCurrentVideo;
+  const showAdvancedGeminiOptions = props.showAdvancedGeminiOptions ?? studio.showAdvancedGeminiOptions;
+  const setShowAdvancedGeminiOptions = props.setShowAdvancedGeminiOptions ?? studio.setShowAdvancedGeminiOptions;
+  const geminiPrompt = props.geminiPrompt ?? studio.geminiPrompt;
+  const setGeminiPrompt = props.setGeminiPrompt ?? studio.setGeminiPrompt;
+  const mediaFileInputRef = props.mediaFileInputRef ?? studio.mediaFileInputRef;
+  const selectedMediaFile = props.selectedMediaFile ?? studio.selectedMediaFile;
+  const setSelectedMediaFile = props.setSelectedMediaFile ?? studio.setSelectedMediaFile;
+  const handleGenerateGeminiSubtitles = props.handleGenerateGeminiSubtitles ?? studio.handleGenerateGeminiSubtitles;
+  const dynamicSegments = props.dynamicSegments ?? studio.dynamicSegments;
+  const currentTime = props.currentTime ?? studio.currentTime;
+  const setCurrentTime = props.setCurrentTime ?? studio.setCurrentTime;
+  const fontFamily = props.fontFamily ?? studio.fontFamily;
+  const setFontFamily = props.setFontFamily ?? studio.setFontFamily;
+  const textColor = props.textColor ?? studio.textColor;
+  const setTextColor = props.setTextColor ?? studio.setTextColor;
+  const strokeColor = props.strokeColor ?? studio.strokeColor;
+  const setStrokeColor = props.setStrokeColor ?? studio.setStrokeColor;
+  const bgColor = props.bgColor ?? studio.bgColor;
+  const setBgColor = props.setBgColor ?? studio.setBgColor;
+  const fontSize = props.fontSize ?? studio.fontSize;
+  const setFontSize = props.setFontSize ?? studio.setFontSize;
+  const useBackgroundBox = props.useBackgroundBox ?? studio.useBackgroundBox;
+  const setUseBackgroundBox = props.setUseBackgroundBox ?? studio.setUseBackgroundBox;
   return (
     <div className="flex flex-col gap-4 animate-in fade-in duration-200">
       {/* Indicador de Status da IA Gemini (Global) */}

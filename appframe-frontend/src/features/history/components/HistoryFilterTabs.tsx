@@ -2,17 +2,21 @@ import React from 'react';
 import { cn } from '../../../lib/utils';
 import type { HistoryFilterType, VideoJobItem } from '../interfaces';
 
-interface HistoryFilterTabsProps {
-  filter: HistoryFilterType;
-  onFilterChange: (next: HistoryFilterType) => void;
-  jobs: VideoJobItem[];
+import { useHistoryContext } from '../context';
+
+export interface HistoryFilterTabsProps {
+  filter?: HistoryFilterType;
+  onFilterChange?: (next: HistoryFilterType) => void;
+  jobs?: VideoJobItem[];
 }
 
-export const HistoryFilterTabs: React.FC<HistoryFilterTabsProps> = ({
-  filter,
-  onFilterChange,
-  jobs,
-}) => {
+export const HistoryFilterTabs: React.FC<HistoryFilterTabsProps> = (props) => {
+  const history = useHistoryContext();
+
+  const filter = props.filter ?? history.filter;
+  const onFilterChange = props.onFilterChange ?? history.setFilter;
+  const jobs = props.jobs ?? history.jobs;
+
   if (jobs.length === 0) return null;
 
   const processingCount = jobs.filter((j) => {

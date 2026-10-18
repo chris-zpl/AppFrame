@@ -3,35 +3,38 @@ import { Card } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import { formatStudioTime as formatTime } from '../utils';
 
-interface StudioTimelineProps {
-  trimIn: number;
-  trimOut: number;
-  currentTime: number;
-  totalDuration: number;
-  waveformPeaks: number[];
-  isPreparingPreview: boolean;
-  previewError: string | null;
-  timelineRef: React.RefObject<HTMLDivElement | null>;
-  handleTimelineClick: (e: React.MouseEvent<HTMLDivElement>) => void;
-  handleTimelineMouseDown: (e: React.MouseEvent<HTMLDivElement>, type: 'in' | 'out' | 'playhead') => void;
-  setTrimIn: React.Dispatch<React.SetStateAction<number>>;
-  setTrimOut: React.Dispatch<React.SetStateAction<number>>;
+import { useStudioContext } from '../context';
+
+export interface StudioTimelineProps {
+  trimIn?: number;
+  trimOut?: number;
+  currentTime?: number;
+  totalDuration?: number;
+  waveformPeaks?: number[];
+  isPreparingPreview?: boolean;
+  previewError?: string | null;
+  timelineRef?: React.RefObject<HTMLDivElement | null>;
+  handleTimelineClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  handleTimelineMouseDown?: (e: React.MouseEvent<HTMLDivElement>, type: 'in' | 'out' | 'playhead') => void;
+  setTrimIn?: React.Dispatch<React.SetStateAction<number>>;
+  setTrimOut?: React.Dispatch<React.SetStateAction<number>>;
 }
 
-export const StudioTimeline: React.FC<StudioTimelineProps> = ({
-  trimIn,
-  trimOut,
-  currentTime,
-  totalDuration,
-  waveformPeaks,
-  isPreparingPreview,
-  previewError,
-  timelineRef,
-  handleTimelineClick,
-  handleTimelineMouseDown,
-  setTrimIn,
-  setTrimOut,
-}) => {
+export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
+  const studio = useStudioContext();
+
+  const trimIn = props.trimIn ?? studio.trimIn;
+  const trimOut = props.trimOut ?? studio.trimOut;
+  const currentTime = props.currentTime ?? studio.currentTime;
+  const totalDuration = props.totalDuration ?? studio.totalDuration;
+  const waveformPeaks = props.waveformPeaks ?? studio.waveformPeaks;
+  const isPreparingPreview = props.isPreparingPreview ?? studio.isPreparingPreview;
+  const previewError = props.previewError ?? studio.previewError;
+  const timelineRef = props.timelineRef ?? studio.timelineRef;
+  const handleTimelineClick = props.handleTimelineClick ?? studio.handleTimelineClick;
+  const handleTimelineMouseDown = props.handleTimelineMouseDown ?? studio.handleTimelineMouseDown;
+  const setTrimIn = props.setTrimIn ?? studio.setTrimIn;
+  const setTrimOut = props.setTrimOut ?? studio.setTrimOut;
   return (
     <Card className="bg-surface-container-low border border-surface-container-high/90 p-4 flex flex-col gap-3 shadow-lg">
       <div className="flex items-center justify-between">

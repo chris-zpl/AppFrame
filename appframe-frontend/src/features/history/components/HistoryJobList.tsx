@@ -3,27 +3,30 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { HistoryJobCard } from './HistoryJobCard';
 import type { VideoJobItem } from '../interfaces';
 
+import { useHistoryContext } from '../context';
+
 export interface HistoryJobListProps {
-  jobs: VideoJobItem[];
-  isLoading: boolean;
-  deletingJobId: string | null;
-  onDownload: (job: VideoJobItem) => void;
-  onViewError: (job: VideoJobItem) => void;
-  onDelete: (job: VideoJobItem) => void;
-  onNavigateVarredura: () => void;
-  onNavigateStudio: () => void;
+  jobs?: VideoJobItem[];
+  isLoading?: boolean;
+  deletingJobId?: string | null;
+  onDownload?: (job: VideoJobItem) => void;
+  onViewError?: (job: VideoJobItem) => void;
+  onDelete?: (job: VideoJobItem) => void;
+  onNavigateVarredura?: () => void;
+  onNavigateStudio?: () => void;
 }
 
-export const HistoryJobList: React.FC<HistoryJobListProps> = ({
-  jobs,
-  isLoading,
-  deletingJobId,
-  onDownload,
-  onViewError,
-  onDelete,
-  onNavigateVarredura,
-  onNavigateStudio,
-}) => {
+export const HistoryJobList: React.FC<HistoryJobListProps> = (props) => {
+  const history = useHistoryContext();
+
+  const jobs = props.jobs ?? history.filteredJobs;
+  const isLoading = props.isLoading ?? history.isLoading;
+  const deletingJobId = props.deletingJobId !== undefined ? props.deletingJobId : history.deletingJobId;
+  const onDownload = props.onDownload ?? history.handleDownloadVideo;
+  const onViewError = props.onViewError ?? history.setErrorDrawerJob;
+  const onDelete = props.onDelete ?? history.setJobToDelete;
+  const onNavigateVarredura = props.onNavigateVarredura ?? (() => {});
+  const onNavigateStudio = props.onNavigateStudio ?? (() => {});
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">

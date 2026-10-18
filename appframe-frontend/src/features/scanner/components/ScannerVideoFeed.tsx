@@ -6,39 +6,36 @@ import { ScannerPagination } from './ScannerPagination';
 import { ScannerVideoSkeleton } from './ScannerVideoSkeleton';
 import type { ScrapedVideoCardData, ChannelMeta } from '../interfaces';
 
+import { useScannerContext } from '../context';
+
 export interface ScannerVideoFeedProps {
-  isScanning: boolean;
-  hasScanned: boolean;
-  videos: ScrapedVideoCardData[];
-  filteredVideos: ScrapedVideoCardData[];
-  paginatedVideos: ScrapedVideoCardData[];
-  channelMeta: ChannelMeta | null;
-  selectedIds: Set<string>;
-  safeCurrentPage: number;
-  totalPages: number;
-  pageNumbers: (number | 'ellipsis-start' | 'ellipsis-end')[];
-  startItemIndex: number;
-  endItemIndex: number;
-  onToggleSelect: (id: string) => void;
-  onPageChange: (page: number) => void;
+  isScanning?: boolean;
+  hasScanned?: boolean;
+  videos?: ScrapedVideoCardData[];
+  filteredVideos?: ScrapedVideoCardData[];
+  paginatedVideos?: ScrapedVideoCardData[];
+  channelMeta?: ChannelMeta | null;
+  selectedIds?: Set<string>;
+  safeCurrentPage?: number;
+  totalPages?: number;
+  pageNumbers?: (number | 'ellipsis-start' | 'ellipsis-end')[];
+  startItemIndex?: number;
+  endItemIndex?: number;
+  onToggleSelect?: (id: string) => void;
+  onPageChange?: (page: number) => void;
 }
 
-export const ScannerVideoFeed: React.FC<ScannerVideoFeedProps> = ({
-  isScanning,
-  hasScanned,
-  videos,
-  filteredVideos,
-  paginatedVideos,
-  channelMeta,
-  selectedIds,
-  safeCurrentPage,
-  totalPages,
-  pageNumbers,
-  startItemIndex,
-  endItemIndex,
-  onToggleSelect,
-  onPageChange,
-}) => {
+export const ScannerVideoFeed: React.FC<ScannerVideoFeedProps> = (props) => {
+  const scanner = useScannerContext();
+
+  const isScanning = props.isScanning ?? scanner.isScanning;
+  const hasScanned = props.hasScanned ?? scanner.hasScanned;
+  const videos = props.videos ?? scanner.videos;
+  const paginatedVideos = props.paginatedVideos ?? scanner.paginatedVideos;
+  const channelMeta = props.channelMeta !== undefined ? props.channelMeta : scanner.channelMeta;
+  const selectedIds = props.selectedIds ?? scanner.selectedIds;
+  const onToggleSelect = props.onToggleSelect ?? scanner.handleToggleSelect;
+
   return (
     <section className="relative min-h-[400px]">
       {/* Skeleton de Carregamento */}
@@ -68,15 +65,7 @@ export const ScannerVideoFeed: React.FC<ScannerVideoFeedProps> = ({
           </div>
 
           {/* Paginação */}
-          <ScannerPagination
-            safeCurrentPage={safeCurrentPage}
-            totalPages={totalPages}
-            pageNumbers={pageNumbers}
-            startItemIndex={startItemIndex}
-            endItemIndex={endItemIndex}
-            totalFilteredCount={filteredVideos.length}
-            onPageChange={onPageChange}
-          />
+          <ScannerPagination />
         </div>
       )}
 

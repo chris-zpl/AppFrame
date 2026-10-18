@@ -2,19 +2,27 @@ import React from 'react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 
+import { useWatermarksContext } from '../context';
+
 export interface WatermarkDeleteModalProps {
-  isOpen: boolean;
-  isDeleting: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
+  isOpen?: boolean;
+  isDeleting?: boolean;
+  onClose?: () => void;
+  onConfirm?: () => void;
 }
 
-export const WatermarkDeleteModal: React.FC<WatermarkDeleteModalProps> = ({
-  isOpen,
-  isDeleting,
-  onClose,
-  onConfirm,
-}) => {
+export const WatermarkDeleteModal: React.FC<WatermarkDeleteModalProps> = (props) => {
+  const watermarksContext = useWatermarksContext();
+
+  const isOpen = props.isOpen !== undefined ? props.isOpen : Boolean(watermarksContext.deleteConfirmId);
+  const isDeleting = props.isDeleting ?? watermarksContext.isDeleting;
+  const onClose = props.onClose ?? (() => watermarksContext.setDeleteConfirmId(null));
+  const onConfirm = props.onConfirm ?? (() => {
+    if (watermarksContext.deleteConfirmId) {
+      watermarksContext.deleteWatermark(watermarksContext.deleteConfirmId);
+    }
+  });
+
   if (!isOpen) return null;
 
   return (

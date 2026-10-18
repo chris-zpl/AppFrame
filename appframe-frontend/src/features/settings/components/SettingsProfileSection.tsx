@@ -1,35 +1,40 @@
 import React from 'react';
 import { Card, Input, Button } from '../../../components/ui';
 
-interface SettingsProfileSectionProps {
-  name: string;
-  setName: (val: string) => void;
-  email: string;
-  setEmail: (val: string) => void;
-  isSavingProfile: boolean;
-  profileSaved: boolean;
-  isGoogleLinked: boolean;
+import { useSettingsContext } from '../context';
+import { useAuth } from '../../../contexts/AuthContext';
+
+export interface SettingsProfileSectionProps {
+  name?: string;
+  setName?: (val: string) => void;
+  email?: string;
+  setEmail?: (val: string) => void;
+  isSavingProfile?: boolean;
+  profileSaved?: boolean;
+  isGoogleLinked?: boolean;
   googleEmail?: string | null;
-  isUnlinkingGoogle: boolean;
-  isLinkingGoogle: boolean;
-  onSaveProfile: (e: React.FormEvent) => void;
-  onGoogleProviderAction: () => void;
+  isUnlinkingGoogle?: boolean;
+  isLinkingGoogle?: boolean;
+  onSaveProfile?: (e: React.FormEvent) => void;
+  onGoogleProviderAction?: () => void;
 }
 
-export const SettingsProfileSection: React.FC<SettingsProfileSectionProps> = ({
-  name,
-  setName,
-  email,
-  setEmail,
-  isSavingProfile,
-  profileSaved,
-  isGoogleLinked,
-  googleEmail,
-  isUnlinkingGoogle,
-  isLinkingGoogle,
-  onSaveProfile,
-  onGoogleProviderAction,
-}) => {
+export const SettingsProfileSection: React.FC<SettingsProfileSectionProps> = (props) => {
+  const settings = useSettingsContext();
+  const { user } = useAuth();
+
+  const name = props.name ?? settings.name;
+  const setName = props.setName ?? settings.setName;
+  const email = props.email ?? settings.email;
+  const setEmail = props.setEmail ?? settings.setEmail;
+  const isSavingProfile = props.isSavingProfile ?? settings.isSavingProfile;
+  const profileSaved = props.profileSaved ?? settings.profileSaved;
+  const isGoogleLinked = props.isGoogleLinked ?? settings.isGoogleLinked;
+  const googleEmail = props.googleEmail ?? (user?.google_id ? user?.email : null);
+  const isUnlinkingGoogle = props.isUnlinkingGoogle ?? settings.isUnlinkingGoogle;
+  const isLinkingGoogle = props.isLinkingGoogle ?? settings.isLinkingGoogle;
+  const onSaveProfile = props.onSaveProfile ?? settings.handleSaveProfile;
+  const onGoogleProviderAction = props.onGoogleProviderAction ?? (() => settings.handleGoogleProviderAction(isGoogleLinked));
   return (
     <div className="flex flex-col gap-space-md animate-in fade-in duration-200">
       <Card className="p-6 bg-surface-container border border-surface-container-high shadow-lg flex flex-col gap-6">

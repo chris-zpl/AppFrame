@@ -3,21 +3,24 @@ import { Card, Button } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import type { UserSessionItem } from '../interfaces';
 
-interface SettingsSessionsSectionProps {
-  sessions: UserSessionItem[];
-  isLoadingSessions: boolean;
-  revokingSessionId: string | null;
-  onOpenRevokeAllModal: () => void;
-  onRevokeSession: (sessionId: string) => void;
+import { useSettingsContext } from '../context';
+
+export interface SettingsSessionsSectionProps {
+  sessions?: UserSessionItem[];
+  isLoadingSessions?: boolean;
+  revokingSessionId?: string | null;
+  onOpenRevokeAllModal?: () => void;
+  onRevokeSession?: (sessionId: string) => void;
 }
 
-export const SettingsSessionsSection: React.FC<SettingsSessionsSectionProps> = ({
-  sessions,
-  isLoadingSessions,
-  revokingSessionId,
-  onOpenRevokeAllModal,
-  onRevokeSession,
-}) => {
+export const SettingsSessionsSection: React.FC<SettingsSessionsSectionProps> = (props) => {
+  const settings = useSettingsContext();
+
+  const sessions = props.sessions ?? settings.sessions;
+  const isLoadingSessions = props.isLoadingSessions ?? settings.isLoadingSessions;
+  const revokingSessionId = props.revokingSessionId !== undefined ? props.revokingSessionId : settings.revokingSessionId;
+  const onOpenRevokeAllModal = props.onOpenRevokeAllModal ?? (() => settings.setRevokeAllModal(true));
+  const onRevokeSession = props.onRevokeSession ?? settings.handleRevokeSession;
   return (
     <div className="flex flex-col gap-space-md animate-in fade-in duration-200">
       <Card className="p-6 bg-surface-container border border-surface-container-high shadow-lg flex flex-col gap-6">

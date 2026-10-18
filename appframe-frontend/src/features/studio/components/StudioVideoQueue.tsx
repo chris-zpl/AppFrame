@@ -3,23 +3,27 @@ import { Card } from '../../../components/ui/Card';
 import { cn } from '../../../lib/utils';
 import type { StudioVideoQueueItem } from '../../history';
 
-interface StudioVideoQueueProps {
-  videoQueue: StudioVideoQueueItem[];
-  activeQueueIndex: number;
-  completedVideoIds: string[];
-  isGenerating: boolean;
-  isPreparingPreview: boolean;
-  onSelectVideo: (index: number) => void;
+import { useStudioContext } from '../context';
+
+export interface StudioVideoQueueProps {
+  videoQueue?: StudioVideoQueueItem[];
+  activeQueueIndex?: number;
+  completedVideoIds?: string[];
+  isGenerating?: boolean;
+  isPreparingPreview?: boolean;
+  onSelectVideo?: (index: number) => void;
 }
 
-export const StudioVideoQueue: React.FC<StudioVideoQueueProps> = ({
-  videoQueue,
-  activeQueueIndex,
-  completedVideoIds,
-  isGenerating,
-  isPreparingPreview,
-  onSelectVideo,
-}) => {
+export const StudioVideoQueue: React.FC<StudioVideoQueueProps> = (props) => {
+  const studio = useStudioContext();
+
+  const videoQueue = props.videoQueue ?? studio.videoQueue;
+  const activeQueueIndex = props.activeQueueIndex ?? studio.activeQueueIndex;
+  const completedVideoIds = props.completedVideoIds ?? studio.completedVideoIds;
+  const isGenerating = props.isGenerating ?? studio.isGenerating;
+  const isPreparingPreview = props.isPreparingPreview ?? studio.isPreparingPreview;
+  const onSelectVideo = props.onSelectVideo ?? studio.setActiveQueueIndex;
+
   if (videoQueue.length <= 1) return null;
 
   return (

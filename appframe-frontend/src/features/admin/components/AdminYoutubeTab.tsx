@@ -1,29 +1,54 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, Badge, Button } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import type { YouTubeCookiesStatus } from '../interfaces';
 
-interface AdminYoutubeTabProps {
+export interface AdminYoutubeTabProps {
   ytStatus: YouTubeCookiesStatus | undefined;
-  cookiesInput: string;
-  setCookiesInput: (val: string) => void;
+  cookiesInput?: string;
+  setCookiesInput?: (val: string) => void;
   isSavingCookies: boolean;
   isDeletingCookies: boolean;
-  onSaveCookies: (e: React.FormEvent) => void;
+  onSaveCookies: ((e: React.FormEvent) => void) | ((cookies: string) => void | Promise<any>);
   onDeleteCookies: () => void;
-  onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onFileUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export const AdminYoutubeTab: React.FC<AdminYoutubeTabProps> = ({
   ytStatus,
-  cookiesInput,
-  setCookiesInput,
+  cookiesInput: controlledCookies,
+  setCookiesInput: controlledSetCookies,
   isSavingCookies,
   isDeletingCookies,
   onSaveCookies,
   onDeleteCookies,
-  onFileUpload,
+  onFileUpload: controlledFileUpload,
 }) => {
+  const [internalCookies, setInternalCookies] = useState('');
+
+  const cookiesInput = controlledCookies !== undefined ? controlledCookies : internalCookies;
+  const setCookiesInput = controlledSetCookies ?? setInternalCookies;
+
+  const handleFileUpload = controlledFileUpload ?? ((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) setCookiesInput(content);
+    };
+    reader.readAsText(file);
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (controlledCookies !== undefined) {
+      (onSaveCookies as (e: React.FormEvent) => void)(e);
+    } else {
+      await (onSaveCookies as (c: string) => void | Promise<any>)(cookiesInput);
+      setInternalCookies('');
+    }
+  };
   return (
     <div className="flex flex-col gap-6 max-w-4xl">
       {/* Status Atual */}
@@ -83,7 +108,7 @@ export const AdminYoutubeTab: React.FC<AdminYoutubeTabProps> = ({
           </p>
         </div>
 
-        <form onSubmit={onSaveCookies} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-container border border-surface-container-highest">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-[20px] text-primary">
@@ -100,7 +125,7 @@ export const AdminYoutubeTab: React.FC<AdminYoutubeTabProps> = ({
               <input
                 type="file"
                 accept=".txt"
-                onChange={onFileUpload}
+                onChange={handleFileUpload}
                 className="hidden"
               />
             </label>

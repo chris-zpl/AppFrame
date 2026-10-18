@@ -3,37 +3,40 @@ import { Badge, Button } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import type { AspectRatio } from '../interfaces';
 
-interface StudioHeaderProps {
-  studioProjectTitle: string;
-  aspectRatio: AspectRatio;
-  setAspectRatio: (ratio: AspectRatio) => void;
-  videoQueueLength: number;
-  activeQueueIndex: number;
-  hasCurrentVideo: boolean;
-  isPreparingPreview: boolean;
-  isGenerating: boolean;
-  renderProgress: number;
-  onNavigateBack: () => void;
-  onResetStudio: () => void;
-  onOpenDeleteModal: () => void;
-  onGenerateVideo: () => void;
+import { useStudioContext } from '../context';
+
+export interface StudioHeaderProps {
+  studioProjectTitle?: string;
+  aspectRatio?: AspectRatio;
+  setAspectRatio?: (ratio: AspectRatio) => void;
+  videoQueueLength?: number;
+  activeQueueIndex?: number;
+  hasCurrentVideo?: boolean;
+  isPreparingPreview?: boolean;
+  isGenerating?: boolean;
+  renderProgress?: number;
+  onNavigateBack?: () => void;
+  onResetStudio?: () => void;
+  onOpenDeleteModal?: () => void;
+  onGenerateVideo?: () => void;
 }
 
-export const StudioHeader: React.FC<StudioHeaderProps> = ({
-  studioProjectTitle,
-  aspectRatio,
-  setAspectRatio,
-  videoQueueLength,
-  activeQueueIndex,
-  hasCurrentVideo,
-  isPreparingPreview,
-  isGenerating,
-  renderProgress,
-  onNavigateBack,
-  onResetStudio,
-  onOpenDeleteModal,
-  onGenerateVideo,
-}) => {
+export const StudioHeader: React.FC<StudioHeaderProps> = (props) => {
+  const studio = useStudioContext();
+
+  const studioProjectTitle = props.studioProjectTitle ?? studio.studioProjectTitle;
+  const aspectRatio = props.aspectRatio ?? studio.aspectRatio;
+  const setAspectRatio = props.setAspectRatio ?? studio.setAspectRatio;
+  const videoQueueLength = props.videoQueueLength ?? studio.videoQueue.length;
+  const activeQueueIndex = props.activeQueueIndex ?? studio.activeQueueIndex;
+  const hasCurrentVideo = props.hasCurrentVideo ?? Boolean(studio.currentVideo);
+  const isPreparingPreview = props.isPreparingPreview ?? studio.isPreparingPreview;
+  const isGenerating = props.isGenerating ?? studio.isGenerating;
+  const renderProgress = props.renderProgress ?? studio.renderProgress;
+  const onNavigateBack = props.onNavigateBack ?? (() => studio.navigate('varredura'));
+  const onResetStudio = props.onResetStudio ?? studio.handleResetStudio;
+  const onOpenDeleteModal = props.onOpenDeleteModal ?? (() => studio.setIsDeleteStudioModalOpen(true));
+  const onGenerateVideo = props.onGenerateVideo ?? studio.handleGenerateVideo;
   return (
     <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-space-md p-3.5 rounded-2xl bg-surface-container-low border border-surface-container-high/80 shadow-sm">
       <div className="flex items-center gap-3">

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, Button, Input } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
 import type { AdminAuditLog, AdminUser } from "../interfaces";
@@ -6,20 +6,20 @@ import { getAuditEventBadge, parseDevice } from "../constants";
 import { AdminAuditMetadata } from "./AdminAuditMetadata";
 import { AdminPaginationControls } from "./AdminPaginationControls";
 
-interface AdminAuditLogsTabProps {
+export interface AdminAuditLogsTabProps {
   auditLogs: AdminAuditLog[];
   users: AdminUser[];
   isLoadingAudit: boolean;
   isRefetchingAudit: boolean;
   onRefetchAudit: () => void;
-  auditSearch: string;
-  setAuditSearch: (val: string) => void;
-  auditActionFilter: string;
-  setAuditActionFilter: (val: string) => void;
-  auditPage: number;
-  setAuditPage: React.Dispatch<React.SetStateAction<number>>;
-  auditPageSize: number;
-  setAuditPageSize: (size: number) => void;
+  auditSearch?: string;
+  setAuditSearch?: (val: string) => void;
+  auditActionFilter?: string;
+  setAuditActionFilter?: (val: string) => void;
+  auditPage?: number;
+  setAuditPage?: React.Dispatch<React.SetStateAction<number>>;
+  auditPageSize?: number;
+  setAuditPageSize?: (size: number) => void;
 }
 
 export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
@@ -28,15 +28,34 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
   isLoadingAudit,
   isRefetchingAudit,
   onRefetchAudit,
-  auditSearch,
-  setAuditSearch,
-  auditActionFilter,
-  setAuditActionFilter,
-  auditPage,
-  setAuditPage,
-  auditPageSize,
-  setAuditPageSize,
+  auditSearch: controlledSearch,
+  setAuditSearch: controlledSetSearch,
+  auditActionFilter: controlledFilter,
+  setAuditActionFilter: controlledSetFilter,
+  auditPage: controlledPage,
+  setAuditPage: controlledSetPage,
+  auditPageSize: controlledSize,
+  setAuditPageSize: controlledSetSize,
 }) => {
+  const [internalSearch, setInternalSearch] = useState('');
+  const [internalFilter, setInternalFilter] = useState('ALL');
+  const [internalPage, setInternalPage] = useState(1);
+  const [internalSize, setInternalSize] = useState(10);
+
+  const auditSearch = controlledSearch !== undefined ? controlledSearch : internalSearch;
+  const setAuditSearch = controlledSetSearch ?? setInternalSearch;
+  const auditActionFilter = controlledFilter !== undefined ? controlledFilter : internalFilter;
+  const setAuditActionFilter = controlledSetFilter ?? setInternalFilter;
+  const auditPage = controlledPage !== undefined ? controlledPage : internalPage;
+  const setAuditPage = controlledSetPage ?? setInternalPage;
+  const auditPageSize = controlledSize !== undefined ? controlledSize : internalSize;
+  const setAuditPageSize = controlledSetSize ?? setInternalSize;
+
+  useEffect(() => {
+    if (controlledPage === undefined) {
+      setInternalPage(1);
+    }
+  }, [auditSearch, auditActionFilter, auditPageSize, controlledPage]);
   // Estatísticas de Auditoria
   const auditPasswordCount = auditLogs.filter((l) =>
     l.action.includes("PASSWORD"),

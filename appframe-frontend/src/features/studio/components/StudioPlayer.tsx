@@ -5,57 +5,61 @@ import { toast } from 'sonner';
 import type { AspectRatio } from '../interfaces';
 import { formatStudioTime as formatTime } from '../utils';
 
-interface StudioPlayerProps {
-  currentVideo: { id?: string; title?: string; url?: string } | null;
-  aspectRatio: AspectRatio;
-  previewStreamUrl: string | null;
-  isPreparingPreview: boolean;
-  previewError: string | null;
-  isAuthError: boolean;
-  videoRef: React.RefObject<HTMLVideoElement | null>;
-  canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  isPlaying: boolean;
-  isMuted: boolean;
-  setIsMuted: React.Dispatch<React.SetStateAction<boolean>>;
-  currentTime: number;
-  totalDuration: number;
-  trimIn: number;
-  trimOut: number;
-  setTotalDuration: React.Dispatch<React.SetStateAction<number>>;
-  setTrimOut: React.Dispatch<React.SetStateAction<number>>;
-  setCurrentTime: React.Dispatch<React.SetStateAction<number>>;
-  setIsPlaying: React.Dispatch<React.SetStateAction<boolean>>;
-  handleTogglePlay: () => void;
-  seekVideoTo: (time: number) => void;
-  loadVideoPreview: (videoItem: any) => void;
-  onNavigateToVarredura: () => void;
+import type { StudioVideoQueueItem } from '../../history';
+import { useStudioContext } from '../context';
+
+export interface StudioPlayerProps {
+  currentVideo?: StudioVideoQueueItem | null;
+  aspectRatio?: AspectRatio;
+  previewStreamUrl?: string | null;
+  isPreparingPreview?: boolean;
+  previewError?: string | null;
+  isAuthError?: boolean;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
+  canvasRef?: React.RefObject<HTMLCanvasElement | null>;
+  isPlaying?: boolean;
+  isMuted?: boolean;
+  setIsMuted?: React.Dispatch<React.SetStateAction<boolean>>;
+  currentTime?: number;
+  totalDuration?: number;
+  trimIn?: number;
+  trimOut?: number;
+  setTotalDuration?: React.Dispatch<React.SetStateAction<number>>;
+  setTrimOut?: React.Dispatch<React.SetStateAction<number>>;
+  setCurrentTime?: React.Dispatch<React.SetStateAction<number>>;
+  setIsPlaying?: React.Dispatch<React.SetStateAction<boolean>>;
+  handleTogglePlay?: () => void;
+  seekVideoTo?: (time: number) => void;
+  loadVideoPreview?: (videoItem: any) => void;
+  onNavigateToVarredura?: () => void;
 }
 
-export const StudioPlayer: React.FC<StudioPlayerProps> = ({
-  currentVideo,
-  aspectRatio,
-  previewStreamUrl,
-  isPreparingPreview,
-  previewError,
-  isAuthError,
-  videoRef,
-  canvasRef,
-  isPlaying,
-  isMuted,
-  setIsMuted,
-  currentTime,
-  totalDuration,
-  trimIn,
-  trimOut,
-  setTotalDuration,
-  setTrimOut,
-  setCurrentTime,
-  setIsPlaying,
-  handleTogglePlay,
-  seekVideoTo,
-  loadVideoPreview,
-  onNavigateToVarredura,
-}) => {
+export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
+  const studio = useStudioContext();
+
+  const currentVideo = props.currentVideo ?? studio.currentVideo;
+  const aspectRatio = props.aspectRatio ?? studio.aspectRatio;
+  const previewStreamUrl = props.previewStreamUrl ?? studio.previewStreamUrl;
+  const isPreparingPreview = props.isPreparingPreview ?? studio.isPreparingPreview;
+  const previewError = props.previewError ?? studio.previewError;
+  const isAuthError = props.isAuthError ?? studio.isAuthError;
+  const videoRef = props.videoRef ?? studio.videoRef;
+  const canvasRef = props.canvasRef ?? studio.canvasRef;
+  const isPlaying = props.isPlaying ?? studio.isPlaying;
+  const isMuted = props.isMuted ?? studio.isMuted;
+  const setIsMuted = props.setIsMuted ?? studio.setIsMuted;
+  const currentTime = props.currentTime ?? studio.currentTime;
+  const totalDuration = props.totalDuration ?? studio.totalDuration;
+  const trimIn = props.trimIn ?? studio.trimIn;
+  const trimOut = props.trimOut ?? studio.trimOut;
+  const setTotalDuration = props.setTotalDuration ?? studio.setTotalDuration;
+  const setTrimOut = props.setTrimOut ?? studio.setTrimOut;
+  const setCurrentTime = props.setCurrentTime ?? studio.setCurrentTime;
+  const setIsPlaying = props.setIsPlaying ?? studio.setIsPlaying;
+  const handleTogglePlay = props.handleTogglePlay ?? studio.handleTogglePlay;
+  const seekVideoTo = props.seekVideoTo ?? studio.seekVideoTo;
+  const loadVideoPreview = props.loadVideoPreview ?? studio.loadVideoPreview;
+  const onNavigateToVarredura = props.onNavigateToVarredura ?? (() => studio.navigate('varredura'));
   return (
     <Card className="relative overflow-hidden bg-surface-container-lowest border border-surface-container-high/90 p-4 flex flex-col items-center justify-center min-h-[460px] shadow-2xl">
       {/* Halos Luminosos Sutis no Player */}
@@ -125,7 +129,9 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = ({
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => loadVideoPreview(currentVideo)}
+                onClick={() => {
+                  if (currentVideo) loadVideoPreview(currentVideo);
+                }}
                 leftIcon={
                   <span className="material-symbols-outlined text-[16px]">
                     refresh

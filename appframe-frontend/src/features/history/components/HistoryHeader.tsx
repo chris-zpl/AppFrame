@@ -2,15 +2,18 @@ import React from 'react';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 
+import { useHistoryContext } from '../context';
+
 export interface HistoryHeaderProps {
-  onRefresh: () => void;
-  onNewCut: () => void;
+  onRefresh?: () => void;
+  onNewCut?: () => void;
 }
 
-export const HistoryHeader: React.FC<HistoryHeaderProps> = ({
-  onRefresh,
-  onNewCut,
-}) => {
+export const HistoryHeader: React.FC<HistoryHeaderProps> = (props) => {
+  const history = useHistoryContext();
+
+  const onRefresh = props.onRefresh ?? (() => history.refetch());
+  const onNewCut = props.onNewCut ?? (() => {});
   return (
     <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-space-lg">
       <div className="flex flex-col">

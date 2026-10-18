@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { AppShell } from '../components/layout/AppShell';
 import {
   type AdminTab,
   type AdminSession,
-  type SmtpConfig,
-  type SaveLegalSettingsDto,
   AdminHeader,
   AdminNavigationTabs,
   AdminUsersTab,
@@ -15,7 +13,8 @@ import {
   AdminSmtpTab,
   AdminAuditLogsTab,
   AdminLegalTab,
-  AdminModals,
+  RevokeSessionModal,
+  ResetLegalModal,
   useAdminData,
   useAdminGuard,
   useAdminMutations,
@@ -80,122 +79,14 @@ export const AdminPage: React.FC = () => {
     isResettingLegal,
   } = useAdminMutations({ currentUser: user });
 
-  // ================= ESTADOS DO TAB LEGAL =================
-  const [legalForm, setLegalForm] = useState<SaveLegalSettingsDto>({
-    companyName: '',
-    contactEmail: '',
-    dpoEmail: '',
-    websiteUrl: '',
-    forumCity: '',
-    retentionPeriod: '',
-    termsOfService: '',
-    privacyPolicy: '',
-  });
-  const [activeLegalDoc, setActiveLegalDoc] = useState<'terms' | 'privacy'>('terms');
-  const [activeTermsMode, setActiveTermsMode] = useState<'edit' | 'preview'>('edit');
-  const [activePrivacyMode, setActivePrivacyMode] = useState<'edit' | 'preview'>('edit');
-  const [showResetLegalModal, setShowResetLegalModal] = useState(false);
-
-  useEffect(() => {
-    if (legalSettings) {
-      setLegalForm({
-        companyName: legalSettings.variables?.companyName || '',
-        contactEmail: legalSettings.variables?.contactEmail || '',
-        dpoEmail: legalSettings.variables?.dpoEmail || '',
-        websiteUrl: legalSettings.variables?.websiteUrl || '',
-        forumCity: legalSettings.variables?.forumCity || '',
-        retentionPeriod: legalSettings.variables?.retentionPeriod || '',
-        termsOfService: legalSettings.terms?.raw || '',
-        privacyPolicy: legalSettings.privacy?.raw || '',
-      });
-    }
-  }, [legalSettings]);
-
-  // ================= ESTADOS DO TAB AUDITORIA =================
-  const [auditSearch, setAuditSearch] = useState('');
-  const [auditActionFilter, setAuditActionFilter] = useState('ALL');
-  const [auditPage, setAuditPage] = useState(1);
-  const [auditPageSize, setAuditPageSize] = useState<number>(10);
-
-  // Reseta para a primeira página ao alterar busca, filtro ou tamanho da página
-  useEffect(() => {
-    setAuditPage(1);
-  }, [auditSearch, auditActionFilter, auditPageSize]);
-
-  // ================= ESTADOS DO TAB YOUTUBE =================
-  const [cookiesInput, setCookiesInput] = useState('');
-
-  // ================= ESTADOS DO TAB GEMINI =================
-  const [geminiKeyInput, setGeminiKeyInput] = useState('');
-  const [showGeminiKey, setShowGeminiKey] = useState(false);
-
-  // ================= ESTADOS DO TAB SMTP =================
-  const [smtpForm, setSmtpForm] = useState<SmtpConfig>({
-    host: '',
-    port: 587,
-    user: '',
-    password: '',
-    fromName: 'AppFrame',
-    fromEmail: '',
-    secure: false,
-  });
-  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
-  const [testEmailInput, setTestEmailInput] = useState('');
-
-  useEffect(() => {
-    if (smtpConfig) {
-      setSmtpForm({
-        host: smtpConfig.host || '',
-        port: smtpConfig.port || 587,
-        user: smtpConfig.user || '',
-        password: smtpConfig.password || '',
-        fromName: smtpConfig.fromName || 'AppFrame',
-        fromEmail: smtpConfig.fromEmail || '',
-        secure: Boolean(smtpConfig.secure),
-      });
-    }
-  }, [smtpConfig]);
-
   // ================= ESTADOS DE MODAIS =================
   const [sessionToRevoke, setSessionToRevoke] = useState<AdminSession | null>(null);
+  const [showResetLegalModal, setShowResetLegalModal] = useState(false);
 
   const handleConfirmRevokeSession = async () => {
     if (!sessionToRevoke) return;
     const ok = await handleRevokeSession(sessionToRevoke.id);
     if (ok) setSessionToRevoke(null);
-  };
-
-  const handleSaveCookiesSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const ok = await handleSaveYoutubeCookies(cookiesInput);
-    if (ok) setCookiesInput('');
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (content) setCookiesInput(content);
-    };
-    reader.readAsText(file);
-  };
-
-  const handleSaveGeminiKeySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const ok = await handleSaveGeminiKey(geminiKeyInput);
-    if (ok) setGeminiKeyInput('');
-  };
-
-  const handleSaveSmtpSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSaveSmtp(smtpForm);
-  };
-
-  const handleSaveLegalSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSaveLegal(legalForm);
   };
 
   const handleConfirmResetLegal = async () => {
@@ -244,13 +135,10 @@ export const AdminPage: React.FC = () => {
         {activeTab === 'youtube' && isSuperAdmin && (
           <AdminYoutubeTab
             ytStatus={ytStatus}
-            cookiesInput={cookiesInput}
-            setCookiesInput={setCookiesInput}
             isSavingCookies={isSavingCookies}
             isDeletingCookies={isDeletingCookies}
-            onSaveCookies={handleSaveCookiesSubmit}
+            onSaveCookies={handleSaveYoutubeCookies}
             onDeleteCookies={handleDeleteYoutubeCookies}
-            onFileUpload={handleFileUpload}
           />
         )}
 
@@ -258,15 +146,11 @@ export const AdminPage: React.FC = () => {
         {activeTab === 'gemini' && isSuperAdmin && (
           <AdminGeminiTab
             geminiStatus={geminiStatus}
-            geminiKeyInput={geminiKeyInput}
-            setGeminiKeyInput={setGeminiKeyInput}
-            showGeminiKey={showGeminiKey}
-            setShowGeminiKey={setShowGeminiKey}
             isSavingGemini={isSavingGemini}
             isTestingGemini={isTestingGemini}
             isDeletingGemini={isDeletingGemini}
-            onSaveGeminiKey={handleSaveGeminiKeySubmit}
-            onTestGemini={() => handleTestGemini(geminiKeyInput)}
+            onSaveGeminiKey={handleSaveGeminiKey}
+            onTestGemini={handleTestGemini}
             onDeleteGemini={handleDeleteGemini}
           />
         )}
@@ -274,17 +158,12 @@ export const AdminPage: React.FC = () => {
         {/* ================= ABA 4: SERVIDOR SMTP ================= */}
         {activeTab === 'smtp' && isSuperAdmin && (
           <AdminSmtpTab
-            smtpForm={smtpForm}
-            setSmtpForm={setSmtpForm}
-            showSmtpPassword={showSmtpPassword}
-            setShowSmtpPassword={setShowSmtpPassword}
+            initialConfig={smtpConfig}
             isSavingSmtp={isSavingSmtp}
-            testEmailInput={testEmailInput}
-            setTestEmailInput={setTestEmailInput}
             isTestingSmtp={isTestingSmtp}
             currentUserEmail={user?.email}
-            onSaveSmtp={handleSaveSmtpSubmit}
-            onTestSmtp={() => handleTestSmtp(testEmailInput)}
+            onSaveSmtp={handleSaveSmtp}
+            onTestSmtp={handleTestSmtp}
           />
         )}
 
@@ -296,46 +175,36 @@ export const AdminPage: React.FC = () => {
             isLoadingAudit={isLoadingAudit}
             isRefetchingAudit={isRefetchingAudit}
             onRefetchAudit={() => refetchAudit()}
-            auditSearch={auditSearch}
-            setAuditSearch={setAuditSearch}
-            auditActionFilter={auditActionFilter}
-            setAuditActionFilter={setAuditActionFilter}
-            auditPage={auditPage}
-            setAuditPage={setAuditPage}
-            auditPageSize={auditPageSize}
-            setAuditPageSize={setAuditPageSize}
           />
         )}
 
         {/* ================= ABA 6: TERMOS & PRIVACIDADE ================= */}
         {activeTab === 'legal' && isSuperAdmin && (
           <AdminLegalTab
-            legalForm={legalForm}
-            setLegalForm={setLegalForm}
-            activeLegalDoc={activeLegalDoc}
-            setActiveLegalDoc={setActiveLegalDoc}
-            activeTermsMode={activeTermsMode}
-            setActiveTermsMode={setActiveTermsMode}
-            activePrivacyMode={activePrivacyMode}
-            setActivePrivacyMode={setActivePrivacyMode}
+            initialSettings={legalSettings}
             isSavingLegal={isSavingLegal}
             isResettingLegal={isResettingLegal}
-            onSaveLegal={handleSaveLegalSubmit}
+            onSaveLegal={handleSaveLegal}
             onResetLegal={() => setShowResetLegalModal(true)}
           />
         )}
       </div>
 
-      {/* Modais de Confirmação (Revogação de Sessão e Reset Legal) */}
-      <AdminModals
-        sessionToRevoke={sessionToRevoke}
-        onCloseRevokeSession={() => setSessionToRevoke(null)}
-        onConfirmRevokeSession={handleConfirmRevokeSession}
-        isRevokingSession={isRevokingSession}
-        showResetLegalModal={showResetLegalModal}
-        onCloseResetLegalModal={() => setShowResetLegalModal(false)}
-        onConfirmResetLegal={handleConfirmResetLegal}
-        isResettingLegal={isResettingLegal}
+      {/* Modal de Confirmação para Revogar Sessão de Usuário */}
+      <RevokeSessionModal
+        isOpen={Boolean(sessionToRevoke)}
+        onClose={() => setSessionToRevoke(null)}
+        onConfirm={handleConfirmRevokeSession}
+        session={sessionToRevoke}
+        isLoading={isRevokingSession}
+      />
+
+      {/* Modal de Confirmação para Restaurar Documentos Legais Padrão */}
+      <ResetLegalModal
+        isOpen={showResetLegalModal}
+        onClose={() => setShowResetLegalModal(false)}
+        onConfirm={handleConfirmResetLegal}
+        isLoading={isResettingLegal}
       />
     </AppShell>
   );

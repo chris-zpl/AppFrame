@@ -1,19 +1,22 @@
 import React from 'react';
 import { Button } from '../../../components/ui';
 
-interface ScannerSearchBarProps {
-  channelUrl: string;
-  setChannelUrl: (val: string) => void;
-  isScanning: boolean;
-  onScan: (url: string) => void;
+import { useScannerContext } from '../context';
+
+export interface ScannerSearchBarProps {
+  channelUrl?: string;
+  setChannelUrl?: (val: string) => void;
+  isScanning?: boolean;
+  onScan?: (url: string) => void;
 }
 
-export const ScannerSearchBar: React.FC<ScannerSearchBarProps> = ({
-  channelUrl,
-  setChannelUrl,
-  isScanning,
-  onScan,
-}) => {
+export const ScannerSearchBar: React.FC<ScannerSearchBarProps> = (props) => {
+  const scanner = useScannerContext();
+
+  const channelUrl = props.channelUrl ?? scanner.channelUrl;
+  const setChannelUrl = props.setChannelUrl ?? scanner.setChannelUrl;
+  const isScanning = props.isScanning ?? scanner.isScanning;
+  const onScan = props.onScan ?? scanner.executeScan;
   return (
     <div className="relative w-full rounded-xl bg-white dark:bg-surface-container-low p-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-all focus-within:shadow-[0_0_0_2px_rgba(212,163,70,0.3)] border border-neutral-200 dark:border-surface-container-high">
       <div className="flex flex-col sm:flex-row items-center gap-2">

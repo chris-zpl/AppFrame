@@ -1,40 +1,90 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { marked } from 'marked';
 import { Card, Badge, Button, Input } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
-import type { SaveLegalSettingsDto } from '../interfaces';
+import type { SaveLegalSettingsDto, LegalDocumentsResponse } from '../interfaces';
 
-interface AdminLegalTabProps {
-  legalForm: SaveLegalSettingsDto;
-  setLegalForm: React.Dispatch<React.SetStateAction<SaveLegalSettingsDto>>;
-  activeLegalDoc: 'terms' | 'privacy';
-  setActiveLegalDoc: React.Dispatch<React.SetStateAction<'terms' | 'privacy'>>;
-  activeTermsMode: 'edit' | 'preview';
-  setActiveTermsMode: React.Dispatch<React.SetStateAction<'edit' | 'preview'>>;
-  activePrivacyMode: 'edit' | 'preview';
-  setActivePrivacyMode: React.Dispatch<React.SetStateAction<'edit' | 'preview'>>;
+export interface AdminLegalTabProps {
+  initialSettings?: LegalDocumentsResponse;
+  legalForm?: SaveLegalSettingsDto;
+  setLegalForm?: React.Dispatch<React.SetStateAction<SaveLegalSettingsDto>>;
+  activeLegalDoc?: 'terms' | 'privacy';
+  setActiveLegalDoc?: React.Dispatch<React.SetStateAction<'terms' | 'privacy'>>;
+  activeTermsMode?: 'edit' | 'preview';
+  setActiveTermsMode?: React.Dispatch<React.SetStateAction<'edit' | 'preview'>>;
+  activePrivacyMode?: 'edit' | 'preview';
+  setActivePrivacyMode?: React.Dispatch<React.SetStateAction<'edit' | 'preview'>>;
   isSavingLegal: boolean;
   isResettingLegal: boolean;
-  onSaveLegal: (e: React.FormEvent) => void;
+  onSaveLegal: ((e: React.FormEvent) => void) | ((data: SaveLegalSettingsDto) => void | Promise<any>);
   onResetLegal: () => void;
 }
 
 export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
-  legalForm,
-  setLegalForm,
-  activeLegalDoc,
-  setActiveLegalDoc,
-  activeTermsMode,
-  setActiveTermsMode,
-  activePrivacyMode,
-  setActivePrivacyMode,
+  initialSettings,
+  legalForm: controlledForm,
+  setLegalForm: controlledSetForm,
+  activeLegalDoc: controlledDoc,
+  setActiveLegalDoc: controlledSetDoc,
+  activeTermsMode: controlledTermsMode,
+  setActiveTermsMode: controlledSetTermsMode,
+  activePrivacyMode: controlledPrivacyMode,
+  setActivePrivacyMode: controlledSetPrivacyMode,
   isSavingLegal,
   isResettingLegal,
   onSaveLegal,
   onResetLegal,
 }) => {
+  const [internalForm, setInternalForm] = useState<SaveLegalSettingsDto>(() => ({
+    companyName: initialSettings?.variables?.companyName || '',
+    contactEmail: initialSettings?.variables?.contactEmail || '',
+    dpoEmail: initialSettings?.variables?.dpoEmail || '',
+    websiteUrl: initialSettings?.variables?.websiteUrl || '',
+    forumCity: initialSettings?.variables?.forumCity || '',
+    retentionPeriod: initialSettings?.variables?.retentionPeriod || '',
+    termsOfService: initialSettings?.terms?.raw || '',
+    privacyPolicy: initialSettings?.privacy?.raw || '',
+  }));
+
+  const [internalActiveDoc, setInternalActiveDoc] = useState<'terms' | 'privacy'>('terms');
+  const [internalTermsMode, setInternalTermsMode] = useState<'edit' | 'preview'>('edit');
+  const [internalPrivacyMode, setInternalPrivacyMode] = useState<'edit' | 'preview'>('edit');
+
+  useEffect(() => {
+    if (initialSettings) {
+      setInternalForm({
+        companyName: initialSettings.variables?.companyName || '',
+        contactEmail: initialSettings.variables?.contactEmail || '',
+        dpoEmail: initialSettings.variables?.dpoEmail || '',
+        websiteUrl: initialSettings.variables?.websiteUrl || '',
+        forumCity: initialSettings.variables?.forumCity || '',
+        retentionPeriod: initialSettings.variables?.retentionPeriod || '',
+        termsOfService: initialSettings.terms?.raw || '',
+        privacyPolicy: initialSettings.privacy?.raw || '',
+      });
+    }
+  }, [initialSettings]);
+
+  const legalForm = controlledForm !== undefined ? controlledForm : internalForm;
+  const setLegalForm = controlledSetForm ?? setInternalForm;
+  const activeLegalDoc = controlledDoc !== undefined ? controlledDoc : internalActiveDoc;
+  const setActiveLegalDoc = controlledSetDoc ?? setInternalActiveDoc;
+  const activeTermsMode = controlledTermsMode !== undefined ? controlledTermsMode : internalTermsMode;
+  const setActiveTermsMode = controlledSetTermsMode ?? setInternalTermsMode;
+  const activePrivacyMode = controlledPrivacyMode !== undefined ? controlledPrivacyMode : internalPrivacyMode;
+  const setActivePrivacyMode = controlledSetPrivacyMode ?? setInternalPrivacyMode;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (controlledForm !== undefined) {
+      (onSaveLegal as (e: React.FormEvent) => void)(e);
+    } else {
+      (onSaveLegal as (data: SaveLegalSettingsDto) => void | Promise<any>)(legalForm);
+    }
+  };
+
   return (
-    <form onSubmit={onSaveLegal} className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       {/* Header da Aba Legal */}
       <Card className="p-6 border-surface-container-highest bg-surface-container-lowest flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start gap-4">

@@ -2,15 +2,18 @@ import React from 'react';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 
+import { useWatermarksContext } from '../context';
+
 export interface WatermarkHeaderProps {
-  onUploadClick: () => void;
+  onUploadClick?: () => void;
   isUploading?: boolean;
 }
 
-export const WatermarkHeader: React.FC<WatermarkHeaderProps> = ({
-  onUploadClick,
-  isUploading = false,
-}) => {
+export const WatermarkHeader: React.FC<WatermarkHeaderProps> = (props) => {
+  const watermarksContext = useWatermarksContext();
+
+  const onUploadClick = props.onUploadClick ?? watermarksContext.openFileDialog;
+  const isUploading = props.isUploading ?? watermarksContext.isUploading;
   return (
     <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-space-lg">
       <div className="flex flex-col">

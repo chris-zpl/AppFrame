@@ -5,37 +5,40 @@ import { API_BASE_URL } from '../../../lib/api';
 import type { WatermarkPosition } from '../interfaces';
 import { MATRIX_POSITIONS } from '../constants';
 
-interface StudioWatermarkTabProps {
-  userWatermarks: Array<{
+import { useStudioContext } from '../context';
+
+export interface StudioWatermarkTabProps {
+  userWatermarks?: Array<{
     id: string;
     original_name: string;
     url?: string;
   }>;
-  isLoadingWatermarks: boolean;
-  selectedWatermarkId: string;
-  setSelectedWatermarkId: (id: string) => void;
-  watermarkPosition: WatermarkPosition;
-  setWatermarkPosition: (pos: WatermarkPosition) => void;
-  watermarkOpacity: number;
-  setWatermarkOpacity: (val: number) => void;
-  watermarkScale: number;
-  setWatermarkScale: (val: number) => void;
-  onNavigateToWatermarks: () => void;
+  isLoadingWatermarks?: boolean;
+  selectedWatermarkId?: string;
+  setSelectedWatermarkId?: (id: string) => void;
+  watermarkPosition?: WatermarkPosition;
+  setWatermarkPosition?: (pos: WatermarkPosition) => void;
+  watermarkOpacity?: number;
+  setWatermarkOpacity?: (val: number) => void;
+  watermarkScale?: number;
+  setWatermarkScale?: (val: number) => void;
+  onNavigateToWatermarks?: () => void;
 }
 
-export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = ({
-  userWatermarks,
-  isLoadingWatermarks,
-  selectedWatermarkId,
-  setSelectedWatermarkId,
-  watermarkPosition,
-  setWatermarkPosition,
-  watermarkOpacity,
-  setWatermarkOpacity,
-  watermarkScale,
-  setWatermarkScale,
-  onNavigateToWatermarks,
-}) => {
+export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => {
+  const studio = useStudioContext();
+
+  const userWatermarks = props.userWatermarks ?? studio.userWatermarks;
+  const isLoadingWatermarks = props.isLoadingWatermarks ?? studio.isLoadingWatermarks;
+  const selectedWatermarkId = props.selectedWatermarkId ?? studio.selectedWatermarkId;
+  const setSelectedWatermarkId = props.setSelectedWatermarkId ?? studio.setSelectedWatermarkId;
+  const watermarkPosition = props.watermarkPosition ?? studio.watermarkPosition;
+  const setWatermarkPosition = props.setWatermarkPosition ?? studio.setWatermarkPosition;
+  const watermarkOpacity = props.watermarkOpacity ?? studio.watermarkOpacity;
+  const setWatermarkOpacity = props.setWatermarkOpacity ?? studio.setWatermarkOpacity;
+  const watermarkScale = props.watermarkScale ?? studio.watermarkScale;
+  const setWatermarkScale = props.setWatermarkScale ?? studio.setWatermarkScale;
+  const onNavigateToWatermarks = props.onNavigateToWatermarks ?? (() => studio.navigate('marcas'));
   return (
     <div className="flex flex-col gap-4 animate-in fade-in duration-200">
       {/* Seletor de Logos Cadastrados na Conta */}

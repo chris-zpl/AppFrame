@@ -1,28 +1,28 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, Badge, Button, Input, VisibilityToggle } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
 import type { GeminiStatus } from "../interfaces";
 
-interface AdminGeminiTabProps {
+export interface AdminGeminiTabProps {
   geminiStatus: GeminiStatus | undefined;
-  geminiKeyInput: string;
-  setGeminiKeyInput: (val: string) => void;
-  showGeminiKey: boolean;
-  setShowGeminiKey: React.Dispatch<React.SetStateAction<boolean>>;
+  geminiKeyInput?: string;
+  setGeminiKeyInput?: (val: string) => void;
+  showGeminiKey?: boolean;
+  setShowGeminiKey?: React.Dispatch<React.SetStateAction<boolean>>;
   isSavingGemini: boolean;
   isTestingGemini: boolean;
   isDeletingGemini: boolean;
-  onSaveGeminiKey: (e: React.FormEvent) => void;
-  onTestGemini: () => void;
+  onSaveGeminiKey: ((e: React.FormEvent) => void) | ((key: string) => void | Promise<any>);
+  onTestGemini: ((key?: string) => void | Promise<any>) | (() => void);
   onDeleteGemini: () => void;
 }
 
 export const AdminGeminiTab: React.FC<AdminGeminiTabProps> = ({
   geminiStatus,
-  geminiKeyInput,
-  setGeminiKeyInput,
-  showGeminiKey,
-  setShowGeminiKey,
+  geminiKeyInput: controlledKey,
+  setGeminiKeyInput: controlledSetKey,
+  showGeminiKey: controlledShowKey,
+  setShowGeminiKey: controlledSetShowKey,
   isSavingGemini,
   isTestingGemini,
   isDeletingGemini,
@@ -30,6 +30,27 @@ export const AdminGeminiTab: React.FC<AdminGeminiTabProps> = ({
   onTestGemini,
   onDeleteGemini,
 }) => {
+  const [internalKey, setInternalKey] = useState('');
+  const [internalShowKey, setInternalShowKey] = useState(false);
+
+  const geminiKeyInput = controlledKey !== undefined ? controlledKey : internalKey;
+  const setGeminiKeyInput = controlledSetKey ?? setInternalKey;
+  const showGeminiKey = controlledShowKey !== undefined ? controlledShowKey : internalShowKey;
+  const setShowGeminiKey = controlledSetShowKey ?? setInternalShowKey;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (controlledKey !== undefined) {
+      (onSaveGeminiKey as (e: React.FormEvent) => void)(e);
+    } else {
+      await (onSaveGeminiKey as (k: string) => void | Promise<any>)(geminiKeyInput);
+      setInternalKey('');
+    }
+  };
+
+  const handleTest = () => {
+    (onTestGemini as any)(geminiKeyInput);
+  };
   return (
     <div className="flex flex-col gap-6 max-w-4xl">
       {/* Status Atual */}
@@ -84,7 +105,7 @@ export const AdminGeminiTab: React.FC<AdminGeminiTabProps> = ({
           </p>
         </div>
 
-        <form onSubmit={onSaveGeminiKey} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
             label="Chave de API do Gemini (AIzaSy...)"
             labelClassName="text-label-sm font-bold text-outline uppercase tracking-wider"
@@ -106,7 +127,7 @@ export const AdminGeminiTab: React.FC<AdminGeminiTabProps> = ({
               variant="outline"
               size="sm"
               className="order-2 sm:order-1"
-              onClick={onTestGemini}
+              onClick={handleTest}
               isLoading={isTestingGemini}
               leftIcon={
                 <span className="material-symbols-outlined text-[16px]">

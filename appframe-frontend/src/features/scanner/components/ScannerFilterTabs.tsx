@@ -1,25 +1,32 @@
 import React from 'react';
 import type { ScannerFilterType, ChannelMeta, ScrapedVideoCardData } from '../interfaces';
 
-interface ScannerFilterTabsProps {
-  filter: ScannerFilterType;
-  onFilterChange: (nextFilter: ScannerFilterType) => void;
-  videos: ScrapedVideoCardData[];
-  channelMeta: ChannelMeta | null;
-  selectedCount: number;
-  filteredCount: number;
-  onSelectAll: () => void;
+import { useScannerContext } from '../context';
+
+export interface ScannerFilterTabsProps {
+  filter?: ScannerFilterType;
+  onFilterChange?: (nextFilter: ScannerFilterType) => void;
+  videos?: ScrapedVideoCardData[];
+  channelMeta?: ChannelMeta | null;
+  selectedCount?: number;
+  filteredCount?: number;
+  onSelectAll?: () => void;
 }
 
-export const ScannerFilterTabs: React.FC<ScannerFilterTabsProps> = ({
-  filter,
-  onFilterChange,
-  videos,
-  channelMeta,
-  selectedCount,
-  filteredCount,
-  onSelectAll,
-}) => {
+export const ScannerFilterTabs: React.FC<ScannerFilterTabsProps> = (props) => {
+  const scanner = useScannerContext();
+
+  const filter = props.filter ?? scanner.filter;
+  const onFilterChange = props.onFilterChange ?? scanner.handleFilterChange;
+  const videos = props.videos ?? scanner.videos;
+  const channelMeta = props.channelMeta !== undefined ? props.channelMeta : scanner.channelMeta;
+  const selectedCount = props.selectedCount ?? scanner.selectedCount;
+  const filteredCount = props.filteredCount ?? scanner.filteredVideos.length;
+  const onSelectAll = props.onSelectAll ?? scanner.handleSelectAll;
+
+  if (!scanner.hasScanned || scanner.videos.length === 0 || scanner.isScanning) {
+    return null;
+  }
   return (
     <div className="flex flex-wrap items-center justify-between gap-space-md pt-1">
       {/* Chips de Categoria Dinâmicos */}

@@ -5,35 +5,37 @@ import { SocialLoginDivider } from './SocialLoginDivider';
 import { LoginForm } from './LoginForm';
 
 interface LoginCardProps {
-  email: string;
-  password: string;
-  showPassword: boolean;
-  rememberMe: boolean;
-  isLoading: boolean;
-  errorMessage: string | null;
-  onEmailChange: (val: string) => void;
-  onPasswordChange: (val: string) => void;
-  onToggleShowPassword: () => void;
-  onRememberMeChange: (val: boolean) => void;
-  onOpenForgotPassword: () => void;
-  onSubmit: (e: React.FormEvent) => void;
+  children?: React.ReactNode;
+  email?: string;
+  password?: string;
+  showPassword?: boolean;
+  rememberMe?: boolean;
+  isLoading?: boolean;
+  errorMessage?: string | null;
+  onEmailChange?: (val: string) => void;
+  onPasswordChange?: (val: string) => void;
+  onToggleShowPassword?: () => void;
+  onRememberMeChange?: (val: boolean) => void;
+  onOpenForgotPassword?: () => void;
+  onSubmit?: (e: React.FormEvent) => void;
   onGoogleLogin: () => void;
   onNavigateRegister: () => void;
 }
 
 export const LoginCard: React.FC<LoginCardProps> = ({
-  email,
-  password,
-  showPassword,
-  rememberMe,
-  isLoading,
-  errorMessage,
-  onEmailChange,
-  onPasswordChange,
-  onToggleShowPassword,
-  onRememberMeChange,
-  onOpenForgotPassword,
-  onSubmit,
+  children,
+  email = '',
+  password = '',
+  showPassword = false,
+  rememberMe = false,
+  isLoading = false,
+  errorMessage = null,
+  onEmailChange = () => {},
+  onPasswordChange = () => {},
+  onToggleShowPassword = () => {},
+  onRememberMeChange = () => {},
+  onOpenForgotPassword = () => {},
+  onSubmit = () => {},
   onGoogleLogin,
   onNavigateRegister,
 }) => {
@@ -67,19 +69,23 @@ export const LoginCard: React.FC<LoginCardProps> = ({
       )}
 
       {/* Formulário de Login */}
-      <LoginForm
-        email={email}
-        password={password}
-        showPassword={showPassword}
-        rememberMe={rememberMe}
-        isLoading={isLoading}
-        onEmailChange={onEmailChange}
-        onPasswordChange={onPasswordChange}
-        onToggleShowPassword={onToggleShowPassword}
-        onRememberMeChange={onRememberMeChange}
-        onOpenForgotPassword={onOpenForgotPassword}
-        onSubmit={onSubmit}
-      />
+      {children ? (
+        children
+      ) : (
+        <LoginForm
+          email={email}
+          password={password}
+          showPassword={showPassword}
+          rememberMe={rememberMe}
+          isLoading={isLoading}
+          onEmailChange={onEmailChange}
+          onPasswordChange={onPasswordChange}
+          onToggleShowPassword={onToggleShowPassword}
+          onRememberMeChange={onRememberMeChange}
+          onOpenForgotPassword={onOpenForgotPassword}
+          onSubmit={onSubmit}
+        />
+      )}
 
       {/* Rodapé Alternativo (Cadastro) */}
       <div className="mt-space-lg flex flex-col items-center gap-space-md text-center">

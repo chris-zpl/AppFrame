@@ -3,23 +3,26 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { WatermarkGrid } from './WatermarkGrid';
 import type { WatermarkItem } from '../interfaces';
 
+import { useWatermarksContext } from '../context';
+
 export interface WatermarkGridSectionProps {
-  watermarks: WatermarkItem[];
-  isLoading: boolean;
-  defaultWatermarkId: string | null;
-  onSetDefault: (id: string) => void;
-  onConfirmDelete: (id: string) => void;
-  onUploadClick: () => void;
+  watermarks?: WatermarkItem[];
+  isLoading?: boolean;
+  defaultWatermarkId?: string | null;
+  onSetDefault?: (id: string) => void;
+  onConfirmDelete?: (id: string) => void;
+  onUploadClick?: () => void;
 }
 
-export const WatermarkGridSection: React.FC<WatermarkGridSectionProps> = ({
-  watermarks,
-  isLoading,
-  defaultWatermarkId,
-  onSetDefault,
-  onConfirmDelete,
-  onUploadClick,
-}) => {
+export const WatermarkGridSection: React.FC<WatermarkGridSectionProps> = (props) => {
+  const watermarksContext = useWatermarksContext();
+
+  const watermarks = props.watermarks ?? watermarksContext.watermarks;
+  const isLoading = props.isLoading ?? watermarksContext.isLoading;
+  const defaultWatermarkId = props.defaultWatermarkId !== undefined ? props.defaultWatermarkId : watermarksContext.defaultWatermarkId;
+  const onSetDefault = props.onSetDefault ?? watermarksContext.handleSelectDefault;
+  const onConfirmDelete = props.onConfirmDelete ?? watermarksContext.setDeleteConfirmId;
+  const onUploadClick = props.onUploadClick ?? watermarksContext.openFileDialog;
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">

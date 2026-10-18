@@ -1,29 +1,32 @@
 import React from 'react';
 import { cn } from '../../../lib/utils';
 
+import { useWatermarksContext } from '../context';
+
 export interface WatermarkUploadDropzoneProps {
-  isDragging: boolean;
-  isPending: boolean;
-  errorMessage: string | null;
-  onDragOver: (e: React.DragEvent) => void;
-  onDragLeave: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent) => void;
-  onClick: () => void;
+  isDragging?: boolean;
+  isPending?: boolean;
+  errorMessage?: string | null;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  onClick?: () => void;
   fileInputRef?: React.RefObject<HTMLInputElement | null>;
   onFileChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export const WatermarkUploadDropzone: React.FC<WatermarkUploadDropzoneProps> = ({
-  isDragging,
-  isPending,
-  errorMessage,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  onClick,
-  fileInputRef,
-  onFileChange,
-}) => {
+export const WatermarkUploadDropzone: React.FC<WatermarkUploadDropzoneProps> = (props) => {
+  const watermarksContext = useWatermarksContext();
+
+  const isDragging = props.isDragging ?? watermarksContext.isDragging;
+  const isPending = props.isPending ?? watermarksContext.isUploading;
+  const errorMessage = props.errorMessage !== undefined ? props.errorMessage : watermarksContext.errorMessage;
+  const onDragOver = props.onDragOver ?? watermarksContext.handleDragOver;
+  const onDragLeave = props.onDragLeave ?? watermarksContext.handleDragLeave;
+  const onDrop = props.onDrop ?? watermarksContext.handleDrop;
+  const onClick = props.onClick ?? watermarksContext.openFileDialog;
+  const fileInputRef = props.fileInputRef ?? watermarksContext.fileInputRef;
+  const onFileChange = props.onFileChange ?? watermarksContext.handleFileChange;
   return (
     <section className="mb-space-lg">
       {fileInputRef && (

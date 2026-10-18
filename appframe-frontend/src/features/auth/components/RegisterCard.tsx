@@ -6,45 +6,47 @@ import { RegisterForm } from './RegisterForm';
 import type { PasswordStrengthResult } from '../utils/password.utils';
 
 interface RegisterCardProps {
-  name: string;
-  email: string;
-  password: string;
-  showPassword: boolean;
-  agreeTerms: boolean;
-  isLoading: boolean;
-  errorMessage: string | null;
-  passwordStrength: PasswordStrengthResult;
-  onNameChange: (val: string) => void;
-  onEmailChange: (val: string) => void;
-  onPasswordChange: (val: string) => void;
-  onToggleShowPassword: () => void;
-  onAgreeTermsChange: (val: boolean) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  children?: React.ReactNode;
+  name?: string;
+  email?: string;
+  password?: string;
+  showPassword?: boolean;
+  agreeTerms?: boolean;
+  isLoading?: boolean;
+  errorMessage?: string | null;
+  passwordStrength?: PasswordStrengthResult;
+  onNameChange?: (val: string) => void;
+  onEmailChange?: (val: string) => void;
+  onPasswordChange?: (val: string) => void;
+  onToggleShowPassword?: () => void;
+  onAgreeTermsChange?: (val: boolean) => void;
+  onSubmit?: (e: React.FormEvent) => void;
   onGoogleSignup: () => void;
   onNavigateLogin: () => void;
-  onOpenTerms: () => void;
-  onOpenPrivacy: () => void;
+  onOpenTerms?: () => void;
+  onOpenPrivacy?: () => void;
 }
 
 export const RegisterCard: React.FC<RegisterCardProps> = ({
-  name,
-  email,
-  password,
-  showPassword,
-  agreeTerms,
-  isLoading,
-  errorMessage,
-  passwordStrength,
-  onNameChange,
-  onEmailChange,
-  onPasswordChange,
-  onToggleShowPassword,
-  onAgreeTermsChange,
-  onSubmit,
+  children,
+  name = '',
+  email = '',
+  password = '',
+  showPassword = false,
+  agreeTerms = false,
+  isLoading = false,
+  errorMessage = null,
+  passwordStrength = { score: 0, label: 'Vazia', colorClass: 'bg-surface-container-highest', isStrong: false },
+  onNameChange = () => {},
+  onEmailChange = () => {},
+  onPasswordChange = () => {},
+  onToggleShowPassword = () => {},
+  onAgreeTermsChange = () => {},
+  onSubmit = () => {},
   onGoogleSignup,
   onNavigateLogin,
-  onOpenTerms,
-  onOpenPrivacy,
+  onOpenTerms = () => {},
+  onOpenPrivacy = () => {},
 }) => {
   return (
     <Card
@@ -76,23 +78,27 @@ export const RegisterCard: React.FC<RegisterCardProps> = ({
       )}
 
       {/* Formulário de Registro */}
-      <RegisterForm
-        name={name}
-        email={email}
-        password={password}
-        showPassword={showPassword}
-        agreeTerms={agreeTerms}
-        isLoading={isLoading}
-        passwordStrength={passwordStrength}
-        onNameChange={onNameChange}
-        onEmailChange={onEmailChange}
-        onPasswordChange={onPasswordChange}
-        onToggleShowPassword={onToggleShowPassword}
-        onAgreeTermsChange={onAgreeTermsChange}
-        onSubmit={onSubmit}
-        onOpenTerms={onOpenTerms}
-        onOpenPrivacy={onOpenPrivacy}
-      />
+      {children ? (
+        children
+      ) : (
+        <RegisterForm
+          name={name}
+          email={email}
+          password={password}
+          showPassword={showPassword}
+          agreeTerms={agreeTerms}
+          isLoading={isLoading}
+          passwordStrength={passwordStrength}
+          onNameChange={onNameChange}
+          onEmailChange={onEmailChange}
+          onPasswordChange={onPasswordChange}
+          onToggleShowPassword={onToggleShowPassword}
+          onAgreeTermsChange={onAgreeTermsChange}
+          onSubmit={onSubmit}
+          onOpenTerms={onOpenTerms}
+          onOpenPrivacy={onOpenPrivacy}
+        />
+      )}
 
       {/* Rodapé Alternativo (Login) */}
       <div className="mt-space-lg flex flex-col items-center gap-space-md text-center">

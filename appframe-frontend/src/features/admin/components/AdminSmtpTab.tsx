@@ -1,34 +1,86 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Button, Input, VisibilityToggle } from '../../../components/ui';
 import type { SmtpConfig } from '../interfaces';
 
-interface AdminSmtpTabProps {
-  smtpForm: SmtpConfig;
-  setSmtpForm: React.Dispatch<React.SetStateAction<SmtpConfig>>;
-  showSmtpPassword: boolean;
-  setShowSmtpPassword: React.Dispatch<React.SetStateAction<boolean>>;
+export interface AdminSmtpTabProps {
+  initialConfig?: SmtpConfig;
+  smtpForm?: SmtpConfig;
+  setSmtpForm?: React.Dispatch<React.SetStateAction<SmtpConfig>>;
+  showSmtpPassword?: boolean;
+  setShowSmtpPassword?: React.Dispatch<React.SetStateAction<boolean>>;
   isSavingSmtp: boolean;
-  testEmailInput: string;
-  setTestEmailInput: (val: string) => void;
+  testEmailInput?: string;
+  setTestEmailInput?: (val: string) => void;
   isTestingSmtp: boolean;
   currentUserEmail?: string;
-  onSaveSmtp: (e: React.FormEvent) => void;
-  onTestSmtp: () => void;
+  onSaveSmtp: ((e: React.FormEvent) => void) | ((cfg: SmtpConfig) => void | Promise<any>);
+  onTestSmtp: (() => void) | ((email: string) => void | Promise<any>);
 }
 
 export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
-  smtpForm,
-  setSmtpForm,
-  showSmtpPassword,
-  setShowSmtpPassword,
+  initialConfig,
+  smtpForm: controlledForm,
+  setSmtpForm: controlledSetForm,
+  showSmtpPassword: controlledShowPassword,
+  setShowSmtpPassword: controlledSetShowPassword,
   isSavingSmtp,
-  testEmailInput,
-  setTestEmailInput,
+  testEmailInput: controlledTestEmail,
+  setTestEmailInput: controlledSetTestEmail,
   isTestingSmtp,
   currentUserEmail,
   onSaveSmtp,
   onTestSmtp,
 }) => {
+  const [internalForm, setInternalForm] = useState<SmtpConfig>(() => ({
+    host: initialConfig?.host || '',
+    port: initialConfig?.port || 587,
+    user: initialConfig?.user || '',
+    password: initialConfig?.password || '',
+    fromName: initialConfig?.fromName || 'AppFrame',
+    fromEmail: initialConfig?.fromEmail || '',
+    secure: Boolean(initialConfig?.secure),
+  }));
+
+  const [internalShowPassword, setInternalShowPassword] = useState(false);
+  const [internalTestEmail, setInternalTestEmail] = useState('');
+
+  useEffect(() => {
+    if (initialConfig) {
+      setInternalForm({
+        host: initialConfig.host || '',
+        port: initialConfig.port || 587,
+        user: initialConfig.user || '',
+        password: initialConfig.password || '',
+        fromName: initialConfig.fromName || 'AppFrame',
+        fromEmail: initialConfig.fromEmail || '',
+        secure: Boolean(initialConfig.secure),
+      });
+    }
+  }, [initialConfig]);
+
+  const smtpForm = controlledForm !== undefined ? controlledForm : internalForm;
+  const setSmtpForm = controlledSetForm ?? setInternalForm;
+  const showSmtpPassword = controlledShowPassword !== undefined ? controlledShowPassword : internalShowPassword;
+  const setShowSmtpPassword = controlledSetShowPassword ?? setInternalShowPassword;
+  const testEmailInput = controlledTestEmail !== undefined ? controlledTestEmail : internalTestEmail;
+  const setTestEmailInput = controlledSetTestEmail ?? setInternalTestEmail;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (controlledForm !== undefined) {
+      (onSaveSmtp as (e: React.FormEvent) => void)(e);
+    } else {
+      (onSaveSmtp as (cfg: SmtpConfig) => void | Promise<any>)(smtpForm);
+    }
+  };
+
+  const handleTest = () => {
+    if (controlledTestEmail !== undefined) {
+      (onTestSmtp as () => void)();
+    } else {
+      (onTestSmtp as (email: string) => void | Promise<any>)(testEmailInput);
+    }
+  };
   return (
     <div className="flex flex-col gap-6 max-w-4xl">
       <Card className="p-6 border-surface-container-highest bg-surface-container-lowest flex flex-col gap-5">
@@ -46,7 +98,7 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
           </p>
         </div>
 
-        <form onSubmit={onSaveSmtp} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             size="sm"
             label="Servidor SMTP (Host)"
@@ -167,7 +219,7 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
           />
           <Button
             variant="outline"
-            onClick={onTestSmtp}
+            onClick={handleTest}
             isLoading={isTestingSmtp}
             leftIcon={<span className="material-symbols-outlined text-[18px]">send</span>}
             className="shrink-0 w-full md:w-auto"

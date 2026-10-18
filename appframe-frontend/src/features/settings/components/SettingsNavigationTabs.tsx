@@ -2,17 +2,20 @@ import React from 'react';
 import { cn } from '../../../lib/utils';
 import type { SettingsSection } from '../interfaces';
 
+import { useSettingsContext } from '../context';
+
 export interface SettingsNavigationTabsProps {
-  activeSection: SettingsSection;
-  onSelectSection: (section: SettingsSection) => void;
-  sessionsCount: number;
+  activeSection?: SettingsSection;
+  onSelectSection?: (section: SettingsSection) => void;
+  sessionsCount?: number;
 }
 
-export const SettingsNavigationTabs: React.FC<SettingsNavigationTabsProps> = ({
-  activeSection,
-  onSelectSection,
-  sessionsCount,
-}) => {
+export const SettingsNavigationTabs: React.FC<SettingsNavigationTabsProps> = (props) => {
+  const settings = useSettingsContext();
+
+  const activeSection = props.activeSection ?? settings.activeSection;
+  const onSelectSection = props.onSelectSection ?? settings.handleSelectSection;
+  const sessionsCount = props.sessionsCount ?? settings.sessions.length;
   return (
     <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-space-md border-b border-surface-container-high/80">
       <button

@@ -5,6 +5,7 @@ import {
   useLoginForm,
   LoginHeader,
   LoginCard,
+  LoginForm,
   ForgotPasswordModal,
   AuthFooter,
 } from '../features/auth';
@@ -52,27 +53,31 @@ export const LoginPage: React.FC = () => {
       <main className="flex-1 flex items-center justify-center py-6 sm:py-10 z-10 w-full">
         <div className="relative flex flex-col items-center justify-center w-full max-w-[440px] mx-auto">
           <LoginCard
-            email={email}
-            password={password}
-            showPassword={showPassword}
-            rememberMe={rememberMe}
             isLoading={isLoading}
             errorMessage={errorMessage}
-            onEmailChange={(val) => {
-              setEmail(val);
-              if (errorMessage) setErrorMessage(null);
-            }}
-            onPasswordChange={(val) => {
-              setPassword(val);
-              if (errorMessage) setErrorMessage(null);
-            }}
-            onToggleShowPassword={() => setShowPassword(!showPassword)}
-            onRememberMeChange={setRememberMe}
-            onOpenForgotPassword={() => setShowForgotModal(true)}
-            onSubmit={handleLoginSubmit}
             onGoogleLogin={handleGoogleLogin}
             onNavigateRegister={() => navigate('register')}
-          />
+          >
+            <LoginForm
+              email={email}
+              password={password}
+              showPassword={showPassword}
+              rememberMe={rememberMe}
+              isLoading={isLoading}
+              onEmailChange={(val) => {
+                setEmail(val);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              onPasswordChange={(val) => {
+                setPassword(val);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              onToggleShowPassword={() => setShowPassword(!showPassword)}
+              onRememberMeChange={setRememberMe}
+              onOpenForgotPassword={() => setShowForgotModal(true)}
+              onSubmit={handleLoginSubmit}
+            />
+          </LoginCard>
         </div>
       </main>
 

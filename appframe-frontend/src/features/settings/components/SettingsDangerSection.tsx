@@ -1,13 +1,16 @@
 import React from 'react';
 import { Card, Button } from '../../../components/ui';
 
-interface SettingsDangerSectionProps {
-  onTriggerDeleteModal: () => void;
+import { useSettingsContext } from '../context';
+
+export interface SettingsDangerSectionProps {
+  onTriggerDeleteModal?: () => void;
 }
 
-export const SettingsDangerSection: React.FC<SettingsDangerSectionProps> = ({
-  onTriggerDeleteModal,
-}) => {
+export const SettingsDangerSection: React.FC<SettingsDangerSectionProps> = (props) => {
+  const settings = useSettingsContext();
+
+  const onTriggerDeleteModal = props.onTriggerDeleteModal ?? (() => settings.setDeleteAccountModal(true));
   return (
     <div className="flex flex-col gap-space-md animate-in fade-in duration-200">
       <Card className="p-6 bg-error-container/10 border-2 border-error/40 shadow-xl flex flex-col gap-4">
