@@ -60,6 +60,110 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
   const seekVideoTo = props.seekVideoTo ?? studio.seekVideoTo;
   const loadVideoPreview = props.loadVideoPreview ?? studio.loadVideoPreview;
   const onNavigateToVarredura = props.onNavigateToVarredura ?? (() => studio.navigate('varredura'));
+
+  const renderPlayerButtons = () => (
+    <div className="flex items-center gap-1.5 shrink-0">
+      <button
+        type="button"
+        aria-label={isPlaying ? 'Pausar vídeo' : 'Reproduzir vídeo'}
+        title={isPlaying ? 'Pausar' : 'Reproduzir'}
+        disabled={!previewStreamUrl || isPreparingPreview}
+        onClick={handleTogglePlay}
+        className="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 cursor-pointer shadow-sm disabled:opacity-40"
+      >
+        <span className="material-symbols-outlined text-[20px]">
+          {isPlaying ? 'pause' : 'play_arrow'}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        aria-label="Retroceder 5 segundos"
+        disabled={!previewStreamUrl || isPreparingPreview}
+        onClick={() => seekVideoTo(Math.max(trimIn, currentTime - 5))}
+        title="Retroceder 5 segundos"
+        className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+      >
+        <span className="material-symbols-outlined text-[18px]">replay_5</span>
+      </button>
+
+      <button
+        type="button"
+        aria-label="Avançar 5 segundos"
+        disabled={!previewStreamUrl || isPreparingPreview}
+        onClick={() => seekVideoTo(Math.min(trimOut, currentTime + 5))}
+        title="Avançar 5 segundos"
+        className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+      >
+        <span className="material-symbols-outlined text-[18px]">forward_5</span>
+      </button>
+
+      <button
+        type="button"
+        aria-label={isMuted ? 'Ativar som' : 'Silenciar áudio'}
+        disabled={!previewStreamUrl || isPreparingPreview}
+        onClick={() => {
+          const next = !isMuted;
+          setIsMuted(next);
+          if (videoRef.current) {
+            videoRef.current.muted = next;
+          }
+        }}
+        title={isMuted ? 'Ativar som' : 'Silenciar áudio'}
+        className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+      >
+        <span className="material-symbols-outlined text-[18px]">
+          {isMuted ? 'volume_off' : 'volume_up'}
+        </span>
+      </button>
+    </div>
+  );
+
+  const renderTimerDisplay = (extraClasses?: string) => (
+    <div
+      className={cn(
+        'flex items-center gap-1.5 sm:gap-2 bg-surface-container-lowest px-2.5 sm:px-3 py-1.5 rounded-lg border border-outline/10 min-w-0',
+        extraClasses
+      )}
+    >
+      <span className="material-symbols-outlined text-[16px] text-primary shrink-0">
+        schedule
+      </span>
+      <span className="font-mono text-title-sm text-title-sm font-bold text-on-surface tabular-nums truncate">
+        {formatTime(currentTime)} / {formatTime(totalDuration)}
+      </span>
+      <span className="text-[10px] text-outline px-1 py-0.5 rounded bg-surface-container font-mono shrink-0">
+        Corte: {formatTime(Math.max(0, trimOut - trimIn))}
+      </span>
+    </div>
+  );
+
+  const renderMarkerInButton = () => (
+    <button
+      type="button"
+      aria-label="Ir para Marcador In"
+      disabled={!previewStreamUrl || isPreparingPreview}
+      onClick={() => seekVideoTo(trimIn)}
+      title="Ir para Marcador In"
+      className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-surface-container hover:bg-surface-container-high text-primary font-bold cursor-pointer disabled:opacity-40 shrink-0"
+    >
+      Ir ao In
+    </button>
+  );
+
+  const renderMarkerOutButton = () => (
+    <button
+      type="button"
+      aria-label="Ir para Marcador Out"
+      disabled={!previewStreamUrl || isPreparingPreview}
+      onClick={() => seekVideoTo(trimOut)}
+      title="Ir para Marcador Out"
+      className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-surface-container hover:bg-surface-container-high text-primary font-bold cursor-pointer disabled:opacity-40 shrink-0"
+    >
+      Ir ao Out
+    </button>
+  );
+
   return (
     <Card className="relative overflow-hidden bg-surface-container-lowest border border-surface-container-high/90 p-4 flex flex-col items-center justify-center min-h-[460px] shadow-2xl">
       {/* Halos Luminosos Sutis no Player */}
@@ -221,95 +325,27 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
       </div>
 
       {/* Barra de Controles do Player com Cronômetro Tabular */}
-      <div className="w-full max-w-xl mt-4 flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-surface-container/80 backdrop-blur-md border border-surface-container-high/80">
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
-            aria-label={isPlaying ? 'Pausar vídeo' : 'Reproduzir vídeo'}
-            title={isPlaying ? 'Pausar' : 'Reproduzir'}
-            disabled={!previewStreamUrl || isPreparingPreview}
-            onClick={handleTogglePlay}
-            className="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 cursor-pointer shadow-sm disabled:opacity-40"
-          >
-            <span className="material-symbols-outlined text-[20px]">
-              {isPlaying ? 'pause' : 'play_arrow'}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            aria-label="Retroceder 5 segundos"
-            disabled={!previewStreamUrl || isPreparingPreview}
-            onClick={() => seekVideoTo(Math.max(trimIn, currentTime - 5))}
-            title="Retroceder 5 segundos"
-            className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
-          >
-            <span className="material-symbols-outlined text-[18px]">replay_5</span>
-          </button>
-
-          <button
-            type="button"
-            aria-label="Avançar 5 segundos"
-            disabled={!previewStreamUrl || isPreparingPreview}
-            onClick={() => seekVideoTo(Math.min(trimOut, currentTime + 5))}
-            title="Avançar 5 segundos"
-            className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
-          >
-            <span className="material-symbols-outlined text-[18px]">forward_5</span>
-          </button>
-
-          <button
-            type="button"
-            aria-label={isMuted ? 'Ativar som' : 'Silenciar áudio'}
-            disabled={!previewStreamUrl || isPreparingPreview}
-            onClick={() => {
-              const next = !isMuted;
-              setIsMuted(next);
-              if (videoRef.current) {
-                videoRef.current.muted = next;
-              }
-            }}
-            title={isMuted ? 'Ativar som' : 'Silenciar áudio'}
-            className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
-          >
-            <span className="material-symbols-outlined text-[18px]">
-              {isMuted ? 'volume_off' : 'volume_up'}
-            </span>
-          </button>
+      <div className="w-full max-w-xl mt-4 px-3 py-2 rounded-xl bg-surface-container/80 backdrop-blur-md border border-surface-container-high/80">
+        {/* Layout para telas pequenas (sm e mobile): Marcador In na esquerda, temporizador no meio, Marcador Out na direita na linha superior; botões de player na linha inferior */}
+        <div className="flex md:hidden flex-col items-center gap-2.5 w-full">
+          <div className="flex items-center justify-between w-full gap-2 min-w-0">
+            {renderMarkerInButton()}
+            {renderTimerDisplay('justify-center')}
+            {renderMarkerOutButton()}
+          </div>
+          <div className="flex items-center justify-center">
+            {renderPlayerButtons()}
+          </div>
         </div>
 
-        {/* Cronômetro com Números Tabulares Precisos */}
-        <div className="flex items-center gap-2 bg-surface-container-lowest px-3 py-1.5 rounded-lg border border-outline/10 min-w-0">
-          <span className="material-symbols-outlined text-[16px] text-primary shrink-0">schedule</span>
-          <span className="font-mono text-title-sm text-title-sm font-bold text-on-surface tabular-nums truncate">
-            {formatTime(currentTime)} / {formatTime(totalDuration)}
-          </span>
-          <span className="text-[10px] text-outline px-1 py-0.5 rounded bg-surface-container font-mono shrink-0">
-            Corte: {formatTime(Math.max(0, trimOut - trimIn))}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            aria-label="Ir para Marcador In"
-            disabled={!previewStreamUrl || isPreparingPreview}
-            onClick={() => seekVideoTo(trimIn)}
-            title="Ir para Marcador In"
-            className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-surface-container hover:bg-surface-container-high text-primary font-bold cursor-pointer disabled:opacity-40"
-          >
-            Ir ao In
-          </button>
-          <button
-            type="button"
-            aria-label="Ir para Marcador Out"
-            disabled={!previewStreamUrl || isPreparingPreview}
-            onClick={() => seekVideoTo(trimOut)}
-            title="Ir para Marcador Out"
-            className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-surface-container hover:bg-surface-container-high text-primary font-bold cursor-pointer disabled:opacity-40"
-          >
-            Ir ao Out
-          </button>
+        {/* Layout para desktop (md e superior): Linha única clássica */}
+        <div className="hidden md:flex items-center justify-between gap-3 w-full">
+          {renderPlayerButtons()}
+          {renderTimerDisplay()}
+          <div className="flex items-center gap-1 shrink-0">
+            {renderMarkerInButton()}
+            {renderMarkerOutButton()}
+          </div>
         </div>
       </div>
     </Card>
