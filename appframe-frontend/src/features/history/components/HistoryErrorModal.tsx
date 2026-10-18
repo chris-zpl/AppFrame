@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
+import { useModalA11y } from '../../../hooks';
 import type { VideoJobItem } from '../types';
 
 interface HistoryErrorModalProps {
@@ -9,20 +10,33 @@ interface HistoryErrorModalProps {
 }
 
 export const HistoryErrorModal: React.FC<HistoryErrorModalProps> = ({ job, onClose }) => {
+  useModalA11y({ isOpen: Boolean(job), onClose });
+
   if (!job) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in">
-      <Card className="w-full max-w-lg p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-high shadow-2xl flex flex-col gap-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in"
+      onClick={onClose}
+    >
+      <Card
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="job-failure-title"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-high shadow-2xl flex flex-col gap-4"
+      >
         <div className="flex items-center justify-between border-b border-neutral-200 dark:border-surface-container-highest pb-3">
-          <div className="flex items-center gap-2 text-red-500 font-bold">
-            <span className="material-symbols-outlined text-[22px]">error</span>
-            <span>Detalhes da Falha no Job</span>
+          <div className="flex items-center gap-2 text-red-500 font-bold min-w-0">
+            <span className="material-symbols-outlined text-[22px] shrink-0">error</span>
+            <span id="job-failure-title" className="truncate">Detalhes da Falha no Job</span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-neutral-400 hover:text-on-surface"
+            aria-label="Fechar"
+            title="Fechar"
+            className="text-neutral-400 hover:text-on-surface cursor-pointer p-1 rounded transition-colors shrink-0"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>

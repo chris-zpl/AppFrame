@@ -73,8 +73,28 @@ export const useSettings = ({
   }, []);
 
   useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+    let isCancelled = false;
+    authService.getSessions()
+      .then((data) => {
+        if (isCancelled) return;
+        const sessionList = Array.isArray(data) ? data : [];
+        setSessions(sessionList.map(mapActiveSessionToItem));
+      })
+      .catch((error) => {
+        if (isCancelled) return;
+        toast.error(
+          extractApiErrorMessage(error, 'Não foi possível carregar os dispositivos conectados.')
+        );
+      })
+      .finally(() => {
+        if (isCancelled) return;
+        setIsLoadingSessions(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   // Trata retorno do fluxo do Google OAuth
   useEffect(() => {

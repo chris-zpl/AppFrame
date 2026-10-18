@@ -1,4 +1,18 @@
-import { isPublicAuthRoute } from '../../../contexts/AuthContext';
+export const isPublicAuthRoute = (path?: string): boolean => {
+  if (!path) return false;
+  const clean = path.toLowerCase().replace(/\/+$/, '') || '/';
+  return (
+    clean === '/login' ||
+    clean === '/register' ||
+    clean.startsWith('/auth/callback') ||
+    clean === '/auth-callback' ||
+    clean === '/2fa' ||
+    clean === '/recuperar-senha' ||
+    clean === '/forgot-password' ||
+    clean === '/reset-password' ||
+    clean.startsWith('/reset-password/')
+  );
+};
 
 export const SUPER_ADMIN_EMAIL = 'christian.zimpel@gmail.com';
 

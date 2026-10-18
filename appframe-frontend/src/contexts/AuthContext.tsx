@@ -1,20 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { authService, type UserProfile } from '../features/auth';
-
-export const isPublicAuthRoute = (path?: string): boolean => {
-  if (!path) return false;
-  const clean = path.toLowerCase().replace(/\/+$/, '') || '/';
-  return (
-    clean === '/login' ||
-    clean === '/register' ||
-    clean.startsWith('/auth/callback') ||
-    clean === '/auth-callback' ||
-    clean === '/2fa' ||
-    clean === '/recuperar-senha' ||
-    clean === '/forgot-password' ||
-    clean === '/reset-password'
-  );
-};
+import { authService, type UserProfile, isPublicAuthRoute } from '../features/auth';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -32,7 +17,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const initialPath = window.location.pathname;
+    if (initialPath.startsWith('/auth/callback') || initialPath === '/auth-callback') {
+      return false;
+    }
+    let hasStoredSession = false;
+    try {
+      hasStoredSession =
+        localStorage.getItem('appframe_has_session') === 'true' ||
+        sessionStorage.getItem('appframe_has_session') === 'true';
+    } catch {}
+    if (isPublicAuthRoute(initialPath) && !hasStoredSession) {
+      return false;
+    }
+    return true;
+  });
 
   // 1. Deduplicação de Requisição (In-Flight Promise)
   const profileRequestPromiseRef = useRef<Promise<UserProfile | null> | null>(null);
@@ -108,7 +109,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Se estiver na rota de callback do OAuth, NÃO dispara initAuth,
     // pois a AuthCallbackPage processa o token recebido de forma dedicada
     if (initialPath.startsWith('/auth/callback') || initialPath === '/auth-callback') {
-      setIsLoading(false);
       return;
     }
 
@@ -122,8 +122,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Se estiver explicitamente em rota pública e NÃO tiver sessão ativa salva,
     // NÃO dispara chamada de rede para evitar 401 indevido
     if (isPublicAuthRoute(initialPath) && !hasStoredSession) {
-      setUser(null);
-      setIsLoading(false);
       return;
     }
 

@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Card, Input, Button, VisibilityToggle } from '../../../components/ui';
 import { PasswordStrengthIndicator, calculatePasswordStrength } from '../../auth';
 import { useSettingsContext } from '../context';
+import { usePasswordVisibility } from '../../../hooks';
 
 export interface SettingsSecuritySectionProps {
   is2faEnabled?: boolean;
@@ -46,21 +47,21 @@ export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (
   const isChangingPassword = props.isChangingPassword ?? settings.isChangingPassword;
   const onPasswordSubmit = props.onPasswordSubmit ?? settings.handlePasswordSubmit;
 
-  const [internalShowCurrentPassword, setInternalShowCurrentPassword] = useState(false);
-  const [internalShowNewPassword, setInternalShowNewPassword] = useState(false);
-  const [internalShowConfirmPassword, setInternalShowConfirmPassword] = useState(false);
+  const currentVisibility = usePasswordVisibility(false);
+  const newVisibility = usePasswordVisibility(false);
+  const confirmVisibility = usePasswordVisibility(false);
 
-  const showCurrentPassword = props.showCurrentPassword ?? internalShowCurrentPassword;
+  const showCurrentPassword = props.showCurrentPassword ?? currentVisibility.isVisible;
   const handleToggleShowCurrentPassword =
-    props.onToggleShowCurrentPassword ?? (() => setInternalShowCurrentPassword((v) => !v));
+    props.onToggleShowCurrentPassword ?? currentVisibility.toggle;
 
-  const showNewPassword = props.showNewPassword ?? internalShowNewPassword;
+  const showNewPassword = props.showNewPassword ?? newVisibility.isVisible;
   const handleToggleShowNewPassword =
-    props.onToggleShowNewPassword ?? (() => setInternalShowNewPassword((v) => !v));
+    props.onToggleShowNewPassword ?? newVisibility.toggle;
 
-  const showConfirmPassword = props.showConfirmPassword ?? internalShowConfirmPassword;
+  const showConfirmPassword = props.showConfirmPassword ?? confirmVisibility.isVisible;
   const handleToggleShowConfirmPassword =
-    props.onToggleShowConfirmPassword ?? (() => setInternalShowConfirmPassword((v) => !v));
+    props.onToggleShowConfirmPassword ?? confirmVisibility.toggle;
 
   const passwordStrength = useMemo(
     () => calculatePasswordStrength(newPassword || ''),

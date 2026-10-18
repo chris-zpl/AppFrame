@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { marked } from 'marked';
 import { Card, Badge, Button, Input } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
@@ -50,7 +50,9 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
   const [internalTermsMode, setInternalTermsMode] = useState<'edit' | 'preview'>('edit');
   const [internalPrivacyMode, setInternalPrivacyMode] = useState<'edit' | 'preview'>('edit');
 
-  useEffect(() => {
+  const [prevInitialSettings, setPrevInitialSettings] = useState(initialSettings);
+  if (initialSettings !== prevInitialSettings) {
+    setPrevInitialSettings(initialSettings);
     if (initialSettings) {
       setInternalForm({
         companyName: initialSettings.variables?.companyName || '',
@@ -63,7 +65,7 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
         privacyPolicy: initialSettings.privacy?.raw || '',
       });
     }
-  }, [initialSettings]);
+  }
 
   const legalForm = controlledForm !== undefined ? controlledForm : internalForm;
   const setLegalForm = controlledSetForm ?? setInternalForm;

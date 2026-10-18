@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { authService } from '../services/auth.service';
+import { useModalA11y } from '../../../hooks';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -20,21 +21,25 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   const [forgotError, setForgotError] = useState<string | null>(null);
   const isForgotSubmittingRef = useRef(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      setForgotEmail(initialEmail);
-      setForgotSubmitted(false);
-      setForgotError(null);
-    }
-  }, [isOpen, initialEmail]);
-
-  if (!isOpen) return null;
-
   const handleClose = () => {
     setForgotSubmitted(false);
     setForgotError(null);
     onClose();
   };
+
+  useModalA11y({ isOpen, onClose: handleClose });
+
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) {
+      setForgotEmail(initialEmail);
+      setForgotSubmitted(false);
+      setForgotError(null);
+    }
+  }
+
+  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,21 +62,32 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in">
-      <div className="relative w-full max-w-md bg-surface-container rounded-2xl p-6 shadow-2xl border border-surface-container-high">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in"
+      onClick={handleClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="forgot-password-modal-title"
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-md bg-surface-container rounded-2xl p-6 shadow-2xl border border-surface-container-high"
+      >
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2 text-primary">
-            <span className="material-symbols-outlined text-[24px]">
+          <div className="flex items-center gap-2 text-primary min-w-0">
+            <span className="material-symbols-outlined text-[24px] shrink-0">
               lock_reset
             </span>
-            <h3 className="font-title-md text-title-md font-bold text-on-surface">
+            <h3 id="forgot-password-modal-title" className="font-title-md text-title-md font-bold text-on-surface truncate">
               Recuperar Senha
             </h3>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="text-outline hover:text-on-surface p-1 rounded-lg cursor-pointer"
+            aria-label="Fechar"
+            title="Fechar"
+            className="text-outline hover:text-on-surface p-1 rounded-lg cursor-pointer shrink-0"
           >
             <span className="material-symbols-outlined text-[20px]">
               close

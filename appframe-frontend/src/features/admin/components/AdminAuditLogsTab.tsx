@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, Button, Input } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
 import type { AdminAuditLog, AdminUser } from "../types";
@@ -51,11 +51,26 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
   const auditPageSize = controlledSize !== undefined ? controlledSize : internalSize;
   const setAuditPageSize = controlledSetSize ?? setInternalSize;
 
-  useEffect(() => {
+  const handleSearchChange = (val: string) => {
+    setAuditSearch(val);
     if (controlledPage === undefined) {
       setInternalPage(1);
     }
-  }, [auditSearch, auditActionFilter, auditPageSize, controlledPage]);
+  };
+
+  const handleActionFilterChange = (val: string) => {
+    setAuditActionFilter(val);
+    if (controlledPage === undefined) {
+      setInternalPage(1);
+    }
+  };
+
+  const handlePageSizeChange = (val: number) => {
+    setAuditPageSize(val);
+    if (controlledPage === undefined) {
+      setInternalPage(1);
+    }
+  };
   // Estatísticas de Auditoria
   const auditPasswordCount = auditLogs.filter((l) =>
     l.action.includes("PASSWORD"),
@@ -242,7 +257,7 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
             size="sm"
             type="text"
             value={auditSearch}
-            onChange={(e) => setAuditSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Buscar por usuário, e-mail, endereço IP, ação ou detalhe..."
             containerClassName="flex-1"
             leftIcon={
@@ -254,7 +269,9 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
               auditSearch ? (
                 <button
                   type="button"
-                  onClick={() => setAuditSearch("")}
+                  onClick={() => handleSearchChange("")}
+                  aria-label="Limpar busca"
+                  title="Limpar busca"
                   className="text-outline hover:text-on-surface cursor-pointer flex items-center justify-center p-0.5"
                 >
                   <span className="material-symbols-outlined text-[16px]">
@@ -268,7 +285,7 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
           <div className="flex flex-1 items-center flex-wrap">
             <select
               value={auditActionFilter}
-              onChange={(e) => setAuditActionFilter(e.target.value)}
+              onChange={(e) => handleActionFilterChange(e.target.value)}
               className="w-full bg-surface-container border border-surface-container-highest rounded-xl px-3 py-2 text-body-sm text-on-surface outline-none focus:border-primary cursor-pointer"
             >
               <option value="ALL">Todas as Ações</option>
@@ -474,7 +491,7 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
                 <span className="text-xs">Exibir:</span>
                 <select
                   value={auditPageSize}
-                  onChange={(e) => setAuditPageSize(Number(e.target.value))}
+                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                   className="bg-surface-container border border-surface-container-highest rounded-lg px-2.5 py-1 text-xs text-on-surface outline-none focus:border-primary cursor-pointer font-medium"
                 >
                   <option value={10}>10 por página</option>

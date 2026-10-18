@@ -125,8 +125,8 @@ export const HistoryJobCard: React.FC<HistoryJobCardProps> = ({
 
           {/* Aviso de erro sanitizado */}
           {isFailed && job.error_log && (
-            <div className="mt-1 text-[12px] text-red-600 dark:text-red-400 flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">info</span>
+            <div className="mt-1 text-[12px] text-red-600 dark:text-red-400 flex items-center gap-1 min-w-0">
+              <span className="material-symbols-outlined text-[14px] shrink-0">info</span>
               <span className="truncate max-w-md">{job.error_log}</span>
             </div>
           )}

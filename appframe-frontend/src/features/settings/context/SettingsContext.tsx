@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNavigation } from '../../../contexts/NavigationContext';
 import { toast } from 'sonner';
@@ -59,12 +59,14 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const isGoogleLinked = Boolean(user?.google_id || user?.auth_provider === 'google');
   const is2faEnabled = Boolean(user?.is_two_factor_enabled);
 
-  useEffect(() => {
+  const [prevUser, setPrevUser] = useState(user);
+  if (user !== prevUser) {
+    setPrevUser(user);
     if (user) {
       setName(user.name || '');
       setEmail(user.email || '');
     }
-  }, [user]);
+  }
 
   const settings = useSettings({
     refreshProfile,

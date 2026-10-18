@@ -307,6 +307,7 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
                         }}
                         className="p-1 rounded-lg text-outline hover:text-error cursor-pointer"
                         title="Remover arquivo"
+                        aria-label="Remover arquivo selecionado"
                       >
                         <span className="material-symbols-outlined text-[16px]">close</span>
                       </button>

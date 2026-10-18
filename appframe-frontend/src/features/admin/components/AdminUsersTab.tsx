@@ -114,7 +114,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                     className="dark:hover:bg-inverse-on-surface hover:bg-on-surface/50 transition-colors"
                   >
                     <td className="p-3 font-semibold text-on-surface">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <div className="w-7 h-7 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-xs shrink-0">
                           {u.name.charAt(0).toUpperCase()}
                         </div>

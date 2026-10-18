@@ -206,6 +206,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
         {!isPlaying && Boolean(previewStreamUrl) && !isPreparingPreview && (
           <button
             type="button"
+            aria-label="Reproduzir vídeo"
             onClick={(e) => {
               e.stopPropagation();
               handleTogglePlay();
@@ -221,9 +222,11 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
 
       {/* Barra de Controles do Player com Cronômetro Tabular */}
       <div className="w-full max-w-xl mt-4 flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-surface-container/80 backdrop-blur-md border border-surface-container-high/80">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
+            aria-label={isPlaying ? 'Pausar vídeo' : 'Reproduzir vídeo'}
+            title={isPlaying ? 'Pausar' : 'Reproduzir'}
             disabled={!previewStreamUrl || isPreparingPreview}
             onClick={handleTogglePlay}
             className="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 cursor-pointer shadow-sm disabled:opacity-40"
@@ -235,6 +238,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
 
           <button
             type="button"
+            aria-label="Retroceder 5 segundos"
             disabled={!previewStreamUrl || isPreparingPreview}
             onClick={() => seekVideoTo(Math.max(trimIn, currentTime - 5))}
             title="Retroceder 5 segundos"
@@ -245,6 +249,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
 
           <button
             type="button"
+            aria-label="Avançar 5 segundos"
             disabled={!previewStreamUrl || isPreparingPreview}
             onClick={() => seekVideoTo(Math.min(trimOut, currentTime + 5))}
             title="Avançar 5 segundos"
@@ -255,6 +260,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
 
           <button
             type="button"
+            aria-label={isMuted ? 'Ativar som' : 'Silenciar áudio'}
             disabled={!previewStreamUrl || isPreparingPreview}
             onClick={() => {
               const next = !isMuted;
@@ -273,19 +279,20 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
         </div>
 
         {/* Cronômetro com Números Tabulares Precisos */}
-        <div className="flex items-center gap-2 bg-surface-container-lowest px-3 py-1.5 rounded-lg border border-outline/10">
-          <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
-          <span className="font-mono text-title-sm text-title-sm font-bold text-on-surface tabular-nums">
+        <div className="flex items-center gap-2 bg-surface-container-lowest px-3 py-1.5 rounded-lg border border-outline/10 min-w-0">
+          <span className="material-symbols-outlined text-[16px] text-primary shrink-0">schedule</span>
+          <span className="font-mono text-title-sm text-title-sm font-bold text-on-surface tabular-nums truncate">
             {formatTime(currentTime)} / {formatTime(totalDuration)}
           </span>
-          <span className="text-[10px] text-outline px-1 py-0.5 rounded bg-surface-container font-mono">
+          <span className="text-[10px] text-outline px-1 py-0.5 rounded bg-surface-container font-mono shrink-0">
             Corte: {formatTime(Math.max(0, trimOut - trimIn))}
           </span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
+            aria-label="Ir para Marcador In"
             disabled={!previewStreamUrl || isPreparingPreview}
             onClick={() => seekVideoTo(trimIn)}
             title="Ir para Marcador In"
@@ -295,6 +302,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
           </button>
           <button
             type="button"
+            aria-label="Ir para Marcador Out"
             disabled={!previewStreamUrl || isPreparingPreview}
             onClick={() => seekVideoTo(trimOut)}
             title="Ir para Marcador Out"

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Button, Input } from '../../../components/ui';
 import { toast } from 'sonner';
+import { useModalA11y } from '../../../hooks';
 
 interface TwoFactorSetupModalProps {
   isOpen: boolean;
@@ -27,24 +28,37 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
   onClose,
   onConfirm,
 }) => {
+  useModalA11y({ isOpen, onClose });
+
   const [copiedKey, setCopiedKey] = useState(false);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in">
-      <Card className="w-full max-w-md p-6 bg-surface-container border border-surface-container-high shadow-2xl flex flex-col gap-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in"
+      onClick={onClose}
+    >
+      <Card
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="two-factor-setup-modal-title"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md p-6 bg-surface-container border border-surface-container-high shadow-2xl flex flex-col gap-4"
+      >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-primary">
-            <span className="material-symbols-outlined text-[24px]">shield_locked</span>
-            <h3 className="font-title-md text-title-md font-bold text-on-surface">
+          <div className="flex items-center gap-2 text-primary min-w-0">
+            <span className="material-symbols-outlined text-[24px] shrink-0">shield_locked</span>
+            <h3 id="two-factor-setup-modal-title" className="font-title-md text-title-md font-bold text-on-surface truncate">
               Ativação do Segundo Fator (2FA)
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-outline hover:text-on-surface p-1 rounded-lg cursor-pointer"
+            aria-label="Fechar"
+            title="Fechar"
+            className="text-outline hover:text-on-surface p-1 rounded-lg cursor-pointer shrink-0"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
@@ -87,8 +101,9 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
                     toast.info('Copiado para a área de transferência!');
                     setTimeout(() => setCopiedKey(false), 2000);
                   }}
-                  className="text-on-surface-variant hover:text-primary transition-colors p-1 cursor-pointer"
+                  className="text-on-surface-variant hover:text-primary transition-colors p-1 cursor-pointer shrink-0"
                   title="Copiar chave secreta"
+                  aria-label="Copiar chave secreta"
                 >
                   <span className="material-symbols-outlined text-[16px]">
                     {copiedKey ? 'check' : 'content_copy'}

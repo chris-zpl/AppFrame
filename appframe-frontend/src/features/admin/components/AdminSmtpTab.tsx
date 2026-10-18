@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, Button, Input, VisibilityToggle } from '../../../components/ui';
 import type { SmtpConfig } from '../types';
 
@@ -44,7 +44,9 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
   const [internalShowPassword, setInternalShowPassword] = useState(false);
   const [internalTestEmail, setInternalTestEmail] = useState('');
 
-  useEffect(() => {
+  const [prevInitialConfig, setPrevInitialConfig] = useState(initialConfig);
+  if (initialConfig !== prevInitialConfig) {
+    setPrevInitialConfig(initialConfig);
     if (initialConfig) {
       setInternalForm({
         host: initialConfig.host || '',
@@ -56,7 +58,7 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
         secure: Boolean(initialConfig.secure),
       });
     }
-  }, [initialConfig]);
+  }
 
   const smtpForm = controlledForm !== undefined ? controlledForm : internalForm;
   const setSmtpForm = controlledSetForm ?? setInternalForm;

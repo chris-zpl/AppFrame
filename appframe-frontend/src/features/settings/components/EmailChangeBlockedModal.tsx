@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, Button } from '../../../components/ui';
+import { useModalA11y } from '../../../hooks';
 
 interface EmailChangeBlockedModalProps {
   isOpen: boolean;
@@ -14,18 +15,40 @@ export const EmailChangeBlockedModal: React.FC<EmailChangeBlockedModalProps> = (
   nextAllowed,
   onClose,
 }) => {
+  useModalA11y({ isOpen, onClose });
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
-      <Card className="w-full max-w-md p-6 bg-surface-container border-2 border-amber-500/40 shadow-2xl flex flex-col gap-4">
-        <div className="flex items-center gap-3 text-amber-500">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[24px]">lock_clock</span>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in"
+      onClick={onClose}
+    >
+      <Card
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="email-blocked-title"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md p-6 bg-surface-container border-2 border-amber-500/40 shadow-2xl flex flex-col gap-4"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 text-amber-500 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[24px]">lock_clock</span>
+            </div>
+            <h3 id="email-blocked-title" className="font-title-md text-title-md font-bold text-on-surface truncate">
+              Alteração Indisponível
+            </h3>
           </div>
-          <h3 className="font-title-md text-title-md font-bold text-on-surface">
-            Alteração Indisponível
-          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            title="Fechar"
+            className="text-outline hover:text-on-surface p-1 rounded-lg cursor-pointer shrink-0"
+          >
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
         </div>
 
         <div className="flex flex-col gap-3">

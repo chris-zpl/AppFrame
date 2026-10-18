@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { marked } from 'marked';
 import { useLegalDocuments } from '../hooks';
+import { useModalA11y } from '../../../hooks';
 import { LegalModalHeader } from './LegalModalHeader';
 import { LegalModalContent } from './LegalModalContent';
 import { LegalModalFooter } from './LegalModalFooter';
@@ -17,41 +18,36 @@ export const LegalModal: React.FC<LegalModalProps> = ({
   onClose,
   initialDoc = 'terms',
 }) => {
-  const [activeDoc, setActiveDoc] = useState<LegalDocType>(initialDoc);
+  useModalA11y({ isOpen, onClose });
 
-  // Sincroniza o documento ativo sempre que o modal abre ou a prop muda
-  useEffect(() => {
+  const [activeDoc, setActiveDoc] = useState<LegalDocType>(initialDoc);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const [prevInitialDoc, setPrevInitialDoc] = useState(initialDoc);
+
+  // Sincroniza o documento ativo quando o modal abre ou initialDoc muda
+  if (isOpen !== prevIsOpen || initialDoc !== prevInitialDoc) {
+    setPrevIsOpen(isOpen);
+    setPrevInitialDoc(initialDoc);
     if (isOpen) {
       setActiveDoc(initialDoc);
     }
-  }, [isOpen, initialDoc]);
+  }
 
   // Busca os documentos legais públicos da API
   const { data, isLoading } = useLegalDocuments(isOpen);
 
   const currentItem = activeDoc === 'terms' ? data?.terms : data?.privacy;
+  const renderedContent = currentItem?.rendered;
 
   // Renderiza Markdown para HTML
   const parsedHtml = useMemo(() => {
-    if (!currentItem?.rendered) return '';
+    if (!renderedContent) return '';
     try {
-      return marked.parse(currentItem.rendered) as string;
+      return marked.parse(renderedContent) as string;
     } catch {
-      return currentItem.rendered;
+      return renderedContent;
     }
-  }, [currentItem?.rendered]);
-
-  // Bloqueia o scroll do body enquanto o modal estiver aberto
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
+  }, [renderedContent]);
 
   if (!isOpen) return null;
 
