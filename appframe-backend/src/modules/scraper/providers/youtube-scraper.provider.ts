@@ -5,14 +5,46 @@ import {
   Logger,
   BadRequestException,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { IVideoScraperProvider } from '../interfaces/video-scraper-provider.interface';
 import { ScrapedMediaItem } from '../interfaces/scraped-media-item.interface';
+import { RedisService } from '../../../core/redis/redis.service';
 
 @Injectable()
 export class YouTubeScraperProvider implements IVideoScraperProvider {
   readonly providerName = 'youtube';
   private readonly logger = new Logger(YouTubeScraperProvider.name);
+  private memoryTokens = new Map<string, any>();
+
+  constructor(
+    @Optional() private readonly redisService?: RedisService,
+  ) {}
+
+  private async saveTokens(channelUrl: string, data: any): Promise<void> {
+    const key = `channel_tokens:${channelUrl}`;
+    this.memoryTokens.set(key, data);
+    if (this.redisService) {
+      try {
+        await this.redisService.set(key, JSON.stringify(data), 'EX', 3600);
+      } catch (err: any) {
+        this.logger.warn(`Erro ao salvar tokens no Redis (${key}): ${err.message}`);
+      }
+    }
+  }
+
+  private async getTokens(channelUrl: string): Promise<any | null> {
+    const key = `channel_tokens:${channelUrl}`;
+    if (this.redisService) {
+      try {
+        const raw = await this.redisService.get(key);
+        if (raw) return JSON.parse(raw);
+      } catch (err: any) {
+        this.logger.warn(`Erro ao ler tokens do Redis (${key}): ${err.message}`);
+      }
+    }
+    return this.memoryTokens.get(key) || null;
+  }
 
   canHandle(channelUrl: string): boolean {
     if (!channelUrl) return false;
@@ -392,10 +424,10 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       const videosUrl = `${baseUrl}/videos`;
       const shortsUrl = `${baseUrl}/shorts`;
 
-      // Coleta vídeos regulares (/videos) e Shorts (/shorts) em paralelo com paginação InnerTube
+      // Coleta vídeos regulares (/videos) e Shorts (/shorts) em paralelo com extração inicial imediata
       const [regularResult, shortsResult] = await Promise.all([
-        this.scrapeTab(videosUrl, false),
-        this.scrapeTab(shortsUrl, true),
+        this.scrapeTab(videosUrl, false, 1),
+        this.scrapeTab(shortsUrl, true, 1),
       ]);
 
       if (regularResult.notFound) {
@@ -498,11 +530,25 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         ? [targetItem, ...Array.from(itemsMap.values())]
         : Array.from(itemsMap.values());
 
+      const videosContinuationToken = (regularResult as any).continuationToken || null;
+      const shortsContinuationToken = (shortsResult as any).continuationToken || null;
+
+      await this.saveTokens(baseUrl, {
+        videosToken: videosContinuationToken,
+        shortsToken: shortsContinuationToken,
+        visitedIds: Array.from(itemsMap.keys()),
+        channelTitle,
+        channelAvatarUrl,
+      });
+
+      const hasMore = Boolean(videosContinuationToken || shortsContinuationToken);
+
       // Garante que TODOS os itens de resultado (inclusive targetItem no índice 0) tenham o avatar e título populados
       for (const item of results) {
         if (channelTitle && !item.channelTitle) item.channelTitle = channelTitle;
         if (channelAvatarUrl && !item.channelAvatarUrl) item.channelAvatarUrl = channelAvatarUrl;
         if (!item.channelUrl) item.channelUrl = baseUrl;
+        item.hasMore = hasMore;
       }
 
       if (results.length === 0) {
@@ -532,16 +578,18 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   }
 
   /**
-   * Realiza o scraping completo de uma aba (Videos ou Shorts) percorrendo ytInitialData e tokens de continuação InnerTube
+   * Realiza o scraping de uma aba (Videos ou Shorts) com suporte a limite de páginas iniciais
    */
   private async scrapeTab(
     url: string,
     isShortTab: boolean,
+    maxPages: number = 1,
   ): Promise<{
     items: ScrapedMediaItem[];
     notFound: boolean;
     channelTitle?: string;
     channelAvatarUrl?: string;
+    continuationToken?: string | null;
   }> {
     const headers = this.getFetchHeaders();
 
@@ -631,68 +679,172 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       ];
 
       let continuationToken = this.extractGridContinuationToken(initialData);
-      const startTime = Date.now();
-      const maxDurationMs = 45000;
-      const maxPages = 60;
-      let page = 1;
 
-      while (
-        continuationToken &&
-        page < maxPages &&
-        Date.now() - startTime < maxDurationMs
-      ) {
-        page++;
-        try {
-          const browseRes = await fetch(
-            'https://www.youtube.com/youtubei/v1/browse?prettyPrint=false',
-            {
-              method: 'POST',
-              headers: {
-                ...headers,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                context: {
-                  client: {
-                    clientName: 'WEB',
-                    clientVersion: '2.20241001.00.00',
-                    hl: 'pt-BR',
-                    gl: 'BR',
-                  },
+      if (maxPages > 1) {
+        const startTime = Date.now();
+        const maxDurationMs = 15000;
+        let page = 1;
+
+        while (
+          continuationToken &&
+          page < maxPages &&
+          Date.now() - startTime < maxDurationMs
+        ) {
+          page++;
+          try {
+            const browseRes = await fetch(
+              'https://www.youtube.com/youtubei/v1/browse?prettyPrint=false',
+              {
+                method: 'POST',
+                headers: {
+                  ...headers,
+                  'Content-Type': 'application/json',
                 },
-                continuation: continuationToken,
-              }),
-            },
-          );
+                body: JSON.stringify({
+                  context: {
+                    client: {
+                      clientName: 'WEB',
+                      clientVersion: '2.20241001.00.00',
+                      hl: 'pt-BR',
+                      gl: 'BR',
+                    },
+                  },
+                  continuation: continuationToken,
+                }),
+              },
+            );
 
-          if (!browseRes.ok) {
+            if (!browseRes.ok) {
+              break;
+            }
+
+            const browseData = await browseRes.json();
+            const newItems = this.extractItemsFromData(
+              browseData,
+              isShortTab,
+              visitedIds,
+            );
+            if (newItems.length === 0) {
+              break;
+            }
+
+            allItems.push(...newItems);
+            continuationToken = this.extractGridContinuationToken(browseData);
+          } catch (contErr: any) {
+            this.logger.warn(
+              `Interrupção na paginação InnerTube (${url}, pág ${page}): ${contErr.message}`,
+            );
             break;
           }
-
-          const browseData = await browseRes.json();
-          const newItems = this.extractItemsFromData(
-            browseData,
-            isShortTab,
-            visitedIds,
-          );
-          if (newItems.length === 0) {
-            break;
-          }
-
-          allItems.push(...newItems);
-          continuationToken = this.extractGridContinuationToken(browseData);
-        } catch (contErr: any) {
-          this.logger.warn(
-            `Interrupção na paginação InnerTube (${url}, pág ${page}): ${contErr.message}`,
-          );
-          break;
         }
       }
 
-      return { items: allItems, notFound: false, channelTitle, channelAvatarUrl };
+      return {
+        items: allItems,
+        notFound: false,
+        channelTitle,
+        channelAvatarUrl,
+        continuationToken,
+      };
     } catch (err: any) {
       this.logger.warn(`Erro ao baixar página ${url}: ${err.message}`);
       return { items: [], notFound: false };
+    }
+  }
+
+  /**
+   * Extrai próxima página/lote de mídias sob demanda (continuation InnerTube)
+   */
+  async fetchMore(
+    channelUrl: string,
+    type: 'all' | 'long' | 'shorts' = 'all',
+  ): Promise<ScrapedMediaItem[]> {
+    const rawBaseUrl = channelUrl;
+    const baseUrl = this.normalizeChannelUrl(rawBaseUrl);
+    const session = await this.getTokens(baseUrl);
+
+    if (!session) {
+      return [];
+    }
+
+    const wantShorts = type === 'shorts';
+    let token = wantShorts ? session.shortsToken : session.videosToken;
+    let actualIsShort = wantShorts;
+
+    // Se no modo 'all' não houver mais token de vídeos regulares, tenta de shorts
+    if (!token && type === 'all') {
+      if (session.shortsToken) {
+        token = session.shortsToken;
+        actualIsShort = true;
+      }
+    }
+
+    if (!token) {
+      return [];
+    }
+
+    const headers = this.getFetchHeaders();
+    try {
+      const browseRes = await fetch(
+        'https://www.youtube.com/youtubei/v1/browse?prettyPrint=false',
+        {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            context: {
+              client: {
+                clientName: 'WEB',
+                clientVersion: '2.20241001.00.00',
+                hl: 'pt-BR',
+                gl: 'BR',
+              },
+            },
+            continuation: token,
+          }),
+        },
+      );
+
+      if (!browseRes.ok) {
+        if (actualIsShort) session.shortsToken = null;
+        else session.videosToken = null;
+        await this.saveTokens(baseUrl, session);
+        return [];
+      }
+
+      const browseData = await browseRes.json();
+      const visitedSet = new Set<string>(session.visitedIds || []);
+      const newItems = this.extractItemsFromData(browseData, actualIsShort, visitedSet);
+      const nextToken = this.extractGridContinuationToken(browseData);
+
+      if (actualIsShort) {
+        session.shortsToken = nextToken;
+      } else {
+        session.videosToken = nextToken;
+      }
+      session.visitedIds = Array.from(visitedSet);
+      await this.saveTokens(baseUrl, session);
+
+      const hasMore = Boolean(session.videosToken || session.shortsToken);
+      for (const it of newItems) {
+        if (session.channelTitle) it.channelTitle = session.channelTitle;
+        if (session.channelAvatarUrl) it.channelAvatarUrl = session.channelAvatarUrl;
+        it.channelUrl = baseUrl;
+        it.hasMore = hasMore;
+      }
+
+      await this.enrichShortsRealDurations(newItems);
+
+      this.logger.log(
+        `Lote adicional do canal extraído com sucesso (${baseUrl}): ${newItems.length} novas mídias. hasMore: ${hasMore}`,
+      );
+
+      return newItems;
+    } catch (err: any) {
+      this.logger.warn(`Falha ao buscar próximo lote do canal ${baseUrl}: ${err.message}`);
+      return [];
     }
   }
 
@@ -1069,9 +1221,9 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
    * Executa em lotes paralelos (concorrência controlada) para garantir rapidez sem sobrecarga.
    */
   async enrichShortsRealDurations(items: ScrapedMediaItem[]): Promise<void> {
-    const shortsToEnrich = items.filter(
-      (item) => item.isShort || item.is_short,
-    );
+    const shortsToEnrich = items
+      .filter((item) => (item.isShort || item.is_short) && (!item.durationSeconds || item.durationSeconds <= 0))
+      .slice(0, 6);
 
     if (shortsToEnrich.length === 0) return;
 
@@ -1106,7 +1258,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   async fetchVideoRealDuration(videoId: string): Promise<number> {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 4000);
+      const timeout = setTimeout(() => controller.abort(), 1500);
       const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
         signal: controller.signal,
         headers: {

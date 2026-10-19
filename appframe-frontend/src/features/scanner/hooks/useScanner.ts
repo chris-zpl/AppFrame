@@ -68,6 +68,8 @@ export const useScanner = () => {
   const [currentPage, setCurrentPage] = useState<number>(() => resolveScannerPage(searchParams));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [channelMeta, setChannelMeta] = useState<ChannelMeta | null>(cached?.channelMeta || null);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   // Sincroniza filter e page se a URL mudar (ex: botão voltar/avançar do navegador)
   useEffect(() => {
@@ -90,7 +92,10 @@ export const useScanner = () => {
     });
   }, [videos, filter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredVideos.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredVideos.length / ITEMS_PER_PAGE) + (hasMore ? 1 : 0)
+  );
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
   // Paginação (20 vídeos por página: 5 linhas x 4 colunas)
@@ -102,6 +107,56 @@ export const useScanner = () => {
   const pageNumbers = useMemo(() => {
     return calculatePageNumbers(safeCurrentPage, totalPages);
   }, [totalPages, safeCurrentPage]);
+
+  const fetchMoreVideos = useCallback(async () => {
+    if (!channelUrl || isFetchingMore || !hasMore) return;
+    setIsFetchingMore(true);
+    try {
+      const moreItems = await scraperService.fetchMore(channelUrl, filter);
+      if (moreItems && moreItems.length > 0) {
+        const mapped = mapScannedItems(moreItems, channelUrl).videos;
+        setVideos((prev) => {
+          const existingIds = new Set(prev.map((v) => v.id));
+          const fresh = mapped.filter((v) => !existingIds.has(v.id));
+          if (fresh.length === 0) {
+            setHasMore(false);
+            return prev;
+          }
+          const merged = [...prev, ...fresh];
+          try {
+            sessionStorage.setItem(
+              'appframe_scanner_cache',
+              JSON.stringify({
+                channelUrl,
+                videos: merged,
+                channelMeta,
+              })
+            );
+          } catch {}
+          return merged;
+        });
+
+        const moreAvailable = Boolean(moreItems[0]?.hasMore);
+        setHasMore(moreAvailable);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err: any) {
+      console.warn('Erro ao carregar mais mídias do canal:', err?.message || err);
+    } finally {
+      setIsFetchingMore(false);
+    }
+  }, [channelUrl, isFetchingMore, hasMore, filter, channelMeta]);
+
+  // Se a página atual exigir mais mídias do que já carregamos, busca automaticamente
+  useEffect(() => {
+    if (hasScanned && hasMore && !isFetchingMore && channelUrl) {
+      const neededItems = safeCurrentPage * ITEMS_PER_PAGE;
+      if (filteredVideos.length < neededItems) {
+        fetchMoreVideos();
+      }
+    }
+  }, [filter, safeCurrentPage, filteredVideos.length, hasScanned, hasMore, isFetchingMore, channelUrl, fetchMoreVideos]);
 
   const handleFilterChange = useCallback((nextFilter: ScannerFilterType) => {
     setFilter(nextFilter);
@@ -126,25 +181,34 @@ export const useScanner = () => {
     );
   }, [setSearchParams]);
 
-  const handlePageChange = useCallback((page: number) => {
-    const clamped = Math.max(1, Math.min(totalPages, page));
-    setCurrentPage(clamped);
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (clamped <= 1) {
-          next.delete('page');
-          next.delete('p');
-        } else {
-          next.set('page', String(clamped));
-          next.delete('p');
-        }
-        return next;
-      },
-      { replace: true }
-    );
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [totalPages, setSearchParams]);
+  const handlePageChange = useCallback(
+    async (page: number) => {
+      const clamped = Math.max(1, page);
+      setCurrentPage(clamped);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (clamped <= 1) {
+            next.delete('page');
+            next.delete('p');
+          } else {
+            next.set('page', String(clamped));
+            next.delete('p');
+          }
+          return next;
+        },
+        { replace: true }
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Se a página selecionada necessitar de mais vídeos para renderizar
+      const neededItems = clamped * ITEMS_PER_PAGE;
+      if (filteredVideos.length < neededItems && hasMore && !isFetchingMore) {
+        await fetchMoreVideos();
+      }
+    },
+    [filteredVideos.length, hasMore, isFetchingMore, fetchMoreVideos, setSearchParams]
+  );
 
   // Contagem de vídeos selecionados e duração acumulada
   const { selectedCount, totalSeconds } = useMemo(() => {
@@ -197,7 +261,7 @@ export const useScanner = () => {
     try {
       const items = await scraperService.scanChannel(cleanUrl);
 
-      if (items && items.length > 0) {
+        if (items && items.length > 0) {
         const result = mapScannedItems(items, cleanUrl);
 
         setVideos(result.videos);
@@ -205,6 +269,8 @@ export const useScanner = () => {
         setFilter('all');
         setCurrentPage(1);
         setHasScanned(true);
+        const moreAvailable = Boolean((items[0] as any)?.hasMore ?? true);
+        setHasMore(moreAvailable);
 
         try {
           sessionStorage.setItem(
@@ -244,6 +310,7 @@ export const useScanner = () => {
       } else {
         setVideos([]);
         setHasScanned(false);
+        setHasMore(false);
         try {
           sessionStorage.removeItem('appframe_scanner_cache');
         } catch {}
@@ -252,6 +319,7 @@ export const useScanner = () => {
     } catch (err: any) {
       setVideos([]);
       setHasScanned(false);
+      setHasMore(false);
       try {
         sessionStorage.removeItem('appframe_scanner_cache');
       } catch {}
@@ -357,6 +425,9 @@ export const useScanner = () => {
     selectedIds,
     selectedCount,
     totalSeconds,
+    hasMore,
+    isFetchingMore,
+    fetchMoreVideos,
     executeScan,
     handleFilterChange,
     handlePageChange,

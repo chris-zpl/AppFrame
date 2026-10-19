@@ -57,6 +57,22 @@ export class ScraperService {
   }
 
   /**
+   * Extrai próxima página/lote de mídias do canal sob demanda
+   */
+  async fetchMore(
+    channelUrl: string,
+    type: 'all' | 'long' | 'shorts' = 'all',
+  ): Promise<ScrapedMediaItem[]> {
+    const provider = this.providers.find((p) => p.canHandle(channelUrl));
+
+    if (!provider || !provider.fetchMore) {
+      return [];
+    }
+
+    return provider.fetchMore(channelUrl, type);
+  }
+
+  /**
    * Extração rápida de metadados para URLs individuais
    */
   async extractMetadata(url: string): Promise<ScrapedVideoMetadata> {

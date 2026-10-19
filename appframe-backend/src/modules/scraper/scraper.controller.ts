@@ -9,6 +9,7 @@ import {
 import { ScraperService, ScrapedVideoMetadata } from './scraper.service';
 import { ScrapeRequestDto } from './dto/scrape-request.dto';
 import { ScanChannelDto } from './dto/scan-channel.dto';
+import { ScanMoreDto } from './dto/scan-more.dto';
 import { ScrapedMediaItem } from './interfaces/scraped-media-item.interface';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -35,5 +36,13 @@ export class ScraperController {
     @Body() dto: ScanChannelDto,
   ): Promise<ScrapedMediaItem[]> {
     return this.scraperService.scanChannel(dto.channelUrl);
+  }
+
+  @Post('more')
+  @HttpCode(HttpStatus.OK)
+  async fetchMore(
+    @Body() dto: ScanMoreDto,
+  ): Promise<ScrapedMediaItem[]> {
+    return this.scraperService.fetchMore(dto.channelUrl, dto.type || 'all');
   }
 }

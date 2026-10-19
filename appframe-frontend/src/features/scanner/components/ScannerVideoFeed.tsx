@@ -53,16 +53,20 @@ export const ScannerVideoFeed: React.FC<ScannerVideoFeedProps> = (props) => {
           )}
 
           {/* Grid responsivo de vídeos reais */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
-            {paginatedVideos.map((video) => (
-              <VideoCard
-                key={video.id}
-                video={video}
-                isSelected={selectedIds.has(video.id)}
-                onToggleSelect={onToggleSelect}
-              />
-            ))}
-          </div>
+          {scanner.isFetchingMore && paginatedVideos.length === 0 ? (
+            <ScannerVideoSkeleton />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+              {paginatedVideos.map((video) => (
+                <VideoCard
+                  key={video.id}
+                  video={video}
+                  isSelected={selectedIds.has(video.id)}
+                  onToggleSelect={onToggleSelect}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Paginação */}
           <ScannerPagination />

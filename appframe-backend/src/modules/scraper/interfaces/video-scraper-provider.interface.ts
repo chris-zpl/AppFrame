@@ -12,4 +12,12 @@ export interface IVideoScraperProvider {
    * Extrai vídeos recentes e Shorts do canal especificado
    */
   scanChannel(channelUrl: string): Promise<ScrapedMediaItem[]>;
+
+  /**
+   * Extrai próxima página/lote de mídias sob demanda (continuation InnerTube)
+   */
+  fetchMore?(
+    channelUrl: string,
+    type?: 'all' | 'long' | 'shorts',
+  ): Promise<ScrapedMediaItem[]>;
 }

@@ -27,10 +27,18 @@ export const ScannerPagination: React.FC<ScannerPaginationProps> = (props) => {
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 pb-2 border-t border-neutral-200 dark:border-surface-container-high/60">
-      <span className="font-body-sm text-body-sm text-on-surface-variant">
-        Mostrando <strong className="text-on-surface">{startItemIndex}–{endItemIndex}</strong> de{' '}
-        <strong className="text-on-surface">{totalFilteredCount}</strong> mídias
-      </span>
+      <div className="flex items-center gap-3">
+        <span className="font-body-sm text-body-sm text-on-surface-variant">
+          Mostrando <strong className="text-on-surface">{startItemIndex}–{endItemIndex}</strong> de{' '}
+          <strong className="text-on-surface">{totalFilteredCount}</strong> mídias
+        </span>
+        {scanner.isFetchingMore && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-primary font-medium animate-pulse">
+            <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+            Carregando mais...
+          </span>
+        )}
+      </div>
 
       <div className="flex items-center gap-1.5 flex-wrap justify-center">
         <button
@@ -40,7 +48,6 @@ export const ScannerPagination: React.FC<ScannerPaginationProps> = (props) => {
           className="px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-title-sm font-title-sm text-neutral-700 dark:text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-neutral-200 dark:border-outline/10"
         >
           <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-          <span>Anterior</span>
         </button>
 
         {pageNumbers.map((pageItem) => {
@@ -78,7 +85,6 @@ export const ScannerPagination: React.FC<ScannerPaginationProps> = (props) => {
           onClick={() => onPageChange(safeCurrentPage + 1)}
           className="px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-title-sm font-title-sm text-neutral-700 dark:text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-neutral-200 dark:border-outline/10"
         >
-          <span>Próxima</span>
           <span className="material-symbols-outlined text-[18px]">chevron_right</span>
         </button>
       </div>

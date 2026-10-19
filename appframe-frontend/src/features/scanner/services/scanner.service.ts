@@ -21,6 +21,7 @@ export interface ScrapedMediaItem {
   channelTitle?: string;
   channelAvatarUrl?: string;
   channelUrl?: string;
+  hasMore?: boolean;
 }
 
 export interface ScrapedVideoMetadata {
@@ -39,7 +40,19 @@ export const scraperService = {
     const res = await api.post<ScrapedMediaItem[]>(
       '/scraper/scan',
       { channelUrl },
-      { timeout: 120000 },
+      { timeout: 60000 },
+    );
+    return res.data;
+  },
+
+  async fetchMore(
+    channelUrl: string,
+    type: 'all' | 'long' | 'shorts' = 'all',
+  ): Promise<ScrapedMediaItem[]> {
+    const res = await api.post<ScrapedMediaItem[]>(
+      '/scraper/more',
+      { channelUrl, type },
+      { timeout: 30000 },
     );
     return res.data;
   },

@@ -18,4 +18,5 @@ export interface ScrapedMediaItem {
   channelTitle?: string;
   channelAvatarUrl?: string;
   channelUrl?: string;
+  hasMore?: boolean;
 }

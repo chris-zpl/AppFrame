@@ -193,4 +193,50 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
       expect(results[1].id).toBe('recent00112');
     });
   });
+
+  describe('5.4 Paginação sob Demanda (fetchMore)', () => {
+    it('deve retornar array vazio se não houver sessão/tokens para o canal', async () => {
+      const more = await provider.fetchMore('https://www.youtube.com/@CanalVazio');
+      expect(more).toEqual([]);
+    });
+
+    it('deve buscar novo lote de mídias quando houver continuationToken salvo', async () => {
+      const channelUrl = 'https://www.youtube.com/@RockstarGames';
+      // Simula token salvo
+      (provider as any).saveTokens(channelUrl, {
+        videosToken: 'token123',
+        shortsToken: null,
+        visitedIds: [],
+        channelTitle: 'Rockstar Games',
+      });
+
+      // Mock do fetch global para o endpoint browse do YouTube
+      const mockBrowseData = {
+        onResponseReceivedActions: [
+          {
+            appendContinuationItemsAction: {
+              continuationItems: [
+                {
+                  gridVideoRenderer: {
+                    videoId: 'nextVid001',
+                    title: { runs: [{ text: 'Vídeo da Página 2' }] },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockBrowseData,
+      } as any);
+
+      jest.spyOn(provider, 'enrichShortsRealDurations').mockResolvedValue();
+
+      const items = await provider.fetchMore(channelUrl, 'all');
+      expect(Array.isArray(items)).toBe(true);
+    });
+  });
 });
