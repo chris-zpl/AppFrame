@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { API_BASE_URL } from '../../../lib/api';
 import { mediaService, type StudioVideoQueueItem } from '../../history';
 import type { AspectRatio } from '../types';
+import { getSavedStudioState } from '../utils';
 
 export interface UseStudioPlayerProps {
   currentVideo: StudioVideoQueueItem | null;
@@ -13,15 +14,32 @@ export const useStudioPlayer = ({
   currentVideo,
   onRestoreSavedState,
 }: UseStudioPlayerProps) => {
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
+  const initialSaved = getSavedStudioState(currentVideo);
+
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(() => {
+    if (initialSaved?.aspectRatio === '9:16' || initialSaved?.aspectRatio === '16:9') {
+      return initialSaved.aspectRatio;
+    }
+    return currentVideo?.isShort ? '9:16' : '16:9';
+  });
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [currentTime, setCurrentTime] = useState<number>(0.0);
+  const [currentTime, setCurrentTime] = useState<number>(() => {
+    return typeof initialSaved?.currentTime === 'number' && initialSaved.currentTime >= 0
+      ? initialSaved.currentTime
+      : (typeof initialSaved?.trimIn === 'number' ? initialSaved.trimIn : 0.0);
+  });
   const [totalDuration, setTotalDuration] = useState<number>(0.0);
 
   // Timeline & Cortes de Precisão (In, Out e Onda Sonora Real do Vídeo)
-  const [trimIn, setTrimIn] = useState<number>(0.0);
-  const [trimOut, setTrimOut] = useState<number>(0.0);
+  const [trimIn, setTrimIn] = useState<number>(() => {
+    return typeof initialSaved?.trimIn === 'number' ? initialSaved.trimIn : 0.0;
+  });
+  const [trimOut, setTrimOut] = useState<number>(() => {
+    return typeof initialSaved?.trimOut === 'number' && initialSaved.trimOut > 0
+      ? initialSaved.trimOut
+      : 0.0;
+  });
   const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
 
   // Estados do download e stream real do vídeo no Studio
@@ -34,6 +52,11 @@ export const useStudioPlayer = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const draggingHandleRef = useRef<'in' | 'out' | 'playhead' | null>(null);
+  const initialSeekTimeRef = useRef<number | null>(
+    typeof initialSaved?.currentTime === 'number' && initialSaved.currentTime > 0
+      ? initialSaved.currentTime
+      : null
+  );
 
   // Referências para estabilização de callbacks e prevenção estrita de requisições infinitas
   const onRestoreSavedStateRef = useRef(onRestoreSavedState);
@@ -124,6 +147,15 @@ export const useStudioPlayer = ({
       setIsPlaying(false);
     }
   }, [previewStreamUrl, trimIn, trimOut]);
+
+  // Pausa o vídeo de forma síncrona e garante que o elemento de vídeo seja interrompido
+  const pauseVideo = useCallback(() => {
+    const videoEl = videoRef.current;
+    if (videoEl && !videoEl.paused) {
+      videoEl.pause();
+    }
+    setIsPlaying(false);
+  }, []);
 
   // Atalho de teclado: Barra de espaço para Play / Pause
   useEffect(() => {
@@ -229,12 +261,7 @@ export const useStudioPlayer = ({
       setTrimOut(0.0);
       setCurrentTime(0.0);
 
-      const storageKey = `appframe_studio_state_${videoItem.id || videoItem.url}`;
-      let saved: any = null;
-      try {
-        const raw = localStorage.getItem(storageKey);
-        if (raw) saved = JSON.parse(raw);
-      } catch {}
+      const saved = getSavedStudioState(videoItem);
 
       if (onRestoreSavedStateRef.current) {
         onRestoreSavedStateRef.current(saved, videoItem);
@@ -266,19 +293,27 @@ export const useStudioPlayer = ({
             ? Math.min(saved.trimOut, realDuration > 0 ? realDuration : saved.trimOut)
             : realDuration;
 
+        const restoredCurrentTime =
+          typeof saved?.currentTime === 'number' &&
+          saved.currentTime >= restoredTrimIn &&
+          (restoredTrimOut <= 0 || saved.currentTime <= restoredTrimOut)
+            ? saved.currentTime
+            : restoredTrimIn;
+
         setPreviewStreamUrl(streamUrl);
         setCurrentPreviewId(preview.previewId);
         setTotalDuration(realDuration);
         setTrimIn(restoredTrimIn);
         setTrimOut(restoredTrimOut);
-        setCurrentTime(restoredTrimIn);
+        setCurrentTime(restoredCurrentTime);
+        initialSeekTimeRef.current = restoredCurrentTime;
         setWaveformPeaks(
           Array.isArray(preview.waveformPeaks) && preview.waveformPeaks.length > 0
             ? preview.waveformPeaks
             : []
         );
 
-        if (saved?.aspectRatio) {
+        if (saved?.aspectRatio === '9:16' || saved?.aspectRatio === '16:9') {
           setAspectRatio(saved.aspectRatio);
         } else if (
           videoItem.isShort ||
@@ -380,6 +415,8 @@ export const useStudioPlayer = ({
     timelineRef,
     seekVideoTo,
     handleTogglePlay,
+    pauseVideo,
+    initialSeekTimeRef,
     handleTimelineMouseDown,
     handleTimelineClick,
     loadVideoPreview,

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { watermarksService, type WatermarkItem } from '../../watermarks';
 import type { WatermarkPosition } from '../types';
 import type { StudioVideoQueueItem } from '../../history';
+import { getSavedStudioState } from '../utils';
 
 export interface UseStudioWatermarkProps {
   currentVideo: StudioVideoQueueItem | null;
@@ -27,19 +28,8 @@ export const useStudioWatermark = ({ currentVideo }: UseStudioWatermarkProps) =>
     if (hasAutoSelectedWatermarkRef.current) return;
     if (userWatermarks.length === 0) return;
 
-    const storageKey = currentVideo ? `appframe_studio_state_${currentVideo.id || currentVideo.url}` : null;
-    let hasSavedWatermark = false;
-    if (storageKey) {
-      try {
-        const raw = localStorage.getItem(storageKey);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed?.selectedWatermarkId !== undefined) {
-            hasSavedWatermark = true;
-          }
-        }
-      } catch {}
-    }
+    const saved = getSavedStudioState(currentVideo);
+    const hasSavedWatermark = Boolean(saved && saved.selectedWatermarkId !== undefined);
 
     if (!hasSavedWatermark) {
       const defaultId = localStorage.getItem('appframe_default_watermark_id');

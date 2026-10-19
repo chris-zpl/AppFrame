@@ -1,13 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import type { StudioVideoQueueItem, SubtitleSegmentData } from '../../history';
 import type { AspectRatio, FontFamily, SubtitleMode, WatermarkPosition } from '../types';
 import type { WatermarkItem } from '../../watermarks';
+import { saveStudioState, removeStudioState } from '../utils';
 
 export interface UseStudioPersistenceProps {
   currentVideo: StudioVideoQueueItem | null;
   isPreparingPreview: boolean;
   totalDuration: number;
+  currentTime: number;
   trimIn: number;
   trimOut: number;
   aspectRatio: AspectRatio;
@@ -49,8 +51,9 @@ export interface UseStudioPersistenceProps {
 
 export const useStudioPersistence = ({
   currentVideo,
-  isPreparingPreview,
+  isPreparingPreview: _isPreparingPreview,
   totalDuration,
+  currentTime,
   trimIn,
   trimOut,
   aspectRatio,
@@ -89,14 +92,33 @@ export const useStudioPersistence = ({
   seekVideoTo,
   onMarkWatermarkAsSelected,
 }: UseStudioPersistenceProps) => {
-  // Persiste automaticamente as configurações do Studio no localStorage para o vídeo atual
-  useEffect(() => {
-    if (!currentVideo || isPreparingPreview || totalDuration <= 0) return;
-    const storageKey = `appframe_studio_state_${currentVideo.id || currentVideo.url}`;
+  // Mantém referência sempre atualizada do estado completo do Studio
+  const stateRef = useRef({
+    trimIn,
+    trimOut,
+    currentTime,
+    aspectRatio,
+    subtitleMode,
+    staticText,
+    geminiPrompt,
+    fontFamily,
+    textColor,
+    bgColor,
+    strokeColor,
+    fontSize,
+    useBackgroundBox,
+    selectedWatermarkId,
+    watermarkPosition,
+    watermarkOpacity,
+    watermarkScale,
+    dynamicSegments,
+  });
 
-    const stateToSave = {
+  useEffect(() => {
+    stateRef.current = {
       trimIn,
       trimOut,
+      currentTime,
       aspectRatio,
       subtitleMode,
       staticText,
@@ -113,14 +135,14 @@ export const useStudioPersistence = ({
       watermarkScale,
       dynamicSegments,
     };
+  });
 
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(stateToSave));
-    } catch {}
+  // Salva imediatamente quando configurações visuais/estilo/cortes mudarem
+  useEffect(() => {
+    if (!currentVideo) return;
+    saveStudioState(currentVideo, stateRef.current);
   }, [
     currentVideo,
-    isPreparingPreview,
-    totalDuration,
     trimIn,
     trimOut,
     aspectRatio,
@@ -140,13 +162,33 @@ export const useStudioPersistence = ({
     dynamicSegments,
   ]);
 
+  // Salva currentTime com debounce suave durante playback
+  useEffect(() => {
+    if (!currentVideo) return;
+    const timer = setTimeout(() => {
+      saveStudioState(currentVideo, stateRef.current);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [currentTime, currentVideo]);
+
+  // Garante persistência estrita ao desmontar o componente ou recarregar a janela
+  useEffect(() => {
+    const handleExit = () => {
+      if (currentVideo) {
+        saveStudioState(currentVideo, stateRef.current);
+      }
+    };
+    window.addEventListener('beforeunload', handleExit);
+    return () => {
+      window.removeEventListener('beforeunload', handleExit);
+      handleExit();
+    };
+  }, [currentVideo]);
+
   // Restaura todas as configurações do Studio para o padrão de fábrica
   const handleResetStudio = () => {
     if (!currentVideo) return;
-    const storageKey = `appframe_studio_state_${currentVideo.id || currentVideo.url}`;
-    try {
-      localStorage.removeItem(storageKey);
-    } catch {}
+    removeStudioState(currentVideo);
 
     setTrimIn(0.0);
     setTrimOut(totalDuration > 0 ? totalDuration : 0.0);

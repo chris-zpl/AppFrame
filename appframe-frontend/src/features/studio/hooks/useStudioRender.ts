@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -9,6 +9,11 @@ import {
   type SubtitleSegmentData,
 } from '../../history';
 import type { AspectRatio, FontFamily, SubtitleMode, WatermarkPosition } from '../types';
+import {
+  getActiveRenderJob,
+  saveActiveRenderJob,
+  clearActiveRenderJob,
+} from '../utils';
 
 export interface UseStudioRenderProps {
   currentVideo: StudioVideoQueueItem | null;
@@ -43,6 +48,7 @@ export interface UseStudioRenderProps {
   completedVideoIds: string[];
   setCompletedVideoIds: (ids: string[]) => void;
   setIsPlaying: (playing: boolean) => void;
+  pauseVideo?: () => void;
   navigate?: (path: string, params?: Record<string, string>) => void;
 }
 
@@ -74,12 +80,89 @@ export const useStudioRender = ({
   completedVideoIds,
   setCompletedVideoIds,
   setIsPlaying,
+  pauseVideo,
 }: UseStudioRenderProps) => {
   const queryClient = useQueryClient();
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [renderProgress, setRenderProgress] = useState<number>(0);
+  const [isGenerating, setIsGenerating] = useState<boolean>(() => {
+    const active = getActiveRenderJob();
+    return Boolean(active && active.status !== 'COMPLETED' && active.status !== 'FAILED');
+  });
+  const [renderProgress, setRenderProgress] = useState<number>(() => {
+    const active = getActiveRenderJob();
+    return active ? Math.max(15, active.progress || 15) : 0;
+  });
+
+  // Retoma e acompanha polling de job de renderização ativo ao voltar para o Studio
+  useEffect(() => {
+    let isCancelled = false;
+    const activeJob = getActiveRenderJob();
+    if (!activeJob || activeJob.status === 'COMPLETED' || activeJob.status === 'FAILED') {
+      return;
+    }
+
+    setIsGenerating(true);
+    setRenderProgress(Math.max(15, activeJob.progress || 15));
+
+    const pollJob = async () => {
+      try {
+        const job = await mediaService.getJobById(activeJob.jobId);
+        if (isCancelled) return;
+
+        const status = String(job.status || '').toUpperCase();
+        const progress = typeof job.progress === 'number' ? Math.max(15, job.progress) : activeJob.progress;
+
+        if (status === 'PROCESSING' || status === 'PENDING') {
+          setRenderProgress(progress);
+          saveActiveRenderJob({
+            ...activeJob,
+            progress,
+            status,
+          });
+          setTimeout(pollJob, 1500);
+        } else if (status === 'COMPLETED') {
+          setRenderProgress(100);
+          clearActiveRenderJob();
+          setIsGenerating(false);
+
+          await queryClient.invalidateQueries({ queryKey: ['jobs'] });
+          try {
+            await mediaService.downloadJobFile(
+              job.id,
+              job.original_title || activeJob.originalTitle || 'Corte de Vídeo AppFrame'
+            );
+          } catch {}
+
+          toast.success('Vídeo gerado com sucesso e download concluído!');
+
+          if (activeJob.videoId) {
+            setCompletedVideoIds(Array.from(new Set([...completedVideoIds, activeJob.videoId])));
+          }
+        } else if (status === 'FAILED') {
+          clearActiveRenderJob();
+          setIsGenerating(false);
+          setRenderProgress(0);
+          toast.error(job.error_log || 'Falha durante a renderização do vídeo pelo FFmpeg.');
+        }
+      } catch {
+        if (!isCancelled) {
+          setTimeout(pollJob, 3000);
+        }
+      }
+    };
+
+    pollJob();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [queryClient, setCompletedVideoIds]);
 
   const handleGenerateVideo = async () => {
+    if (isGenerating) {
+      toast.info('Um vídeo já está sendo processado. Aguarde a conclusão.');
+      return;
+    }
+
     let rawSourceUrl = currentVideo?.url || params.videoUrl || params.sourceUrl;
     if (!rawSourceUrl && params.selectedVideos) {
       rawSourceUrl = params.selectedVideos.startsWith('http')
@@ -97,7 +180,12 @@ export const useStudioRender = ({
       return;
     }
 
-    setIsPlaying(false);
+    // Interrompe o playback imediatamente e sincroniza o estado de geração
+    if (pauseVideo) {
+      pauseVideo();
+    } else {
+      setIsPlaying(false);
+    }
     setIsGenerating(true);
     setRenderProgress(5);
 
@@ -265,9 +353,18 @@ export const useStudioRender = ({
 
       const createdJob = await mediaService.render(payload);
       setRenderProgress(15);
+      saveActiveRenderJob({
+        jobId: createdJob.id,
+        videoId: currentVideo?.id,
+        originalTitle: originalTitle,
+        progress: 15,
+        status: 'PROCESSING',
+        startedAt: Date.now(),
+      });
 
       toast.info(
-        `Job despachado com sucesso para a fila! ID: ${createdJob.id} • Orquestração BullMQ e processamento FFmpeg em andamento.`
+        `Job despachado com sucesso para a fila! 
+        ID: ${createdJob.id}`
       );
 
       // Aguarda a conclusão do processamento FFmpeg no backend
@@ -281,7 +378,16 @@ export const useStudioRender = ({
         await new Promise((resolve) => setTimeout(resolve, 1500));
         currentJob = await mediaService.getJobById(createdJob.id);
         if (typeof currentJob.progress === 'number') {
-          setRenderProgress(Math.max(15, currentJob.progress));
+          const prog = Math.max(15, currentJob.progress);
+          setRenderProgress(prog);
+          saveActiveRenderJob({
+            jobId: createdJob.id,
+            videoId: currentVideo?.id,
+            originalTitle: originalTitle,
+            progress: prog,
+            status: String(currentJob.status || 'PROCESSING').toUpperCase(),
+            startedAt: Date.now(),
+          });
         }
       }
 
@@ -296,6 +402,7 @@ export const useStudioRender = ({
         throw new Error('O tempo limite de renderização foi atingido. Verifique o Histórico.');
       }
 
+      clearActiveRenderJob();
       setRenderProgress(100);
 
       // Atualiza o cache do Histórico imediatamente
@@ -330,6 +437,7 @@ export const useStudioRender = ({
         );
       }
     } catch (err: any) {
+      clearActiveRenderJob();
       console.error('Falha ao gerar e baixar vídeo:', err);
       const rawMsg =
         err?.response?.data?.message ||

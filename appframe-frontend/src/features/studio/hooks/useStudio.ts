@@ -10,6 +10,7 @@ import { useStudioSubtitles } from './useStudioSubtitles';
 import { useStudioCanvas } from './useStudioCanvas';
 import { useStudioRender } from './useStudioRender';
 import { useStudioPersistence } from './useStudioPersistence';
+import { getSavedStudioState } from '../utils';
 
 const VALID_STUDIO_TABS: Record<string, 'legendas' | 'marca-dagua'> = {
   legendas: 'legendas',
@@ -55,6 +56,9 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
   // 1. Gerenciamento de Fila de Vídeos
   const queue = useStudioQueue(params);
 
+  // Lê imediatamente o estado salvo do vídeo atual (se houver) para evitar resets de tamanho ou posição
+  const initialSaved = getSavedStudioState(queue.currentVideo);
+
   // 2. Gerenciamento de Marca d'Água
   const watermark = useStudioWatermark({ currentVideo: queue.currentVideo });
 
@@ -89,19 +93,33 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
       setActiveTabState(nextTab);
     }
   }, [searchParams]);
-  const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>('static');
+  const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>(
+    () => initialSaved?.subtitleMode || 'static'
+  );
   const [staticText, setStaticText] = useState<string>(
-    queue.currentVideo?.title || params.videoTitle || ''
+    () => (initialSaved?.staticText !== undefined ? initialSaved.staticText : (queue.currentVideo?.title || params.videoTitle || ''))
   );
   const [geminiPrompt, setGeminiPrompt] = useState<string>(
-    queue.currentVideo?.title || params.videoTitle || ''
+    () => (initialSaved?.geminiPrompt !== undefined ? initialSaved.geminiPrompt : (queue.currentVideo?.title || params.videoTitle || ''))
   );
-  const [fontFamily, setFontFamily] = useState<FontFamily>('Plus Jakarta Sans');
-  const [textColor, setTextColor] = useState<string>('#FFFFFF');
-  const [bgColor, setBgColor] = useState<string>('#10131A');
-  const [strokeColor, setStrokeColor] = useState<string>('#000000');
-  const [fontSize, setFontSize] = useState<number>(28);
-  const [useBackgroundBox, setUseBackgroundBox] = useState<boolean>(true);
+  const [fontFamily, setFontFamily] = useState<FontFamily>(
+    () => initialSaved?.fontFamily || 'Plus Jakarta Sans'
+  );
+  const [textColor, setTextColor] = useState<string>(
+    () => initialSaved?.textColor || '#FFFFFF'
+  );
+  const [bgColor, setBgColor] = useState<string>(
+    () => initialSaved?.bgColor || '#10131A'
+  );
+  const [strokeColor, setStrokeColor] = useState<string>(
+    () => initialSaved?.strokeColor || '#000000'
+  );
+  const [fontSize, setFontSize] = useState<number>(
+    () => (typeof initialSaved?.fontSize === 'number' ? initialSaved.fontSize : 28)
+  );
+  const [useBackgroundBox, setUseBackgroundBox] = useState<boolean>(
+    () => (typeof initialSaved?.useBackgroundBox === 'boolean' ? initialSaved.useBackgroundBox : true)
+  );
   const mediaFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Bloqueia modo dinâmico caso Gemini não esteja conectado
@@ -198,6 +216,7 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     currentVideo: queue.currentVideo,
     isPreparingPreview: player.isPreparingPreview,
     totalDuration: player.totalDuration,
+    currentTime: player.currentTime,
     trimIn: player.trimIn,
     trimOut: player.trimOut,
     aspectRatio: player.aspectRatio,
@@ -266,6 +285,7 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     completedVideoIds: queue.completedVideoIds,
     setCompletedVideoIds: queue.setCompletedVideoIds,
     setIsPlaying: player.setIsPlaying,
+    pauseVideo: player.pauseVideo,
     navigate,
   });
 
@@ -323,6 +343,8 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     timelineRef: player.timelineRef,
     seekVideoTo: player.seekVideoTo,
     handleTogglePlay: player.handleTogglePlay,
+    pauseVideo: player.pauseVideo,
+    initialSeekTimeRef: player.initialSeekTimeRef,
     handleTimelineMouseDown: player.handleTimelineMouseDown,
     handleTimelineClick: player.handleTimelineClick,
     loadVideoPreview: player.loadVideoPreview,

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { mediaService, type StudioVideoQueueItem } from '../../history';
+import { removeStudioState } from '../utils';
 
 export interface UseStudioQueueParams {
   videoUrl?: string;
@@ -56,7 +57,34 @@ export const useStudioQueue = (params: UseStudioQueueParams) => {
     return [];
   });
 
-  const [activeQueueIndex, setActiveQueueIndex] = useState<number>(0);
+  const [activeQueueIndexState, setActiveQueueIndexState] = useState<number>(() => {
+    try {
+      const saved = sessionStorage.getItem('appframe_studio_active_index');
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 0) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return 0;
+  });
+
+  const activeQueueIndex =
+    videoQueue.length > 0
+      ? Math.min(Math.max(0, activeQueueIndexState), videoQueue.length - 1)
+      : 0;
+
+  const setActiveQueueIndex = useCallback((updater: number | ((prev: number) => number)) => {
+    setActiveQueueIndexState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try {
+        sessionStorage.setItem('appframe_studio_active_index', String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
   const [completedVideoIds, setCompletedVideoIds] = useState<string[]>([]);
   const [isDeleteStudioModalOpen, setIsDeleteStudioModalOpen] = useState<boolean>(false);
   const [isDeletingFromStudio, setIsDeletingFromStudio] = useState<boolean>(false);
@@ -69,10 +97,7 @@ export const useStudioQueue = (params: UseStudioQueueParams) => {
   ) => {
     if (!currentVideo) return;
 
-    const storageKey = `appframe_studio_state_${currentVideo.id || currentVideo.url}`;
-    try {
-      localStorage.removeItem(storageKey);
-    } catch {}
+    removeStudioState(currentVideo);
 
     // Se houver preview baixado, solicita exclusão do arquivo temporário no backend
     try {

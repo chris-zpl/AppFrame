@@ -33,6 +33,8 @@ export interface StudioPlayerProps {
   seekVideoTo?: (time: number) => void;
   loadVideoPreview?: (videoItem: any, force?: boolean) => void;
   onNavigateToVarredura?: () => void;
+  isGenerating?: boolean;
+  initialSeekTimeRef?: React.MutableRefObject<number | null>;
 }
 
 export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
@@ -62,6 +64,8 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
   const handleTogglePlay = props.handleTogglePlay ?? studio.handleTogglePlay;
   const seekVideoTo = props.seekVideoTo ?? studio.seekVideoTo;
   const loadVideoPreview = props.loadVideoPreview ?? studio.loadVideoPreview;
+  const isGenerating = props.isGenerating ?? studio.isGenerating;
+  const initialSeekTimeRef = props.initialSeekTimeRef ?? studio.initialSeekTimeRef;
   const onNavigateToVarredura =
     props.onNavigateToVarredura ?? (() => studio.navigate("varredura"));
 
@@ -71,7 +75,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
         type="button"
         aria-label={isPlaying ? "Pausar vídeo" : "Reproduzir vídeo"}
         title={isPlaying ? "Pausar" : "Reproduzir"}
-        disabled={!previewStreamUrl || isPreparingPreview}
+        disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
         onClick={handleTogglePlay}
         className="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 cursor-pointer shadow-sm disabled:opacity-40"
       >
@@ -83,7 +87,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
       <button
         type="button"
         aria-label="Retroceder 5 segundos"
-        disabled={!previewStreamUrl || isPreparingPreview}
+        disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
         onClick={() => seekVideoTo(Math.max(trimIn, currentTime - 5))}
         title="Retroceder 5 segundos"
         className="w-8 h-8 rounded-lg text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
@@ -94,7 +98,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
       <button
         type="button"
         aria-label="Avançar 5 segundos"
-        disabled={!previewStreamUrl || isPreparingPreview}
+        disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
         onClick={() => seekVideoTo(Math.min(trimOut, currentTime + 5))}
         title="Avançar 5 segundos"
         className="w-8 h-8 rounded-lg text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
@@ -105,7 +109,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
       <button
         type="button"
         aria-label={isMuted ? "Ativar som" : "Silenciar áudio"}
-        disabled={!previewStreamUrl || isPreparingPreview}
+        disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
         onClick={() => {
           const next = !isMuted;
           setIsMuted(next);
@@ -151,7 +155,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
     <button
       type="button"
       aria-label="Ir para Marcador In"
-      disabled={!previewStreamUrl || isPreparingPreview}
+      disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
       onClick={() => seekVideoTo(trimIn)}
       title="Ir para Marcador In"
       className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-amber-800 dark:text-primary font-bold cursor-pointer disabled:opacity-40 shrink-0 border border-neutral-200 dark:border-transparent"
@@ -164,7 +168,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
     <button
       type="button"
       aria-label="Ir para Marcador Out"
-      disabled={!previewStreamUrl || isPreparingPreview}
+      disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
       onClick={() => seekVideoTo(trimOut)}
       title="Ir para Marcador Out"
       className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-amber-800 dark:text-primary font-bold cursor-pointer disabled:opacity-40 shrink-0 border border-neutral-200 dark:border-transparent"
@@ -223,11 +227,11 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
       {/* Moldura do Vídeo com Aspect Ratio Dinâmico */}
       <div
         onClick={
-          previewStreamUrl && !isPreparingPreview ? handleTogglePlay : undefined
+          previewStreamUrl && !isPreparingPreview && !isGenerating ? handleTogglePlay : undefined
         }
         className={cn(
           "relative overflow-hidden rounded-2xl bg-black border border-surface-container-highest transition-all duration-300 shadow-[0_12px_40px_rgba(0,0,0,0.8)] flex items-center justify-center",
-          previewStreamUrl && !isPreparingPreview ? "cursor-pointer" : "",
+          previewStreamUrl && !isPreparingPreview && !isGenerating ? "cursor-pointer" : "",
           aspectRatio === "9:16"
             ? "w-[290px] h-[515px] sm:w-[320px] sm:h-[568px]"
             : "w-full max-w-[620px] aspect-video",
@@ -318,10 +322,26 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
                 setTotalDuration((prev) => (prev <= 0 ? dur : prev));
                 setTrimOut((prev) => (prev <= 0 ? dur : prev));
               }
+              const targetTime =
+                initialSeekTimeRef?.current !== null && initialSeekTimeRef?.current !== undefined
+                  ? initialSeekTimeRef.current
+                  : (currentTime > 0 ? currentTime : null);
+              if (targetTime !== null && targetTime > 0) {
+                try {
+                  vid.currentTime = targetTime;
+                  setCurrentTime(targetTime);
+                } catch {}
+              }
+              if (initialSeekTimeRef) {
+                initialSeekTimeRef.current = null;
+              }
             }}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onTimeUpdate={(e) => {
+              if (initialSeekTimeRef?.current !== null && initialSeekTimeRef?.current !== undefined) {
+                return;
+              }
               const vid = e.currentTarget;
               const now = vid.currentTime;
               setCurrentTime(now);
@@ -371,7 +391,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
         </div>
 
         {/* Botão Central de Play no Hover */}
-        {!isPlaying && Boolean(previewStreamUrl) && !isPreparingPreview && (
+        {!isPlaying && Boolean(previewStreamUrl) && !isPreparingPreview && !isGenerating && (
           <button
             type="button"
             aria-label="Reproduzir vídeo"
