@@ -141,8 +141,18 @@ export const mediaService = {
     return res.data;
   },
 
-  async prepareStudioPreview(sourceUrl: string): Promise<StudioPreviewResponse> {
-    const res = await api.post<any>('/media/preview', { source_url: sourceUrl });
+  async prepareStudioPreview(
+    sourceUrl: string,
+    signal?: AbortSignal
+  ): Promise<StudioPreviewResponse> {
+    const res = await api.post<any>(
+      '/media/preview',
+      { source_url: sourceUrl },
+      {
+        timeout: 300000,
+        signal,
+      }
+    );
     return res.data?.data || res.data;
   },
 

@@ -41,8 +41,19 @@ export const useStudioPlayer = ({
     onRestoreSavedStateRef.current = onRestoreSavedState;
   }, [onRestoreSavedState]);
 
-  const loadedVideoUrlRef = useRef<string | null>(null);
+  const lastAttemptedUrlRef = useRef<string | null>(null);
   const inFlightVideoUrlRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Cancela qualquer requisição pendente ao desmontar o hook
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
 
   // Identifica se o erro é decorrente de restrição de idade ou cookies do YouTube
   const isAuthError = Boolean(
@@ -184,22 +195,30 @@ export const useStudioPlayer = ({
     seekVideoTo(newTime);
   };
 
-  // Carrega vídeo para preview no Studio com proteção anti-loop
+  // Carrega vídeo para preview no Studio com proteção anti-loop estrita
   const loadVideoPreview = useCallback(
     async (videoItem: StudioVideoQueueItem, force: boolean = false) => {
       const videoUrl = videoItem?.url;
       if (!videoUrl) return;
 
-      // Evita disparos duplicados ou simultâneos se já estiver carregando ou já estiver carregado
+      // Evita disparos duplicados ou simultâneos se já estiver carregando ou já tentado
       if (!force) {
         if (inFlightVideoUrlRef.current === videoUrl) {
           return;
         }
-        if (loadedVideoUrlRef.current === videoUrl && previewStreamUrl && !previewError) {
+        if (lastAttemptedUrlRef.current === videoUrl) {
           return;
         }
       }
 
+      // Aborta requisição em voo anterior se o usuário mudou de vídeo
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
+      lastAttemptedUrlRef.current = videoUrl;
       inFlightVideoUrlRef.current = videoUrl;
       setIsPlaying(false);
       setIsPreparingPreview(true);
@@ -222,7 +241,15 @@ export const useStudioPlayer = ({
       }
 
       try {
-        const preview = await mediaService.prepareStudioPreview(videoItem.url);
+        const preview = await mediaService.prepareStudioPreview(
+          videoItem.url,
+          abortController.signal
+        );
+
+        if (abortController.signal.aborted) {
+          return;
+        }
+
         const streamUrl = preview.streamUrl
           ? (preview.streamUrl.startsWith('http')
               ? preview.streamUrl
@@ -261,13 +288,22 @@ export const useStudioPlayer = ({
         } else if (preview.width && preview.height && preview.width >= preview.height) {
           setAspectRatio('16:9');
         }
-
-        loadedVideoUrlRef.current = videoUrl;
       } catch (err: any) {
+        // Ignora erros decorrentes de cancelamento intencional da requisição
+        if (
+          err?.name === 'CanceledError' ||
+          err?.code === 'ERR_CANCELED' ||
+          abortController.signal.aborted
+        ) {
+          return;
+        }
+
         console.error('Erro ao baixar vídeo para preview no Studio:', err);
         const rawMsg =
           err?.response?.data?.message ||
-          'Não foi possível baixar o vídeo selecionado para visualização em tempo real.';
+          (err?.code === 'ECONNABORTED'
+            ? 'Tempo limite de download excedido. O vídeo é longo ou a conexão está lenta.'
+            : 'Não foi possível baixar o vídeo selecionado para visualização em tempo real.');
         const msgStr = Array.isArray(rawMsg) ? rawMsg[0] : String(rawMsg);
         const isRestricted =
           msgStr.toLowerCase().includes('sign in') ||
@@ -286,25 +322,29 @@ export const useStudioPlayer = ({
         setPreviewError(friendlyMsg);
         toast.error(friendlyMsg);
       } finally {
-        inFlightVideoUrlRef.current = null;
+        if (inFlightVideoUrlRef.current === videoUrl) {
+          inFlightVideoUrlRef.current = null;
+        }
         setIsPreparingPreview(false);
       }
     },
-    [previewStreamUrl, previewError]
+    []
   );
 
   // Carrega vídeo atual estritamente quando a URL mudar
   useEffect(() => {
     const videoUrl = currentVideo?.url;
-    if (
-      videoUrl &&
-      videoUrl !== loadedVideoUrlRef.current &&
-      videoUrl !== inFlightVideoUrlRef.current
-    ) {
-      loadVideoPreview(currentVideo);
-    } else if (!videoUrl) {
-      loadedVideoUrlRef.current = null;
+    if (videoUrl) {
+      if (lastAttemptedUrlRef.current !== videoUrl) {
+        loadVideoPreview(currentVideo);
+      }
+    } else {
+      lastAttemptedUrlRef.current = null;
       inFlightVideoUrlRef.current = null;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
       setPreviewStreamUrl(null);
       setCurrentPreviewId(null);
       setPreviewError(null);
