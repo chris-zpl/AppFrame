@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { authService } from '../services';
-import { isPublicAuthRoute } from '../utils';
+import { isPublicAuthRoute, cleanupClientCacheAndPreviews } from '../utils';
+import { mediaService } from '../../history/services/media.service';
 import type { UserProfile, AuthContextType } from '../types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -76,16 +77,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = useCallback(async () => {
     setIsLoading(true);
     try {
+      // 1. Tenta limpar previews temporários no backend antes de revogar a sessão
+      let previewIdsOrUrls: string[] = [];
+      try {
+        const rawQueue = sessionStorage.getItem('appframe_studio_queue');
+        if (rawQueue) {
+          const queue = JSON.parse(rawQueue);
+          if (Array.isArray(queue)) {
+            previewIdsOrUrls = queue
+              .map((item: any) => item?.url || item?.id)
+              .filter(Boolean);
+          }
+        }
+      } catch {}
+
+      try {
+        await mediaService.clearPreviews(
+          previewIdsOrUrls.length > 0 ? previewIdsOrUrls : undefined,
+        );
+      } catch {
+        // Ignora falhas de rede na limpeza de previews
+      }
+
+      // 2. Revoga a sessão no backend
       await authService.logout();
     } catch {
       // Ignora falhas de rede no logout
     } finally {
-      try {
-        localStorage.removeItem('appframe_has_session');
-        localStorage.removeItem('appframe_remember_me');
-        sessionStorage.removeItem('appframe_has_session');
-        sessionStorage.removeItem('appframe_last_active_route');
-      } catch {}
+      cleanupClientCacheAndPreviews();
       setUser(null);
       setIsLoading(false);
       window.location.replace('/login');
@@ -130,12 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const handleAuthLogout = () => {
-      try {
-        localStorage.removeItem('appframe_has_session');
-        localStorage.removeItem('appframe_remember_me');
-        sessionStorage.removeItem('appframe_has_session');
-        sessionStorage.removeItem('appframe_last_active_route');
-      } catch {}
+      cleanupClientCacheAndPreviews();
       setUser(null);
       setIsLoading(false);
       window.location.replace('/login');

@@ -1,3 +1,5 @@
+import { queryClient } from '../../../lib/queryClient';
+
 export const isPublicAuthRoute = (path?: string): boolean => {
   if (!path) return false;
   const clean = path.toLowerCase().replace(/\/+$/, '') || '/';
@@ -74,3 +76,53 @@ export const getAuthRedirectTarget = (
 
   return target;
 };
+
+/**
+ * Limpa todos os caches em memória (React Query), estados temporários do scanner,
+ * fila e preview do Studio do cliente ao efetuar logout.
+ * Preserva as preferências visuais (ex: tema) e NÃO afeta o histórico de vídeos
+ * (jobs e arquivos finais persistem no backend respeitando suas próprias regras).
+ */
+export const cleanupClientCacheAndPreviews = (): void => {
+  try {
+    queryClient.clear();
+  } catch (err) {
+    console.warn('Falha ao limpar queryClient:', err);
+  }
+
+  try {
+    sessionStorage.clear();
+  } catch (err) {
+    console.warn('Falha ao limpar sessionStorage:', err);
+  }
+
+  try {
+    // Chaves específicas conhecidas a remover
+    localStorage.removeItem('appframe_has_session');
+    localStorage.removeItem('appframe_remember_me');
+    localStorage.removeItem('appframe_scanner_cache');
+    localStorage.removeItem('appframe_active_render_job');
+    localStorage.removeItem('appframe_default_watermark_id');
+
+    // Chaves dinâmicas de preview / studio / scanner
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (
+        key.startsWith('appframe_studio_state_') ||
+        key.startsWith('appframe_preview_') ||
+        key.startsWith('appframe_scanner_')
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+
+    for (const key of keysToRemove) {
+      localStorage.removeItem(key);
+    }
+  } catch (err) {
+    console.warn('Falha ao limpar localStorage no logout:', err);
+  }
+};
+

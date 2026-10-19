@@ -181,6 +181,14 @@ export class MediaController {
     return this.mediaService.deleteJob(id, userId);
   }
 
+  @Delete('previews')
+  @UseGuards(JwtAuthGuard)
+  async clearPreviews(
+    @Body('previewIds') previewIds?: string[],
+  ): Promise<{ success: boolean; cleared: number }> {
+    return this.mediaService.clearPreviews(previewIds);
+  }
+
   @Delete('preview/:previewId')
   @UseGuards(JwtAuthGuard)
   async deletePreview(

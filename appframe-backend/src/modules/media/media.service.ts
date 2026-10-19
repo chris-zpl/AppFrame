@@ -146,6 +146,27 @@ export class MediaService {
     return { success: true };
   }
 
+  async clearPreviews(
+    previewIdsOrUrls?: string[],
+  ): Promise<{ success: boolean; cleared: number }> {
+    if (previewIdsOrUrls && previewIdsOrUrls.length > 0) {
+      for (const item of previewIdsOrUrls) {
+        if (!item || typeof item !== 'string') continue;
+        const trimmed = item.trim();
+        const previewId = /^[a-f0-9]{24}$/i.test(trimmed)
+          ? trimmed
+          : this.downloadService.getPreviewId(trimmed);
+        this.evictPreviewCache(previewId);
+      }
+    } else {
+      this.previewCache.clear();
+      this.inFlightPreviews.clear();
+    }
+
+    const cleared = await this.downloadService.clearAllPreviewFiles(previewIdsOrUrls);
+    return { success: true, cleared };
+  }
+
   getYouTubeCookiesStatus() {
     return this.downloadService.getCookiesStatus();
   }

@@ -77,6 +77,54 @@ export class DownloadService {
   }
 
   /**
+   * Limpa arquivos temporários de preview do disco (ou específicos caso informados).
+   */
+  async clearAllPreviewFiles(specificIdsOrUrls?: string[]): Promise<number> {
+    await this.ensureDirs();
+    let removedCount = 0;
+
+    if (specificIdsOrUrls && specificIdsOrUrls.length > 0) {
+      for (const item of specificIdsOrUrls) {
+        if (!item || typeof item !== 'string') continue;
+        const trimmed = item.trim();
+        const previewId = /^[a-f0-9]{24}$/i.test(trimmed)
+          ? trimmed
+          : this.getPreviewId(trimmed);
+        const removed = await this.deletePreviewFile(previewId);
+        if (removed) {
+          removedCount++;
+        }
+      }
+      return removedCount;
+    }
+
+    try {
+      if (fs.existsSync(this.previewDir)) {
+        const files = await fsPromises.readdir(this.previewDir);
+        for (const file of files) {
+          if (file.endsWith('.mp4') || file.endsWith('.part')) {
+            const filePath = path.join(this.previewDir, file);
+            try {
+              await fsPromises.unlink(filePath);
+              removedCount++;
+            } catch (err: any) {
+              this.logger.warn(
+                `Falha ao remover arquivo de preview ${file}: ${err?.message}`,
+              );
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(
+        `Erro ao listar diretório de previews para limpeza: ${err?.message}`,
+      );
+    }
+
+    return removedCount;
+  }
+
+  /**
    * Garante que o vídeo de origem esteja baixado localmente em formato MP4
    * para visualização em tempo real no Studio e/ou renderização posterior.
    */

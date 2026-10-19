@@ -164,6 +164,13 @@ export const mediaService = {
     return res.data;
   },
 
+  async clearPreviews(previewIds?: string[]): Promise<{ success: boolean; cleared: number }> {
+    const res = await api.delete<{ success: boolean; cleared: number }>('/media/previews', {
+      data: previewIds && previewIds.length > 0 ? { previewIds } : {},
+    });
+    return res.data;
+  },
+
   async downloadJobFile(jobId: string, title?: string | null): Promise<void> {
     const res = await api.get(`/media/jobs/${jobId}/download`, {
       responseType: 'blob',
