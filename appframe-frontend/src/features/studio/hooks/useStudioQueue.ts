@@ -17,7 +17,12 @@ export const useStudioQueue = (params: UseStudioQueueParams) => {
       if (savedQueue) {
         const parsed = JSON.parse(savedQueue);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          const filtered = parsed.filter(
+            (item) => !/\/live(\/|$|\?)|\/streams(\/|$|\?)/i.test(item?.url || ''),
+          );
+          if (filtered.length > 0) {
+            return filtered;
+          }
         }
       }
     } catch {
@@ -33,7 +38,9 @@ export const useStudioQueue = (params: UseStudioQueueParams) => {
           : `https://www.youtube.com/watch?v=${params.selectedVideos}`
         : '');
 
-    if (fallbackUrl) {
+    const isLiveUrl = /\/live(\/|$|\?)|\/streams(\/|$|\?)/i.test(fallbackUrl);
+
+    if (fallbackUrl && !isLiveUrl) {
       return [
         {
           id: params.selectedVideos || 'selected-1',

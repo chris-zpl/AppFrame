@@ -74,6 +74,12 @@ export class MediaService {
       throw new BadRequestException('A URL do vídeo de origem é obrigatória.');
     }
 
+    if (/\/live(\/|$|\?)|\/streams(\/|$|\?)/i.test(cleanUrl)) {
+      throw new BadRequestException(
+        'Transmissões ao vivo (lives) não são suportadas para cortes e renderização.',
+      );
+    }
+
     const previewId = this.downloadService.getPreviewId(cleanUrl);
 
     // 1. Verifica se já temos os metadados em cache e o arquivo existe em disco
@@ -213,6 +219,12 @@ export class MediaService {
     if (dto.watermark_id) {
       // Garante que a marca d'água pertence ao usuário autenticado (Prevenção de IDOR)
       await this.watermarksService.findById(dto.watermark_id, userId);
+    }
+
+    if (dto.source_url && /\/live(\/|$|\?)|\/streams(\/|$|\?)/i.test(dto.source_url)) {
+      throw new BadRequestException(
+        'Transmissões ao vivo (lives) não são suportadas para cortes e renderização.',
+      );
     }
 
     const isShorts = dto.aspect_ratio === '9:16';

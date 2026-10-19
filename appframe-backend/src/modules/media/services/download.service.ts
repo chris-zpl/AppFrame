@@ -91,6 +91,12 @@ export class DownloadService {
       throw new BadRequestException('A URL do vídeo de origem é obrigatória.');
     }
 
+    if (/\/live(\/|$|\?)|\/streams(\/|$|\?)/i.test(cleanUrl)) {
+      throw new BadRequestException(
+        'Transmissões ao vivo (lives) não são suportadas para cortes e renderização.',
+      );
+    }
+
     const previewId = this.getPreviewId(cleanUrl);
     const finalPreviewPath = path.join(this.previewDir, `${previewId}.mp4`);
 
@@ -396,6 +402,8 @@ export class DownloadService {
         '--merge-output-format',
         'mp4',
         '--no-playlist',
+        '--match-filter',
+        '!is_live & !is_upcoming',
         '--newline',
         '--geo-bypass',
         '-o',
@@ -430,6 +438,19 @@ export class DownloadService {
         if (code === 0 && fs.existsSync(destinationPath)) {
           resolve();
         } else {
+          if (
+            /is a live stream|does not pass filter|transmissão ao vivo|live broadcast/i.test(
+              stderrBuffer,
+            )
+          ) {
+            reject(
+              new BadRequestException(
+                'Transmissões ao vivo (lives) não são suportadas para cortes e renderização.',
+              ),
+            );
+            return;
+          }
+
           if (
             /members on level|available to this channel's members|members-only|exclusivo para membros/i.test(
               stderrBuffer,

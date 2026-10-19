@@ -391,7 +391,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
     if (!input) return null;
     const trimmed = input.trim();
     const match = trimmed.match(
-      /(?:(?:v|vi)=|\/(?:v|vi|shorts|embed)\/|youtu\.be\/|\/watch\?v=)([\w-]{11})/i,
+      /(?:(?:v|vi)=|\/(?:v|vi|shorts|live|embed)\/|youtu\.be\/|\/watch\?v=)([\w-]{11})/i,
     );
     return match ? match[1] : null;
   }
@@ -399,10 +399,15 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   /**
    * Resolve o canal pai e os metadados do vídeo quando a URL fornecida é de um vídeo específico
    */
-  async resolveChannelFromVideo(videoId: string): Promise<{
+  async resolveChannelFromVideo(
+    videoId: string,
+    isExplicitLiveUrl = false,
+  ): Promise<{
     channelUrl: string;
     channelTitle?: string;
     channelAvatarUrl?: string;
+    channelId?: string;
+    isLive?: boolean;
     video: {
       id: string;
       title: string;
@@ -428,6 +433,8 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       let channelUrl: string | null = null;
       let channelTitle: string | null = null;
       let channelAvatarUrl: string | null = null;
+      let channelId: string | undefined = undefined;
+      let isLive = isExplicitLiveUrl;
       let videoTitle = `Vídeo (${videoId})`;
       let durationSeconds = 0;
       let thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
@@ -448,14 +455,23 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
               if (!isNaN(secs)) durationSeconds = secs;
               const bestThumb = pData.videoDetails.thumbnail?.thumbnails?.slice(-1)?.[0]?.url;
               if (bestThumb) thumbnailUrl = bestThumb;
-              if (pData.videoDetails.channelId && !channelUrl) {
-                channelUrl = `https://www.youtube.com/channel/${pData.videoDetails.channelId}`;
+              if (pData.videoDetails.channelId) {
+                channelId = pData.videoDetails.channelId;
+                if (!channelUrl) {
+                  channelUrl = `https://www.youtube.com/channel/${pData.videoDetails.channelId}`;
+                }
+              }
+              if (pData.videoDetails.isLive || pData.videoDetails.isLiveContent) {
+                isLive = true;
               }
             }
             if (pData.microformat?.playerMicroformatRenderer) {
               const pm = pData.microformat.playerMicroformatRenderer;
               if (pm.ownerChannelName && !channelTitle) channelTitle = pm.ownerChannelName;
               if (pm.ownerProfileUrl) channelUrl = pm.ownerProfileUrl.replace('http://', 'https://');
+              if (pm.isLiveBroadcast || pm.liveBroadcastDetails) {
+                isLive = true;
+              }
             }
           } catch (e: any) {
             this.logger.warn(`Erro no parsing de ytInitialPlayerResponse: ${e.message}`);
@@ -463,6 +479,17 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         }
 
         // 2. Extrações de fallback para canal via regex no HTML
+        if (!isLive) {
+          if (
+            /"isLive":\s*true/.test(html) ||
+            /"isLiveContent":\s*true/.test(html) ||
+            /"isLiveBroadcast":\s*true/.test(html) ||
+            /"liveBroadcastDetails"/.test(html)
+          ) {
+            isLive = true;
+          }
+        }
+
         if (!channelUrl) {
           const ownerMatch = html.match(/"ownerProfileUrl":"([^"]+)"/);
           if (ownerMatch) channelUrl = ownerMatch[1].replace('http://', 'https://');
@@ -476,7 +503,10 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         }
         if (!channelUrl) {
           const channelIdMatch = html.match(/"channelId":\s*"([^"]+)"/);
-          if (channelIdMatch) channelUrl = `https://www.youtube.com/channel/${channelIdMatch[1]}`;
+          if (channelIdMatch) {
+            channelId = channelIdMatch[1];
+            channelUrl = `https://www.youtube.com/channel/${channelIdMatch[1]}`;
+          }
         }
 
         if (!channelTitle) {
@@ -557,6 +587,8 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         channelUrl,
         channelTitle: channelTitle || undefined,
         channelAvatarUrl: channelAvatarUrl || undefined,
+        channelId,
+        isLive,
         video: {
           id: videoId,
           title: videoTitle,
@@ -576,7 +608,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
    */
   normalizeChannelUrl(input: string): string {
     let clean = input.trim().replace(/\/$/, '');
-    clean = clean.replace(/\/(videos|shorts|featured|streams)$/, '');
+    clean = clean.replace(/\/(videos|shorts|featured|streams|live)$/, '');
     if (clean.startsWith('http://')) {
       clean = clean.replace('http://', 'https://');
     }
@@ -593,10 +625,16 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
    * Extrai vídeos regulares e Shorts do canal (ou a partir da URL de um vídeo específico)
    */
   async scanChannel(channelUrl: string): Promise<ScrapedMediaItem[]> {
+    const isExplicitLiveInput =
+      /\/live(\/|$|\?)/i.test(channelUrl) ||
+      /\/streams(\/|$|\?)/i.test(channelUrl);
+
     let resolvedTarget: {
       channelUrl: string;
       channelTitle?: string;
       channelAvatarUrl?: string;
+      channelId?: string;
+      isLive?: boolean;
       video: {
         id: string;
         title: string;
@@ -609,13 +647,17 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
     const targetVideoId = this.extractVideoId(channelUrl);
     if (targetVideoId) {
       this.logger.log(`URL de vídeo informada (${targetVideoId}). Resolvendo canal de origem...`);
-      resolvedTarget = await this.resolveChannelFromVideo(targetVideoId);
+      resolvedTarget = await this.resolveChannelFromVideo(targetVideoId, isExplicitLiveInput);
       if (resolvedTarget) {
         this.logger.log(
-          `Canal de origem resolvido: ${resolvedTarget.channelUrl} (${resolvedTarget.channelTitle || 'Sem título'})`,
+          `Canal de origem resolvido: ${resolvedTarget.channelUrl} (${resolvedTarget.channelTitle || 'Sem título'})${
+            resolvedTarget.isLive ? ' [TRANSMISSÃO AO VIVO DETECTADA]' : ''
+          }`,
         );
       }
     }
+
+    const isLiveInput = Boolean(isExplicitLiveInput || resolvedTarget?.isLive);
 
     const rawBaseUrl = resolvedTarget ? resolvedTarget.channelUrl : channelUrl;
     const baseUrl = this.normalizeChannelUrl(rawBaseUrl);
@@ -696,9 +738,17 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         if (!item.channelUrl) item.channelUrl = baseUrl;
       }
 
-      // Caso tenha um vídeo alvo (URL de vídeo inserida), garante que ele venha no início e pré-selecionado
+      // Caso tenha um vídeo alvo (URL de vídeo inserida), garante que ele venha no início e pré-selecionado,
+      // EXCETO se for transmissão ao vivo (lives não são permitidas para corte nem seleção)
       let targetItem: ScrapedMediaItem | null = null;
-      if (targetVideoId) {
+      if (isLiveInput) {
+        this.logger.warn(
+          `Entrada identificada como transmissão ao vivo (live): ${targetVideoId || channelUrl}. Bloqueando inclusão e seleção da transmissão.`,
+        );
+        if (targetVideoId && itemsMap.has(targetVideoId)) {
+          itemsMap.delete(targetVideoId);
+        }
+      } else if (targetVideoId) {
         if (itemsMap.has(targetVideoId)) {
           targetItem = itemsMap.get(targetVideoId)!;
           targetItem.isTargetVideo = true;
@@ -763,9 +813,17 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         if (!item.channelUrl) item.channelUrl = baseUrl;
         if (channelTotalVideos && !item.channelTotalVideos) item.channelTotalVideos = channelTotalVideos;
         item.hasMore = hasMore;
+        if (isLiveInput) {
+          item.wasLiveInput = true;
+        }
       }
 
       if (results.length === 0) {
+        if (isLiveInput) {
+          throw new NotFoundException(
+            'Este canal possui transmissões ao vivo, porém nenhum vídeo regular ou Short público disponível para cortes.',
+          );
+        }
         throw new NotFoundException(
           'Nenhum vídeo ou Short público encontrado para este canal.',
         );

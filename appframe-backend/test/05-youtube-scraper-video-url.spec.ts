@@ -34,6 +34,11 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
       expect(provider.extractVideoId(url)).toBe('tJbzMqJGH4k');
     });
 
+    it('deve extrair ID de URLs de transmissões ao vivo /live/ID', () => {
+      const url = 'https://www.youtube.com/live/1tsUaefpMUo?feature=share';
+      expect(provider.extractVideoId(url)).toBe('1tsUaefpMUo');
+    });
+
     it('deve retornar null para URLs ou handles de canal', () => {
       expect(provider.extractVideoId('https://www.youtube.com/@RockstarGames')).toBeNull();
       expect(provider.extractVideoId('https://www.youtube.com/@RockstarGames/videos')).toBeNull();
@@ -56,11 +61,17 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
       );
     });
 
-    it('deve remover sufixos de abas (/videos, /shorts)', () => {
+    it('deve remover sufixos de abas (/videos, /shorts, /streams, /live)', () => {
       expect(provider.normalizeChannelUrl('https://www.youtube.com/@RockstarGames/videos')).toBe(
         'https://www.youtube.com/@RockstarGames',
       );
       expect(provider.normalizeChannelUrl('https://www.youtube.com/@RockstarGames/shorts/')).toBe(
+        'https://www.youtube.com/@RockstarGames',
+      );
+      expect(provider.normalizeChannelUrl('https://www.youtube.com/@RockstarGames/live')).toBe(
+        'https://www.youtube.com/@RockstarGames',
+      );
+      expect(provider.normalizeChannelUrl('https://www.youtube.com/@RockstarGames/streams/')).toBe(
         'https://www.youtube.com/@RockstarGames',
       );
     });
@@ -191,6 +202,67 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
       expect(results[0].selected).toBe(true);
       expect(results[0].title).toBe('GTA Antigo 2013');
       expect(results[1].id).toBe('recent00112');
+    });
+
+    it('deve identificar URL de live, resolver canal de origem, carregar apenas vídeos/shorts normais, bloquear seleção e marcar wasLiveInput', async () => {
+      const liveVideoId = '1tsUaefpMUo';
+      const liveUrl = `https://www.youtube.com/live/${liveVideoId}`;
+      const mockResolved = {
+        channelUrl: 'https://www.youtube.com/@FlowGamesPodcast',
+        channelTitle: 'Flow Games Podcast',
+        channelAvatarUrl: 'https://yt3.ggpht.com/avatar.jpg',
+        isLive: true,
+        video: {
+          id: liveVideoId,
+          title: 'Flow Games Ao Vivo Especial',
+          thumbnailUrl: `https://i.ytimg.com/vi/${liveVideoId}/hqdefault.jpg`,
+          durationSeconds: 7200,
+          isShort: false,
+        },
+      };
+
+      jest.spyOn(provider, 'resolveChannelFromVideo').mockResolvedValue(mockResolved);
+
+      jest.spyOn(provider as any, 'scrapeTab').mockImplementation(async (url: string) => {
+        if (url.includes('/videos')) {
+          return {
+            items: [
+              {
+                id: 'regular12345',
+                url: 'https://www.youtube.com/watch?v=regular12345',
+                title: 'Vídeo Regular do Canal',
+                thumbnailUrl: 'https://i.ytimg.com/vi/regular12345/hqdefault.jpg',
+                thumbnail_url: 'https://i.ytimg.com/vi/regular12345/hqdefault.jpg',
+                durationSeconds: 600,
+                duration_seconds: 600,
+                durationFormatted: '10:00',
+                timestamp_formatted: '00:10:00',
+                isShort: false,
+                is_short: false,
+              },
+            ],
+            notFound: false,
+            channelTotalVideos: 50,
+          };
+        }
+        return { items: [], notFound: false };
+      });
+
+      jest.spyOn(provider, 'enrichShortsRealDurations').mockResolvedValue();
+
+      const results = await provider.scanChannel(liveUrl);
+
+      // A live NÃO deve estar nos resultados
+      expect(results.some((r) => r.id === liveVideoId)).toBe(false);
+      // O vídeo regular do canal deve estar presente
+      expect(results.some((r) => r.id === 'regular12345')).toBe(true);
+      // Nenhum vídeo deve vir pré-selecionado como target
+      expect(results.some((r) => r.isTargetVideo)).toBe(false);
+      expect(results.some((r) => r.selected)).toBe(false);
+      // wasLiveInput deve estar true
+      expect(results[0].wasLiveInput).toBe(true);
+      // Canal de origem deve estar preenchido
+      expect(results[0].channelTitle).toBe('Flow Games Podcast');
     });
   });
 

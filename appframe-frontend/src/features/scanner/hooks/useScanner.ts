@@ -358,7 +358,13 @@ export const useScanner = () => {
           { replace: true }
         );
 
-        if (result.targetVideo) {
+        if (result.wasLiveInput) {
+          setSelectedIds(new Set());
+          toast.warning(
+            'Transmissões ao vivo (lives) não são suportadas para cortes. Carregamos apenas os vídeos regulares e Shorts deste canal.',
+            { duration: 6000 },
+          );
+        } else if (result.targetVideo) {
           setSelectedIds(new Set([result.targetVideo.id]));
           toast.success(
             `${result.videos.length} mídias encontradas! Vídeo "${result.targetVideo.title.slice(0, 32)}..." pré-selecionado.`

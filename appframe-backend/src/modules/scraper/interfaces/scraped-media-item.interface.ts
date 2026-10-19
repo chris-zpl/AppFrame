@@ -20,4 +20,5 @@ export interface ScrapedMediaItem {
   channelUrl?: string;
   hasMore?: boolean;
   channelTotalVideos?: number;
+  wasLiveInput?: boolean;
 }

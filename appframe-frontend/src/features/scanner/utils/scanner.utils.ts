@@ -39,6 +39,7 @@ export interface MappedScanResult {
   targetVideo?: ScrapedVideoCardData;
   shortsCount: number;
   longCount: number;
+  wasLiveInput?: boolean;
 }
 
 export function mapScannedItems(items: any[], cleanUrl: string): MappedScanResult {
@@ -100,13 +101,19 @@ export function mapScannedItems(items: any[], cleanUrl: string): MappedScanResul
   const avatarUrl = avatarItem?.channelAvatarUrl;
 
   const videoMatch = cleanUrl.match(
-    /(?:(?:v|vi)=|\/(?:v|vi|shorts|embed)\/|youtu\.be\/|\/watch\?v=)([\w-]{11})/i,
+    /(?:(?:v|vi)=|\/(?:v|vi|shorts|live|embed)\/|youtu\.be\/|\/watch\?v=)([\w-]{11})/i,
   );
   const targetVideoId = videoMatch ? videoMatch[1] : null;
 
-  const targetVideo = mappedVideos.find(
-    (v) => v.isTargetVideo || (targetVideoId && v.id === targetVideoId),
-  );
+  const wasLiveInput =
+    Boolean(items.some((it) => it?.wasLiveInput)) ||
+    /\/live(\/|$|\?)|\/streams(\/|$|\?)/i.test(cleanUrl);
+
+  const targetVideo = wasLiveInput
+    ? undefined
+    : mappedVideos.find(
+        (v) => v.isTargetVideo || (targetVideoId && v.id === targetVideoId),
+      );
 
   const totalVideosItem = items.find(
     (it) => typeof it.channelTotalVideos === 'number' && it.channelTotalVideos > 0,
@@ -126,5 +133,6 @@ export function mapScannedItems(items: any[], cleanUrl: string): MappedScanResul
     targetVideo,
     shortsCount,
     longCount,
+    wasLiveInput,
   };
 }
