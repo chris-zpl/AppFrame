@@ -30,23 +30,54 @@ function resolveScannerFilter(searchParams: URLSearchParams): ScannerFilterType 
   return VALID_SCANNER_FILTERS[raw] || 'all';
 }
 
+function resolveScannerPage(searchParams: URLSearchParams): number {
+  const raw = searchParams.get('page') || searchParams.get('p') || '1';
+  const parsed = parseInt(raw, 10);
+  return isNaN(parsed) || parsed < 1 ? 1 : parsed;
+}
+
+interface ScannerCachedData {
+  channelUrl: string;
+  videos: ScrapedVideoCardData[];
+  channelMeta: ChannelMeta | null;
+}
+
+const getScannerCache = (): ScannerCachedData | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem('appframe_scanner_cache');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed?.videos) && parsed.videos.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return null;
+};
+
 export const useScanner = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [channelUrl, setChannelUrl] = useState('');
+  const cached = useMemo(() => getScannerCache(), []);
+  const [channelUrl, setChannelUrl] = useState(cached?.channelUrl || '');
   const [isScanning, setIsScanning] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [hasScanned, setHasScanned] = useState(false);
-  const [videos, setVideos] = useState<ScrapedVideoCardData[]>([]);
+  const [hasScanned, setHasScanned] = useState(Boolean(cached));
+  const [videos, setVideos] = useState<ScrapedVideoCardData[]>(cached?.videos || []);
   const [filter, setFilter] = useState<ScannerFilterType>(() => resolveScannerFilter(searchParams));
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState<number>(() => resolveScannerPage(searchParams));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [channelMeta, setChannelMeta] = useState<ChannelMeta | null>(null);
+  const [channelMeta, setChannelMeta] = useState<ChannelMeta | null>(cached?.channelMeta || null);
 
-  // Sincroniza filter se a URL mudar (ex: botão voltar/avançar do navegador)
+  // Sincroniza filter e page se a URL mudar (ex: botão voltar/avançar do navegador)
   useEffect(() => {
     const nextFilter = resolveScannerFilter(searchParams);
     if (nextFilter !== filter) {
       setFilter(nextFilter);
+    }
+    const nextPage = resolveScannerPage(searchParams);
+    if (nextPage !== currentPage) {
+      setCurrentPage(nextPage);
     }
   }, [searchParams]);
 
@@ -87,17 +118,33 @@ export const useScanner = () => {
           next.delete('tab');
           next.delete('type');
         }
+        next.delete('page');
+        next.delete('p');
         return next;
       },
       { replace: true }
     );
   }, [setSearchParams]);
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     const clamped = Math.max(1, Math.min(totalPages, page));
     setCurrentPage(clamped);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (clamped <= 1) {
+          next.delete('page');
+          next.delete('p');
+        } else {
+          next.set('page', String(clamped));
+          next.delete('p');
+        }
+        return next;
+      },
+      { replace: true }
+    );
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, [totalPages, setSearchParams]);
 
   // Contagem de vídeos selecionados e duração acumulada
   const { selectedCount, totalSeconds } = useMemo(() => {
@@ -159,6 +206,30 @@ export const useScanner = () => {
         setCurrentPage(1);
         setHasScanned(true);
 
+        try {
+          sessionStorage.setItem(
+            'appframe_scanner_cache',
+            JSON.stringify({
+              channelUrl: cleanUrl,
+              videos: result.videos,
+              channelMeta: result.channelMeta,
+            })
+          );
+        } catch {}
+
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete('filter');
+            next.delete('tab');
+            next.delete('type');
+            next.delete('page');
+            next.delete('p');
+            return next;
+          },
+          { replace: true }
+        );
+
         if (result.targetVideo) {
           setSelectedIds(new Set([result.targetVideo.id]));
           toast.success(
@@ -173,11 +244,17 @@ export const useScanner = () => {
       } else {
         setVideos([]);
         setHasScanned(false);
+        try {
+          sessionStorage.removeItem('appframe_scanner_cache');
+        } catch {}
         toast.error('Nenhum vídeo público encontrado para este canal.');
       }
     } catch (err: any) {
       setVideos([]);
       setHasScanned(false);
+      try {
+        sessionStorage.removeItem('appframe_scanner_cache');
+      } catch {}
       const message =
         err?.response?.data?.message ||
         err?.message ||

@@ -1,10 +1,17 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, Button, Input } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
 import type { AdminAuditLog, AdminUser } from "../types";
 import { getAuditEventBadge, parseDevice } from "../constants";
 import { AdminAuditMetadata } from "./AdminAuditMetadata";
 import { AdminPaginationControls } from "./AdminPaginationControls";
+
+function resolveAuditPage(searchParams: URLSearchParams): number {
+  const raw = searchParams.get('page') || searchParams.get('p') || '1';
+  const parsed = parseInt(raw, 10);
+  return isNaN(parsed) || parsed < 1 ? 1 : parsed;
+}
 
 export interface AdminAuditLogsTabProps {
   auditLogs: AdminAuditLog[];
@@ -37,10 +44,46 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
   auditPageSize: controlledSize,
   setAuditPageSize: controlledSetSize,
 }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [internalSearch, setInternalSearch] = useState('');
   const [internalFilter, setInternalFilter] = useState('ALL');
-  const [internalPage, setInternalPage] = useState(1);
+  const [internalPage, setInternalPageState] = useState<number>(() => resolveAuditPage(searchParams));
   const [internalSize, setInternalSize] = useState(10);
+
+  const setInternalPage = useCallback(
+    (action: React.SetStateAction<number>) => {
+      setInternalPageState((prev) => {
+        const nextVal = typeof action === 'function' ? action(prev) : action;
+        const safeVal = Math.max(1, nextVal);
+        setSearchParams(
+          (spPrev) => {
+            const next = new URLSearchParams(spPrev);
+            if (safeVal <= 1) {
+              next.delete('page');
+              next.delete('p');
+            } else {
+              next.set('page', String(safeVal));
+              next.delete('p');
+            }
+            return next;
+          },
+          { replace: true }
+        );
+        return safeVal;
+      });
+    },
+    [setSearchParams]
+  );
+
+  // Sincroniza se a URL mudar (ex: botão voltar/avançar do navegador)
+  useEffect(() => {
+    if (controlledPage === undefined) {
+      const p = resolveAuditPage(searchParams);
+      if (p !== internalPage) {
+        setInternalPageState(p);
+      }
+    }
+  }, [searchParams, controlledPage]);
 
   const auditSearch = controlledSearch !== undefined ? controlledSearch : internalSearch;
   const setAuditSearch = controlledSetSearch ?? setInternalSearch;

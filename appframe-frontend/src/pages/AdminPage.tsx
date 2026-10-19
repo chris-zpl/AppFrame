@@ -72,9 +72,13 @@ export const AdminPage: React.FC = () => {
           if (tab === 'users') {
             next.delete('tab');
             next.delete('section');
+            next.delete('page');
           } else {
             next.set('tab', tab);
             next.delete('section');
+            if (tab !== 'audit') {
+              next.delete('page');
+            }
           }
           return next;
         },
