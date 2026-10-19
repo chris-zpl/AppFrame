@@ -56,7 +56,7 @@ export const RevokeAllSessionsModal: React.FC<RevokeAllSessionsModalProps> = ({
             disabled={isLoading}
             onClick={onConfirm}
           >
-            Desconectar Todos
+            Desconectar
           </Button>
         </div>
       </Card>
