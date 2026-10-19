@@ -248,7 +248,7 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
         return { items: [], notFound: false };
       });
 
-      jest.spyOn(provider, 'enrichShortsRealDurations').mockResolvedValue();
+      jest.spyOn(provider, 'enrichShortsRealDurations').mockResolvedValue(undefined as any);
 
       const results = await provider.scanChannel(liveUrl);
 
@@ -305,7 +305,7 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
         json: async () => mockBrowseData,
       } as any);
 
-      jest.spyOn(provider, 'enrichShortsRealDurations').mockResolvedValue();
+      jest.spyOn(provider, 'enrichShortsRealDurations').mockResolvedValue(undefined as any);
 
       const items = await provider.fetchMore(channelUrl, 'all');
       expect(Array.isArray(items)).toBe(true);
@@ -384,8 +384,8 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
     });
 
     it('deve retornar fallbackTotal se channelId for inválido ou não informado', async () => {
-      const count = await provider.resolveChannelVideosAndShortsCount(undefined, 3700);
-      expect(count).toBe(3700);
+      const counts = await provider.resolveChannelVideosAndShortsCount(undefined, 3700);
+      expect(counts.total).toBe(3700);
     });
 
     it('deve somar vídeos longos e shorts (UULF + UUSH) excluindo livestreams', async () => {
@@ -419,8 +419,10 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
         return { ok: false } as any;
       });
 
-      const count = await provider.resolveChannelVideosAndShortsCount(channelId, 3700);
-      expect(count).toBe(2637);
+      const counts = await provider.resolveChannelVideosAndShortsCount(channelId, 3700);
+      expect(counts.total).toBe(2637);
+      expect(counts.regularVideos).toBe(478);
+      expect(counts.shorts).toBe(2159);
     });
 
     it('deve usar UULF diretamente se o canal não tiver shorts (UUSH 404)', async () => {
@@ -451,8 +453,9 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
         return { ok: false } as any;
       });
 
-      const count = await provider.resolveChannelVideosAndShortsCount(channelId, 1000);
-      expect(count).toBe(1051);
+      const counts = await provider.resolveChannelVideosAndShortsCount(channelId, 1000);
+      expect(counts.total).toBe(1051);
+      expect(counts.regularVideos).toBe(1051);
     });
 
     it('deve calcular a partir de UU - UULV se UULF e UUSH falharem', async () => {
@@ -477,8 +480,8 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
         return { ok: false } as any;
       });
 
-      const count = await provider.resolveChannelVideosAndShortsCount(channelId, 120);
-      expect(count).toBe(100);
+      const counts = await provider.resolveChannelVideosAndShortsCount(channelId, 120);
+      expect(counts.total).toBe(100);
     });
   });
 });

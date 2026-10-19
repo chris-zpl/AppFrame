@@ -118,7 +118,20 @@ export function mapScannedItems(items: any[], cleanUrl: string): MappedScanResul
   const totalVideosItem = items.find(
     (it) => typeof it.channelTotalVideos === 'number' && it.channelTotalVideos > 0,
   );
-  const totalChannelVideos = totalVideosItem?.channelTotalVideos || items[0]?.channelTotalVideos;
+  const totalChannelVideos = totalVideosItem?.channelTotalVideos ?? items[0]?.channelTotalVideos;
+
+  const totalRegularItem = items.find(
+    (it) => typeof it.channelTotalRegularVideos === 'number' && it.channelTotalRegularVideos >= 0,
+  );
+  const totalRegularVideos = totalRegularItem?.channelTotalRegularVideos ?? items[0]?.channelTotalRegularVideos;
+
+  const totalShortsItem = items.find(
+    (it) => typeof it.channelTotalShorts === 'number' && it.channelTotalShorts >= 0,
+  );
+  const totalShorts = totalShortsItem?.channelTotalShorts ?? items[0]?.channelTotalShorts;
+
+  const effectiveShortsCount = typeof totalShorts === 'number' ? totalShorts : shortsCount;
+  const effectiveLongCount = typeof totalRegularVideos === 'number' ? totalRegularVideos : longCount;
 
   return {
     videos: mappedVideos,
@@ -126,13 +139,15 @@ export function mapScannedItems(items: any[], cleanUrl: string): MappedScanResul
       name: channelName,
       avatarUrl,
       totalIndexed: mappedVideos.length,
-      shortsCount,
-      longCount,
+      shortsCount: effectiveShortsCount,
+      longCount: effectiveLongCount,
       totalChannelVideos,
+      totalRegularVideos,
+      totalShorts,
     },
     targetVideo,
-    shortsCount,
-    longCount,
+    shortsCount: effectiveShortsCount,
+    longCount: effectiveLongCount,
     wasLiveInput,
   };
 }

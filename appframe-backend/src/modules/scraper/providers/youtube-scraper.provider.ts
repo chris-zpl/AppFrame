@@ -11,6 +11,12 @@ import { IVideoScraperProvider } from '../interfaces/video-scraper-provider.inte
 import { ScrapedMediaItem } from '../interfaces/scraped-media-item.interface';
 import { RedisService } from '../../../core/redis/redis.service';
 
+export interface ChannelMediaCounts {
+  total?: number;
+  regularVideos?: number;
+  shorts?: number;
+}
+
 @Injectable()
 export class YouTubeScraperProvider implements IVideoScraperProvider {
   readonly providerName = 'youtube';
@@ -227,18 +233,20 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
     channelId: string | undefined,
     fallbackTotal?: number,
     forceRefresh = false,
-  ): Promise<number | undefined> {
+  ): Promise<ChannelMediaCounts> {
     if (!channelId || !channelId.startsWith('UC')) {
-      return fallbackTotal;
+      return { total: fallbackTotal, regularVideos: undefined, shorts: undefined };
     }
 
-    const cacheKey = `channel_videos_shorts_count:${channelId}`;
+    const cacheKey = `channel_media_counts:${channelId}`;
     if (!forceRefresh && this.redisService) {
       try {
         const cached = await this.redisService.get(cacheKey);
         if (cached) {
-          const parsed = parseInt(cached, 10);
-          if (!isNaN(parsed) && parsed > 0) return parsed;
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed.total === 'number' && parsed.total > 0) {
+            return parsed;
+          }
         }
       } catch {}
     }
@@ -278,35 +286,56 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         fetchPlaylistCount('UU'),   // Todos os uploads
       ]);
 
-      let resolvedCount: number | undefined;
-      if (typeof uulf === 'number' && typeof uush === 'number') {
-        resolvedCount = uulf + uush;
-      } else if (typeof uulf === 'number') {
-        resolvedCount = uulf;
-      } else if (typeof uush === 'number') {
-        resolvedCount = uush;
+      let resolvedRegularVideos: number | undefined = typeof uulf === 'number' ? uulf : undefined;
+      let resolvedShorts: number | undefined = typeof uush === 'number' ? uush : undefined;
+      let resolvedTotal: number | undefined;
+
+      if (typeof resolvedRegularVideos === 'number' && typeof resolvedShorts === 'number') {
+        resolvedTotal = resolvedRegularVideos + resolvedShorts;
+      } else if (typeof resolvedRegularVideos === 'number') {
+        if (typeof uu === 'number') {
+          const nonLive = typeof uulv === 'number' ? Math.max(0, uu - uulv) : uu;
+          resolvedShorts = Math.max(0, nonLive - resolvedRegularVideos);
+          resolvedTotal = resolvedRegularVideos + resolvedShorts;
+        } else {
+          resolvedTotal = resolvedRegularVideos;
+        }
+      } else if (typeof resolvedShorts === 'number') {
+        if (typeof uu === 'number') {
+          const nonLive = typeof uulv === 'number' ? Math.max(0, uu - uulv) : uu;
+          resolvedRegularVideos = Math.max(0, nonLive - resolvedShorts);
+          resolvedTotal = resolvedRegularVideos + resolvedShorts;
+        } else {
+          resolvedTotal = resolvedShorts;
+        }
       } else if (typeof uu === 'number') {
-        resolvedCount = typeof uulv === 'number' ? Math.max(0, uu - uulv) : uu;
+        resolvedTotal = typeof uulv === 'number' ? Math.max(0, uu - uulv) : uu;
       } else if (typeof uulv === 'number' && typeof fallbackTotal === 'number') {
-        resolvedCount = Math.max(0, fallbackTotal - uulv);
+        resolvedTotal = Math.max(0, fallbackTotal - uulv);
       } else {
-        resolvedCount = fallbackTotal;
+        resolvedTotal = fallbackTotal;
       }
 
-      if (resolvedCount && resolvedCount > 0 && this.redisService) {
+      const result: ChannelMediaCounts = {
+        total: resolvedTotal || fallbackTotal,
+        regularVideos: resolvedRegularVideos,
+        shorts: resolvedShorts,
+      };
+
+      if (result.total && result.total > 0 && this.redisService) {
         try {
-          await this.redisService.set(cacheKey, String(resolvedCount), 'EX', 3600);
+          await this.redisService.set(cacheKey, JSON.stringify(result), 'EX', 3600);
         } catch {}
       }
 
       this.logger.log(
-        `Contagem de Vídeos e Shorts (${channelId}): ${resolvedCount} (Longos: ${uulf ?? 'N/A'}, Shorts: ${uush ?? 'N/A'}, Livestreams excluídos: ${uulv ?? 0}, Uploads gerais: ${uu ?? 'N/A'}, Total bruto: ${fallbackTotal ?? 'N/A'})`,
+        `Contagem de Vídeos e Shorts (${channelId}): Total=${result.total} (Longos: ${result.regularVideos ?? 'N/A'}, Shorts: ${result.shorts ?? 'N/A'}, Livestreams excluídos: ${uulv ?? 0}, Uploads gerais: ${uu ?? 'N/A'}, Total bruto: ${fallbackTotal ?? 'N/A'})`,
       );
 
-      return resolvedCount || fallbackTotal;
+      return result;
     } catch (e: any) {
       this.logger.warn(`Falha ao resolver contagem detalhada de vídeos e shorts: ${e.message}`);
-      return fallbackTotal;
+      return { total: fallbackTotal, regularVideos: undefined, shorts: undefined };
     }
   }
 
@@ -793,7 +822,14 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         (regularResult as any).channelId ||
         (shortsResult as any).channelId ||
         (resolvedTarget as any)?.channelId;
-      const channelTotalVideos = await this.resolveChannelVideosAndShortsCount(channelId, rawChannelTotal, true);
+      const mediaCounts = await this.resolveChannelVideosAndShortsCount(channelId, rawChannelTotal, true);
+      const channelTotalVideos = mediaCounts.total;
+      const channelTotalRegularVideos = mediaCounts.regularVideos;
+      const channelTotalShorts = mediaCounts.shorts;
+
+      const hasMoreVideos = Boolean(videosContinuationToken);
+      const hasMoreShorts = Boolean(shortsContinuationToken);
+      const hasMore = Boolean(videosContinuationToken || shortsContinuationToken);
 
       await this.saveTokens(baseUrl, {
         videosToken: videosContinuationToken,
@@ -802,9 +838,9 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         channelTitle,
         channelAvatarUrl,
         channelTotalVideos,
+        channelTotalRegularVideos,
+        channelTotalShorts,
       });
-
-      const hasMore = Boolean(videosContinuationToken || shortsContinuationToken);
 
       // Garante que TODOS os itens de resultado (inclusive targetItem no índice 0) tenham o avatar e título populados
       for (const item of results) {
@@ -812,7 +848,11 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         if (channelAvatarUrl && !item.channelAvatarUrl) item.channelAvatarUrl = channelAvatarUrl;
         if (!item.channelUrl) item.channelUrl = baseUrl;
         if (channelTotalVideos && !item.channelTotalVideos) item.channelTotalVideos = channelTotalVideos;
+        if (typeof channelTotalRegularVideos === 'number') item.channelTotalRegularVideos = channelTotalRegularVideos;
+        if (typeof channelTotalShorts === 'number') item.channelTotalShorts = channelTotalShorts;
         item.hasMore = hasMore;
+        item.hasMoreVideos = hasMoreVideos;
+        item.hasMoreShorts = hasMoreShorts;
         if (isLiveInput) {
           item.wasLiveInput = true;
         }
@@ -1126,13 +1166,23 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       session.visitedIds = Array.from(visitedSet);
       await this.saveTokens(baseUrl, session);
 
+      const hasMoreVideos = Boolean(session.videosToken);
+      const hasMoreShorts = Boolean(session.shortsToken);
       const hasMore = Boolean(session.videosToken || session.shortsToken);
       for (const it of newItems) {
         if (session.channelTitle) it.channelTitle = session.channelTitle;
         if (session.channelAvatarUrl) it.channelAvatarUrl = session.channelAvatarUrl;
         if (session.channelTotalVideos) it.channelTotalVideos = session.channelTotalVideos;
+        if (typeof session.channelTotalRegularVideos === 'number') {
+          it.channelTotalRegularVideos = session.channelTotalRegularVideos;
+        }
+        if (typeof session.channelTotalShorts === 'number') {
+          it.channelTotalShorts = session.channelTotalShorts;
+        }
         it.channelUrl = baseUrl;
         it.hasMore = hasMore;
+        it.hasMoreVideos = hasMoreVideos;
+        it.hasMoreShorts = hasMoreShorts;
       }
 
       await this.enrichShortsRealDurations(newItems);

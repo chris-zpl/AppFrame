@@ -11,6 +11,8 @@ export interface ChannelMeta {
   shortsCount: number;
   longCount: number;
   totalChannelVideos?: number;
+  totalRegularVideos?: number;
+  totalShorts?: number;
 }
 
 export type ScannerFilterType = 'all' | 'long' | 'shorts';

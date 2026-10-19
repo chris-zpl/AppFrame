@@ -19,6 +19,10 @@ export interface ScrapedMediaItem {
   channelAvatarUrl?: string;
   channelUrl?: string;
   hasMore?: boolean;
+  hasMoreVideos?: boolean;
+  hasMoreShorts?: boolean;
   channelTotalVideos?: number;
+  channelTotalRegularVideos?: number;
+  channelTotalShorts?: number;
   wasLiveInput?: boolean;
 }

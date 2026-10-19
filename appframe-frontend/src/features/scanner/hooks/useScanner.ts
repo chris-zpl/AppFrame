@@ -40,6 +40,11 @@ interface ScannerCachedData {
   channelUrl: string;
   videos: ScrapedVideoCardData[];
   channelMeta: ChannelMeta | null;
+  hasMoreByFilter?: {
+    all: boolean;
+    long: boolean;
+    shorts: boolean;
+  };
 }
 
 const SCANNER_CACHE_KEY = 'appframe_scanner_cache';
@@ -85,7 +90,11 @@ export const useScanner = () => {
   const [currentPage, setCurrentPage] = useState<number>(() => resolveScannerPage(searchParams));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [channelMeta, setChannelMeta] = useState<ChannelMeta | null>(cached?.channelMeta || null);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMoreByFilter, setHasMoreByFilter] = useState<{
+    all: boolean;
+    long: boolean;
+    shorts: boolean;
+  }>(() => cached?.hasMoreByFilter || { all: true, long: true, shorts: true });
   const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   // Sincroniza filter e page se a URL mudar (ex: botão voltar/avançar do navegador)
@@ -109,17 +118,39 @@ export const useScanner = () => {
     });
   }, [videos, filter]);
 
-  const totalVideosAvailable =
-    !hasMore
-      ? filteredVideos.length
-      : filter === 'all'
-        ? Math.max(channelMeta?.totalChannelVideos || 0, filteredVideos.length)
+  const hasMoreForCurrentFilter = useMemo(() => {
+    if (filter === 'long') return hasMoreByFilter.long;
+    if (filter === 'shorts') return hasMoreByFilter.shorts;
+    return hasMoreByFilter.all;
+  }, [filter, hasMoreByFilter]);
+
+  const totalVideosAvailable = useMemo(() => {
+    if (filter === 'long') {
+      const knownTotal = channelMeta?.totalRegularVideos ?? channelMeta?.longCount;
+      if (!hasMoreByFilter.long) return filteredVideos.length;
+      return typeof knownTotal === 'number' && knownTotal > 0
+        ? Math.max(knownTotal, filteredVideos.length)
         : filteredVideos.length;
+    }
+    if (filter === 'shorts') {
+      const knownTotal = channelMeta?.totalShorts ?? channelMeta?.shortsCount;
+      if (!hasMoreByFilter.shorts) return filteredVideos.length;
+      return typeof knownTotal === 'number' && knownTotal >= 0
+        ? Math.max(knownTotal, filteredVideos.length)
+        : filteredVideos.length;
+    }
+    // filter === 'all'
+    const knownTotal = channelMeta?.totalChannelVideos;
+    if (!hasMoreByFilter.all) return filteredVideos.length;
+    return typeof knownTotal === 'number' && knownTotal > 0
+      ? Math.max(knownTotal, filteredVideos.length)
+      : filteredVideos.length;
+  }, [filter, hasMoreByFilter, channelMeta, filteredVideos.length]);
 
   const totalPages = Math.max(
     1,
     Math.ceil(totalVideosAvailable / ITEMS_PER_PAGE) +
-      (hasMore && filteredVideos.length >= totalVideosAvailable ? 1 : 0)
+      (hasMoreForCurrentFilter && filteredVideos.length >= totalVideosAvailable ? 1 : 0)
   );
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
@@ -134,78 +165,72 @@ export const useScanner = () => {
   }, [totalPages, safeCurrentPage]);
 
   const fetchMoreVideos = useCallback(async () => {
-    if (!channelUrl || isFetchingMore || !hasMore) return;
+    const canFetch =
+      filter === 'long'
+        ? hasMoreByFilter.long
+        : filter === 'shorts'
+          ? hasMoreByFilter.shorts
+          : hasMoreByFilter.all;
+
+    if (!channelUrl || isFetchingMore || !canFetch) return;
     setIsFetchingMore(true);
     try {
       const moreItems = await scraperService.fetchMore(channelUrl, filter);
       if (moreItems && moreItems.length > 0) {
         const mapped = mapScannedItems(moreItems, channelUrl).videos;
-        const moreAvailable = Boolean(moreItems[0]?.hasMore);
+        const firstItem = moreItems[0] as any;
+        const moreAll = Boolean(firstItem?.hasMore);
+        const moreVideos = Boolean(firstItem?.hasMoreVideos ?? moreAll);
+        const moreShorts = Boolean(firstItem?.hasMoreShorts ?? moreAll);
+
+        const nextHasMore = {
+          all: moreAll,
+          long: filter === 'long' ? moreVideos : (moreAll ? hasMoreByFilter.long : false),
+          shorts: filter === 'shorts' ? moreShorts : (moreAll ? hasMoreByFilter.shorts : false),
+        };
+
+        setHasMoreByFilter(nextHasMore);
 
         setVideos((prev) => {
           const existingIds = new Set(prev.map((v) => v.id));
           const fresh = mapped.filter((v) => !existingIds.has(v.id));
           if (fresh.length === 0) {
-            setHasMore(false);
-            if (channelMeta) {
-              const updatedMeta = {
-                ...channelMeta,
-                totalIndexed: prev.length,
-                totalChannelVideos: prev.length,
-                shortsCount: prev.filter((v) => v.isShort).length,
-                longCount: prev.filter((v) => !v.isShort).length,
+            setHasMoreByFilter((fPrev) => {
+              const updatedLong = filter === 'long' ? false : fPrev.long;
+              const updatedShorts = filter === 'shorts' ? false : fPrev.shorts;
+              return {
+                long: updatedLong,
+                shorts: updatedShorts,
+                all: filter === 'all' ? false : (updatedLong || updatedShorts),
               };
-              setChannelMeta(updatedMeta);
-              saveScannerCache({
-                channelUrl,
-                videos: prev,
-                channelMeta: updatedMeta,
-              });
-            }
+            });
             return prev;
           }
           const merged = [...prev, ...fresh];
-          const isComplete = !moreAvailable;
-          const currentTotal = channelMeta?.totalChannelVideos || 0;
-          const resolvedTotal = isComplete
-            ? merged.length
-            : Math.max(currentTotal, merged.length);
-
-          const updatedMeta = channelMeta
-            ? {
-                ...channelMeta,
-                totalIndexed: merged.length,
-                totalChannelVideos: resolvedTotal,
-                shortsCount: merged.filter((v) => v.isShort).length,
-                longCount: merged.filter((v) => !v.isShort).length,
-              }
-            : null;
-          if (updatedMeta) {
-            setChannelMeta(updatedMeta);
-          }
           saveScannerCache({
             channelUrl,
             videos: merged,
-            channelMeta: updatedMeta || channelMeta,
+            channelMeta,
+            hasMoreByFilter: nextHasMore,
           });
           return merged;
         });
-
-        setHasMore(moreAvailable);
       } else {
-        setHasMore(false);
-        setChannelMeta((prevMeta) => {
-          if (!prevMeta) return null;
-          const finalizedMeta = {
-            ...prevMeta,
-            totalChannelVideos: prevMeta.totalIndexed,
+        setHasMoreByFilter((fPrev) => {
+          const updatedLong = filter === 'long' ? false : fPrev.long;
+          const updatedShorts = filter === 'shorts' ? false : fPrev.shorts;
+          const updated = {
+            long: updatedLong,
+            shorts: updatedShorts,
+            all: filter === 'all' ? false : (updatedLong || updatedShorts),
           };
           saveScannerCache({
             channelUrl,
             videos,
-            channelMeta: finalizedMeta,
+            channelMeta,
+            hasMoreByFilter: updated,
           });
-          return finalizedMeta;
+          return updated;
         });
       }
     } catch (err: any) {
@@ -213,17 +238,17 @@ export const useScanner = () => {
     } finally {
       setIsFetchingMore(false);
     }
-  }, [channelUrl, isFetchingMore, hasMore, filter, channelMeta, videos]);
+  }, [channelUrl, isFetchingMore, hasMoreByFilter, filter, channelMeta, videos]);
 
   // Se a página atual exigir mais mídias do que já carregamos, busca automaticamente
   useEffect(() => {
-    if (hasScanned && hasMore && !isFetchingMore && channelUrl) {
+    if (hasScanned && hasMoreForCurrentFilter && !isFetchingMore && channelUrl) {
       const neededItems = safeCurrentPage * ITEMS_PER_PAGE;
       if (filteredVideos.length < neededItems) {
         fetchMoreVideos();
       }
     }
-  }, [filter, safeCurrentPage, filteredVideos.length, hasScanned, hasMore, isFetchingMore, channelUrl, fetchMoreVideos]);
+  }, [filter, safeCurrentPage, filteredVideos.length, hasScanned, hasMoreForCurrentFilter, isFetchingMore, channelUrl, fetchMoreVideos]);
 
   const handleFilterChange = useCallback((nextFilter: ScannerFilterType) => {
     setFilter(nextFilter);
@@ -270,11 +295,11 @@ export const useScanner = () => {
 
       // Se a página selecionada necessitar de mais vídeos para renderizar
       const neededItems = clamped * ITEMS_PER_PAGE;
-      if (filteredVideos.length < neededItems && hasMore && !isFetchingMore) {
+      if (filteredVideos.length < neededItems && hasMoreForCurrentFilter && !isFetchingMore) {
         await fetchMoreVideos();
       }
     },
-    [filteredVideos.length, hasMore, isFetchingMore, fetchMoreVideos, setSearchParams]
+    [filteredVideos.length, hasMoreForCurrentFilter, isFetchingMore, fetchMoreVideos, setSearchParams]
   );
 
   // Contagem de vídeos selecionados e duração acumulada
@@ -336,13 +361,23 @@ export const useScanner = () => {
         setFilter('all');
         setCurrentPage(1);
         setHasScanned(true);
-        const moreAvailable = Boolean((items[0] as any)?.hasMore ?? true);
-        setHasMore(moreAvailable);
+        const firstItem = items[0] as any;
+        const moreAvailable = Boolean(firstItem?.hasMore ?? true);
+        const moreVideosAvailable = Boolean(firstItem?.hasMoreVideos ?? moreAvailable);
+        const moreShortsAvailable = Boolean(firstItem?.hasMoreShorts ?? moreAvailable);
+
+        const initialHasMore = {
+          all: moreAvailable,
+          long: moreVideosAvailable,
+          shorts: moreShortsAvailable,
+        };
+        setHasMoreByFilter(initialHasMore);
 
         saveScannerCache({
           channelUrl: cleanUrl,
           videos: result.videos,
           channelMeta: result.channelMeta,
+          hasMoreByFilter: initialHasMore,
         });
 
         setSearchParams(
@@ -396,7 +431,7 @@ export const useScanner = () => {
     setChannelUrl('');
     setHasScanned(false);
     setSelectedIds(new Set());
-    setHasMore(false);
+    setHasMoreByFilter({ all: false, long: false, shorts: false });
     setCurrentPage(1);
     setFilter('all');
     setSearchParams(
@@ -505,7 +540,8 @@ export const useScanner = () => {
     selectedIds,
     selectedCount,
     totalSeconds,
-    hasMore,
+    hasMore: hasMoreForCurrentFilter,
+    hasMoreByFilter,
     isFetchingMore,
     fetchMoreVideos,
     executeScan,

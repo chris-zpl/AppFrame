@@ -42,7 +42,7 @@ export const ScannerFilterTabs: React.FC<ScannerFilterTabsProps> = (props) => {
         >
           <span>Todos</span>
           <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 dark:bg-primary/20 text-amber-900 dark:text-primary text-label-sm font-label-sm">
-            {videos.length}
+            {channelMeta?.totalChannelVideos ?? videos.length}
           </span>
         </button>
 
