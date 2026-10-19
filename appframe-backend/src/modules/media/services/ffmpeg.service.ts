@@ -614,8 +614,37 @@ ${events.join('\n')}
   }
 
   /**
+   * Constrói argumentos seguros de corte para o FFmpeg (-ss para início e -t para duração).
+   * Evita o bug de "-to menor que -ss" usando sempre a duração (-t) calculada (trimEnd - trimStart).
+   */
+  buildTrimArgs(trimStart?: number, trimEnd?: number): string[] {
+    const args: string[] = [];
+    const hasTrimStart = typeof trimStart === 'number' && trimStart > 0;
+    const hasTrimEnd = typeof trimEnd === 'number' && trimEnd > 0;
+
+    if (hasTrimStart && hasTrimEnd) {
+      if (trimEnd > trimStart) {
+        const duration = Number((trimEnd - trimStart).toFixed(3));
+        args.push('-ss', trimStart.toString());
+        args.push('-t', duration.toString());
+      } else {
+        this.logger.warn(
+          `trimEnd (${trimEnd}) é menor ou igual a trimStart (${trimStart}). Aplicando apenas trimStart.`,
+        );
+        args.push('-ss', trimStart.toString());
+      }
+    } else if (hasTrimStart) {
+      args.push('-ss', trimStart.toString());
+    } else if (hasTrimEnd) {
+      args.push('-t', trimEnd.toString());
+    }
+
+    return args;
+  }
+
+  /**
    * Executa a orquestração completa de renderização com FFmpeg:
-   * - Corte preciso (-ss e -to) sem drift A/V
+   * - Corte preciso (-ss e -t) sem drift A/V
    * - Marca d'água PNG com alfa transparente
    * - Legendas com fix_bounds e quebra determinística
    * - Emissão de progresso de 0% a 100%
@@ -653,18 +682,9 @@ ${events.join('\n')}
     // 2. Montagem dos argumentos do FFmpeg
     const args: string[] = [];
 
-    // Corte de tempo exato (-ss antes do input com timestamp reset)
-    if (trimStart !== null && trimStart !== undefined && trimStart > 0) {
-      args.push('-ss', trimStart.toString());
-    }
-
-    if (trimEnd !== null && trimEnd !== undefined && trimEnd > 0) {
-      if (trimStart !== null && trimStart !== undefined && trimStart > 0) {
-        args.push('-to', (trimEnd - trimStart).toString());
-      } else {
-        args.push('-to', trimEnd.toString());
-      }
-    }
+    // Corte de tempo exato (-ss e -t antes do input para decodificação rápida e sem drift)
+    const trimArgs = this.buildTrimArgs(trimStart, trimEnd);
+    args.push(...trimArgs);
 
     // Input do vídeo original
     args.push('-i', inputPath);

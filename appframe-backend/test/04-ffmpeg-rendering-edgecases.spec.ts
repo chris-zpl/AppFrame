@@ -121,5 +121,33 @@ describe('4. Renderização do FFmpeg e Casos de Borda (E2E & Service Specs)', (
       expect(sanitized).toContain('key=[OCULTO]');
       expect(sanitized).toContain('token=[OCULTO]');
     });
+
+    it('deve gerar argumentos corretos de corte (-ss e -t duração) prevenindo o erro "-to value smaller than -ss"', () => {
+      // Caso 1: trimStart = 10s e trimEnd = 15s (duração = 5s)
+      const args1 = ffmpegService.buildTrimArgs(10, 15);
+      expect(args1).toEqual(['-ss', '10', '-t', '5']);
+      expect(args1).not.toContain('-to');
+
+      // Caso 2: trimStart = 25s e trimEnd = 30.5s (duração = 5.5s)
+      const args2 = ffmpegService.buildTrimArgs(25, 30.5);
+      expect(args2).toEqual(['-ss', '25', '-t', '5.5']);
+
+      // Caso 3: Apenas trimStart
+      const args3 = ffmpegService.buildTrimArgs(12, undefined);
+      expect(args3).toEqual(['-ss', '12']);
+
+      // Caso 4: Apenas trimEnd
+      const args4 = ffmpegService.buildTrimArgs(undefined, 20);
+      expect(args4).toEqual(['-t', '20']);
+
+      // Caso 5: trimEnd <= trimStart (edge case defensivo: não quebra com -to < -ss)
+      const args5 = ffmpegService.buildTrimArgs(15, 10);
+      expect(args5).toEqual(['-ss', '15']);
+      expect(args5).not.toContain('-to');
+
+      // Caso 6: Sem corte (valores 0 ou undefined)
+      const args6 = ffmpegService.buildTrimArgs(0, 0);
+      expect(args6).toEqual([]);
+    });
   });
 });
