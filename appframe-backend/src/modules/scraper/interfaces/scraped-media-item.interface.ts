@@ -25,4 +25,6 @@ export interface ScrapedMediaItem {
   channelTotalRegularVideos?: number;
   channelTotalShorts?: number;
   wasLiveInput?: boolean;
+  wasMembersOnlyInput?: boolean;
+  isMembersOnly?: boolean;
 }

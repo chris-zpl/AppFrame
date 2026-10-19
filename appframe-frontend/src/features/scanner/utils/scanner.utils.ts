@@ -40,10 +40,17 @@ export interface MappedScanResult {
   shortsCount: number;
   longCount: number;
   wasLiveInput?: boolean;
+  wasMembersOnlyInput?: boolean;
 }
 
 export function mapScannedItems(items: any[], cleanUrl: string): MappedScanResult {
-  const mappedVideos: ScrapedVideoCardData[] = items.map((it) => {
+  const filteredInputItems = items.filter(
+    (it) =>
+      !it.isMembersOnly &&
+      !/(?:só|so|exclusivo|apenas)\s+para\s+membros|^\[membros\]/i.test(it.title || ''),
+  );
+
+  const mappedVideos: ScrapedVideoCardData[] = filteredInputItems.map((it) => {
     const isShort = Boolean(it.isShort ?? it.is_short);
     const durationSeconds = it.durationSeconds ?? it.duration_seconds ?? it.duration ?? 0;
     let durationFormatted =
@@ -109,7 +116,9 @@ export function mapScannedItems(items: any[], cleanUrl: string): MappedScanResul
     Boolean(items.some((it) => it?.wasLiveInput)) ||
     /\/live(\/|$|\?)|\/streams(\/|$|\?)/i.test(cleanUrl);
 
-  const targetVideo = wasLiveInput
+  const wasMembersOnlyInput = Boolean(items.some((it) => it?.wasMembersOnlyInput));
+
+  const targetVideo = wasLiveInput || wasMembersOnlyInput
     ? undefined
     : mappedVideos.find(
         (v) => v.isTargetVideo || (targetVideoId && v.id === targetVideoId),
@@ -149,5 +158,6 @@ export function mapScannedItems(items: any[], cleanUrl: string): MappedScanResul
     shortsCount: effectiveShortsCount,
     longCount: effectiveLongCount,
     wasLiveInput,
+    wasMembersOnlyInput,
   };
 }

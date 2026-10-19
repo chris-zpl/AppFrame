@@ -279,22 +279,25 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         }
       };
 
-      const [uulf, uush, uulv, uu] = await Promise.all([
+      const [uulf, uush, uulv, uu, uumo] = await Promise.all([
         fetchPlaylistCount('UULF'), // Vídeos normais
         fetchPlaylistCount('UUSH'), // Shorts
         fetchPlaylistCount('UULV'), // Livestreams
         fetchPlaylistCount('UU'),   // Todos os uploads
+        fetchPlaylistCount('UUMO'), // Uploads exclusivos para membros (Members Only)
       ]);
 
       let resolvedRegularVideos: number | undefined = typeof uulf === 'number' ? uulf : undefined;
       let resolvedShorts: number | undefined = typeof uush === 'number' ? uush : undefined;
       let resolvedTotal: number | undefined;
 
+      const membersOnlyCount = typeof uumo === 'number' ? uumo : 0;
+
       if (typeof resolvedRegularVideos === 'number' && typeof resolvedShorts === 'number') {
         resolvedTotal = resolvedRegularVideos + resolvedShorts;
       } else if (typeof resolvedRegularVideos === 'number') {
         if (typeof uu === 'number') {
-          const nonLive = typeof uulv === 'number' ? Math.max(0, uu - uulv) : uu;
+          const nonLive = typeof uulv === 'number' ? Math.max(0, uu - uulv - membersOnlyCount) : Math.max(0, uu - membersOnlyCount);
           resolvedShorts = Math.max(0, nonLive - resolvedRegularVideos);
           resolvedTotal = resolvedRegularVideos + resolvedShorts;
         } else {
@@ -302,16 +305,18 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         }
       } else if (typeof resolvedShorts === 'number') {
         if (typeof uu === 'number') {
-          const nonLive = typeof uulv === 'number' ? Math.max(0, uu - uulv) : uu;
+          const nonLive = typeof uulv === 'number' ? Math.max(0, uu - uulv - membersOnlyCount) : Math.max(0, uu - membersOnlyCount);
           resolvedRegularVideos = Math.max(0, nonLive - resolvedShorts);
           resolvedTotal = resolvedRegularVideos + resolvedShorts;
         } else {
           resolvedTotal = resolvedShorts;
         }
       } else if (typeof uu === 'number') {
-        resolvedTotal = typeof uulv === 'number' ? Math.max(0, uu - uulv) : uu;
+        resolvedTotal = typeof uulv === 'number' ? Math.max(0, uu - uulv - membersOnlyCount) : Math.max(0, uu - membersOnlyCount);
       } else if (typeof uulv === 'number' && typeof fallbackTotal === 'number') {
-        resolvedTotal = Math.max(0, fallbackTotal - uulv);
+        resolvedTotal = Math.max(0, fallbackTotal - uulv - membersOnlyCount);
+      } else if (typeof fallbackTotal === 'number' && membersOnlyCount > 0) {
+        resolvedTotal = Math.max(0, fallbackTotal - membersOnlyCount);
       } else {
         resolvedTotal = fallbackTotal;
       }
@@ -329,7 +334,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       }
 
       this.logger.log(
-        `Contagem de Vídeos e Shorts (${channelId}): Total=${result.total} (Longos: ${result.regularVideos ?? 'N/A'}, Shorts: ${result.shorts ?? 'N/A'}, Livestreams excluídos: ${uulv ?? 0}, Uploads gerais: ${uu ?? 'N/A'}, Total bruto: ${fallbackTotal ?? 'N/A'})`,
+        `Contagem de Vídeos e Shorts (${channelId}): Total=${result.total} (Longos: ${result.regularVideos ?? 'N/A'}, Shorts: ${result.shorts ?? 'N/A'}, Livestreams excluídos: ${uulv ?? 0}, Membros excluídos: ${uumo ?? 0}, Uploads gerais: ${uu ?? 'N/A'}, Total bruto: ${fallbackTotal ?? 'N/A'})`,
       );
 
       return result;
@@ -437,6 +442,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
     channelAvatarUrl?: string;
     channelId?: string;
     isLive?: boolean;
+    isMembersOnly?: boolean;
     video: {
       id: string;
       title: string;
@@ -468,6 +474,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       let durationSeconds = 0;
       let thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
       let isShort = false;
+      let isMembersOnly = false;
 
       // 1. Tenta ytInitialPlayerResponse se HTML foi obtido
       if (html) {
@@ -502,6 +509,13 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
                 isLive = true;
               }
             }
+            if (
+              pData.playabilityStatus?.errorScreen?.playerLegacyDesktopYpcOfferRenderer ||
+              (pData.playabilityStatus?.status === 'UNPLAYABLE' &&
+                /membro|member|sponsor/i.test(pData.playabilityStatus?.reason || ''))
+            ) {
+              isMembersOnly = true;
+            }
           } catch (e: any) {
             this.logger.warn(`Erro no parsing de ytInitialPlayerResponse: ${e.message}`);
           }
@@ -516,6 +530,18 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             /"liveBroadcastDetails"/.test(html)
           ) {
             isLive = true;
+          }
+        }
+
+        if (!isMembersOnly) {
+          if (
+            /"sponsors_only_video"/.test(html) ||
+            /playerLegacyDesktopYpcOfferRenderer/.test(html) ||
+            /"itemTitle":\s*"Conteúdo só para membros"/.test(html) ||
+            /BADGE_STYLE_TYPE_MEMBERS_ONLY/.test(html) ||
+            /BADGE_MEMBERS_ONLY/.test(html)
+          ) {
+            isMembersOnly = true;
           }
         }
 
@@ -612,12 +638,17 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
 
       if (!channelUrl) return null;
 
+      if (!isMembersOnly && this.isMembersOnlyTitle(videoTitle)) {
+        isMembersOnly = true;
+      }
+
       return {
         channelUrl,
         channelTitle: channelTitle || undefined,
         channelAvatarUrl: channelAvatarUrl || undefined,
         channelId,
         isLive,
+        isMembersOnly,
         video: {
           id: videoId,
           title: videoTitle,
@@ -664,6 +695,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       channelAvatarUrl?: string;
       channelId?: string;
       isLive?: boolean;
+      isMembersOnly?: boolean;
       video: {
         id: string;
         title: string;
@@ -681,12 +713,13 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         this.logger.log(
           `Canal de origem resolvido: ${resolvedTarget.channelUrl} (${resolvedTarget.channelTitle || 'Sem título'})${
             resolvedTarget.isLive ? ' [TRANSMISSÃO AO VIVO DETECTADA]' : ''
-          }`,
+          }${resolvedTarget.isMembersOnly ? ' [VÍDEO DE MEMBROS DETECTADO]' : ''}`,
         );
       }
     }
 
     const isLiveInput = Boolean(isExplicitLiveInput || resolvedTarget?.isLive);
+    const isMembersOnlyInput = Boolean(resolvedTarget?.isMembersOnly);
 
     const rawBaseUrl = resolvedTarget ? resolvedTarget.channelUrl : channelUrl;
     const baseUrl = this.normalizeChannelUrl(rawBaseUrl);
@@ -768,11 +801,18 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       }
 
       // Caso tenha um vídeo alvo (URL de vídeo inserida), garante que ele venha no início e pré-selecionado,
-      // EXCETO se for transmissão ao vivo (lives não são permitidas para corte nem seleção)
+      // EXCETO se for transmissão ao vivo ou vídeo exclusivo para membros (não permitidos para corte)
       let targetItem: ScrapedMediaItem | null = null;
       if (isLiveInput) {
         this.logger.warn(
           `Entrada identificada como transmissão ao vivo (live): ${targetVideoId || channelUrl}. Bloqueando inclusão e seleção da transmissão.`,
+        );
+        if (targetVideoId && itemsMap.has(targetVideoId)) {
+          itemsMap.delete(targetVideoId);
+        }
+      } else if (isMembersOnlyInput) {
+        this.logger.warn(
+          `Entrada identificada como vídeo exclusivo para membros: ${targetVideoId || channelUrl}. Bloqueando inclusão e seleção do vídeo.`,
         );
         if (targetVideoId && itemsMap.has(targetVideoId)) {
           itemsMap.delete(targetVideoId);
@@ -856,12 +896,20 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         if (isLiveInput) {
           item.wasLiveInput = true;
         }
+        if (isMembersOnlyInput) {
+          item.wasMembersOnlyInput = true;
+        }
       }
 
       if (results.length === 0) {
         if (isLiveInput) {
           throw new NotFoundException(
             'Este canal possui transmissões ao vivo, porém nenhum vídeo regular ou Short público disponível para cortes.',
+          );
+        }
+        if (isMembersOnlyInput) {
+          throw new NotFoundException(
+            'Este vídeo é exclusivo para membros e o canal não possui outros vídeos ou Shorts públicos disponíveis para cortes.',
           );
         }
         throw new NotFoundException(
@@ -1270,9 +1318,32 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   }
 
   /**
+   * Identifica se um título ou texto indica vídeo exclusivo para membros
+   */
+  isMembersOnlyTitle(title?: string): boolean {
+    if (!title) return false;
+    const clean = title.trim().toLowerCase();
+    return (
+      clean.startsWith('exclusivo para membros') ||
+      clean.startsWith('só para membros') ||
+      clean.startsWith('so para membros') ||
+      clean.startsWith('apenas para membros') ||
+      clean.startsWith('members only') ||
+      clean.startsWith('members-only') ||
+      clean.includes('[membros]') ||
+      clean.includes('(membros)') ||
+      clean.includes('[members]') ||
+      clean.includes('(members)') ||
+      clean.includes('[exclusivo membros]') ||
+      clean.includes('[só membros]') ||
+      clean.includes('[so membros]')
+    );
+  }
+
+  /**
    * Identifica se um vídeo/Short é destinado exclusivamente ou com prioridade para membros do canal.
    * Detecta badges InnerTube (modernos e legados) como BADGE_MEMBERS_ONLY, BADGE_STYLE_TYPE_MEMBERS_ONLY,
-   * ícone SPONSORSHIP_STAR, URLs de badge de patrocinador e rótulos de membros.
+   * ícone SPONSORSHIP_STAR, URLs de badge de patrocinador, rótulos de membros e tags nos metadados.
    */
   isMembersOnly(node: any): boolean {
     if (!node || typeof node !== 'object') return false;
@@ -1284,50 +1355,87 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       rawStr.includes('BADGE_STYLE_TYPE_MEMBERS_ONLY') ||
       rawStr.includes('SPONSORSHIP_STAR') ||
       rawStr.includes('sponsors_default_badge') ||
-      rawStr.includes('sponsorships_default_badge')
+      rawStr.includes('sponsorships_default_badge') ||
+      rawStr.includes('sponsors_only_video') ||
+      rawStr.includes('playerLegacyDesktopYpcOfferRenderer') ||
+      rawStr.includes('ypc_video') ||
+      rawStr.includes('sponsorshipsPurchaseContext')
     ) {
       return true;
     }
 
-    // 2. Verificação explícita em badges de metadados
+    // 2. Verificação por expressões textuais inequívocas de membros no JSON
+    if (
+      /(?:só|so|exclusivo|apenas)\s+para\s+membros/i.test(rawStr) ||
+      /\bmembers[\s-]only\b/i.test(rawStr) ||
+      /\bsolo\s+para\s+miembros\b/i.test(rawStr)
+    ) {
+      return true;
+    }
+
+    // 3. Verificação explícita em badges de metadados
     const checkBadgeList = (badges?: any[]): boolean => {
       if (!Array.isArray(badges)) return false;
       return badges.some((b) => {
-        const style =
+        const style = (
           b.badgeViewModel?.badgeStyle ||
           b.metadataBadgeRenderer?.style ||
-          '';
-        const icon =
+          b.thumbnailBadgeViewModel?.badgeStyle ||
+          ''
+        ).toUpperCase();
+        const icon = (
           b.badgeViewModel?.iconName ||
           b.metadataBadgeRenderer?.icon?.iconType ||
-          '';
+          ''
+        ).toUpperCase();
         const label = (
           b.badgeViewModel?.badgeText ||
           b.metadataBadgeRenderer?.label ||
           b.metadataBadgeRenderer?.accessibilityData?.label ||
+          b.thumbnailBadgeViewModel?.text ||
           ''
         ).toLowerCase();
 
         return (
-          style.includes('MEMBERS_ONLY') ||
+          style.includes('MEMBERS') ||
+          style.includes('SPONSOR') ||
           icon.includes('SPONSOR') ||
+          icon.includes('MEMBER') ||
           label.includes('membro') ||
           label.includes('member')
         );
       });
     };
 
-    // LockupViewModel metadata rows badges
+    // LockupViewModel metadata rows badges (todos os caminhos possíveis no InnerTube)
     const metadataRows =
-      node.lockupViewModel?.metadata?.lockupMetadataViewModel?.metadata
-        ?.contentMetadataViewModel?.metadataRows ||
-      node.metadata?.lockupMetadataViewModel?.metadata
-        ?.contentMetadataViewModel?.metadataRows;
+      node.lockupViewModel?.metadata?.contentMetadataViewModel?.metadataRows ||
+      node.metadata?.contentMetadataViewModel?.metadataRows ||
+      node.lockupViewModel?.metadata?.lockupMetadataViewModel?.metadata?.contentMetadataViewModel?.metadataRows ||
+      node.metadata?.lockupMetadataViewModel?.metadata?.contentMetadataViewModel?.metadataRows;
     if (Array.isArray(metadataRows)) {
       for (const row of metadataRows) {
         if (checkBadgeList(row.badges)) return true;
       }
     }
+
+    // LockupViewModel overlays badges
+    const overlays =
+      node.lockupViewModel?.contentImage?.thumbnailViewModel?.overlays ||
+      node.contentImage?.thumbnailViewModel?.overlays;
+    if (Array.isArray(overlays)) {
+      for (const ov of overlays) {
+        if (checkBadgeList(ov.thumbnailBottomOverlayViewModel?.badges)) return true;
+        if (checkBadgeList(ov.thumbnailTopOverlayViewModel?.badges)) return true;
+        if (checkBadgeList(ov.thumbnailOverlayBadgeViewModel?.badges)) return true;
+      }
+    }
+
+    // ShortsLockupViewModel overlayMetadata badges
+    const shortsBadges =
+      node.shortsLockupViewModel?.overlayMetadata?.badges ||
+      node.overlayMetadata?.badges;
+    if (checkBadgeList(shortsBadges)) return true;
 
     // Legacy renderers badges
     if (checkBadgeList(node.videoRenderer?.badges || node.badges)) return true;
@@ -1366,6 +1474,10 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
           const title =
             lockup.metadata?.lockupMetadataViewModel?.title?.content ||
             'Sem título';
+
+          if (this.isMembersOnlyTitle(title)) {
+            return;
+          }
 
           const badge =
             lockup.contentImage?.thumbnailViewModel?.overlays?.[0]
@@ -1426,6 +1538,10 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             short.accessibilityText?.split(',')?.[0]?.trim() ||
             'Short do YouTube';
 
+          if (this.isMembersOnlyTitle(title)) {
+            return;
+          }
+
           const sources = short.thumbnail?.sources || [];
           const thumb =
             sources.length > 0
@@ -1473,6 +1589,10 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             videoRenderer.title?.runs?.[0]?.text ||
             videoRenderer.title?.simpleText ||
             'Sem título';
+
+          if (this.isMembersOnlyTitle(title)) {
+            return;
+          }
 
           const durationText =
             videoRenderer.lengthText?.simpleText ||
@@ -1526,6 +1646,10 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             reelRenderer.headline?.simpleText ||
             reelRenderer.headline?.runs?.[0]?.text ||
             'Short do YouTube';
+
+          if (this.isMembersOnlyTitle(title)) {
+            return;
+          }
 
           const durationSeconds = 0;
           const durationFormatted = '--:--';

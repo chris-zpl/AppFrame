@@ -399,6 +399,12 @@ export const useScanner = () => {
             'Transmissões ao vivo (lives) não são suportadas para cortes. Carregamos apenas os vídeos regulares e Shorts deste canal.',
             { duration: 6000 },
           );
+        } else if (result.wasMembersOnlyInput) {
+          setSelectedIds(new Set());
+          toast.warning(
+            'Vídeos exclusivos para membros não são suportados para cortes. Carregamos apenas os vídeos públicos e Shorts deste canal.',
+            { duration: 6000 },
+          );
         } else if (result.targetVideo) {
           setSelectedIds(new Set([result.targetVideo.id]));
           toast.success(

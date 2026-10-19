@@ -410,6 +410,9 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
             text: async () => 'prefix "stats":[{"runs":[{"text":"1.070"},{"text":" vídeos"}]}] suffix',
           } as any;
         }
+        if (urlStr.includes('list=UUMO')) {
+          return { ok: false, status: 404 } as any;
+        }
         if (urlStr.includes('list=UU')) {
           return {
             ok: true,
@@ -435,7 +438,7 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
             text: async () => 'prefix "stats":[{"runs":[{"text":"1.051"},{"text":" vídeos"}]}] suffix',
           } as any;
         }
-        if (urlStr.includes('list=UUSH')) {
+        if (urlStr.includes('list=UUSH') || urlStr.includes('list=UUMO')) {
           return { ok: false, status: 404 } as any;
         }
         if (urlStr.includes('list=UULV')) {
@@ -458,7 +461,7 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
       expect(counts.regularVideos).toBe(1051);
     });
 
-    it('deve calcular a partir de UU - UULV se UULF e UUSH falharem', async () => {
+    it('deve calcular a partir de UU - UULV se UULF e UUSH falharem, descontando UUMO se presente', async () => {
       const channelId = 'UCtest123456789012345678';
       jest.spyOn(global, 'fetch').mockImplementation(async (url: any) => {
         const urlStr = String(url);
@@ -471,6 +474,12 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
             text: async () => 'prefix "stats":[{"runs":[{"text":"20"},{"text":" vídeos"}]}] suffix',
           } as any;
         }
+        if (urlStr.includes('list=UUMO')) {
+          return {
+            ok: true,
+            text: async () => 'prefix "stats":[{"runs":[{"text":"5"},{"text":" vídeos"}]}] suffix',
+          } as any;
+        }
         if (urlStr.includes('list=UU')) {
           return {
             ok: true,
@@ -481,7 +490,115 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
       });
 
       const counts = await provider.resolveChannelVideosAndShortsCount(channelId, 120);
-      expect(counts.total).toBe(100);
+      expect(counts.total).toBe(95); // 120 - 20 (live) - 5 (membros) = 95
+    });
+  });
+
+  describe('5.7 Remoção e Bloqueio de Vídeos Exclusivos para Membros', () => {
+    it('isMembersOnlyTitle deve identificar variações de títulos para membros', () => {
+      expect(provider.isMembersOnlyTitle('Exclusivo para membros: Vídeo Especial')).toBe(true);
+      expect(provider.isMembersOnlyTitle('Só para membros: Live Gravada')).toBe(true);
+      expect(provider.isMembersOnlyTitle('[MEMBROS] Episódio Completo')).toBe(true);
+      expect(provider.isMembersOnlyTitle('(Membros) React Exclusivo')).toBe(true);
+      expect(provider.isMembersOnlyTitle('Members Only: Behind the Scenes')).toBe(true);
+      expect(provider.isMembersOnlyTitle('Novo membro da equipe')).toBe(false);
+      expect(provider.isMembersOnlyTitle('Vídeo normal do canal')).toBe(false);
+    });
+
+    it('isMembersOnly deve detectar badges modernos e legados do InnerTube', () => {
+      const nodeWithBadge = {
+        lockupViewModel: {
+          metadata: {
+            contentMetadataViewModel: {
+              metadataRows: [
+                {
+                  badges: [
+                    {
+                      badgeViewModel: {
+                        badgeStyle: 'BADGE_MEMBERS_ONLY',
+                        badgeText: 'Só para membros',
+                        iconName: 'SPONSORSHIP_STAR',
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      };
+      expect(provider.isMembersOnly(nodeWithBadge)).toBe(true);
+
+      const legacyNode = {
+        videoRenderer: {
+          badges: [
+            {
+              metadataBadgeRenderer: {
+                style: 'BADGE_STYLE_TYPE_MEMBERS_ONLY',
+                label: 'Exclusivo para membros',
+              },
+            },
+          ],
+        },
+      };
+      expect(provider.isMembersOnly(legacyNode)).toBe(true);
+
+      const regularNode = {
+        videoRenderer: {
+          title: { simpleText: 'Vídeo Público Comum' },
+        },
+      };
+      expect(provider.isMembersOnly(regularNode)).toBe(false);
+    });
+
+    it('scanChannel deve bloquear seleção de vídeo alvo se for exclusivo para membros e alertar wasMembersOnlyInput', async () => {
+      const targetId = 'oMdD4HOUMjM';
+      jest.spyOn(provider, 'resolveChannelFromVideo').mockResolvedValue({
+        channelUrl: 'https://www.youtube.com/@FlowGamesPodcast',
+        channelTitle: 'Flow Games',
+        channelAvatarUrl: 'https://yt3.ggpht.com/avatar.jpg',
+        isMembersOnly: true,
+        video: {
+          id: targetId,
+          title: 'Exclusivo para membros: TIUSAM ABRINDO CARTINHAS',
+          thumbnailUrl: 'https://i.ytimg.com/vi/oMdD4HOUMjM/hqdefault.jpg',
+          durationSeconds: 5097,
+          isShort: false,
+        },
+      });
+
+      jest.spyOn(provider as any, 'scrapeTab').mockImplementation(async (url: string) => {
+        if (url.includes('/videos')) {
+          return {
+            items: [
+              {
+                id: 'publicVideo1',
+                url: 'https://www.youtube.com/watch?v=publicVideo1',
+                title: 'Vídeo Público Regular',
+                thumbnailUrl: 'https://i.ytimg.com/vi/publicVideo1/hqdefault.jpg',
+                durationSeconds: 600,
+                isShort: false,
+              },
+            ],
+            notFound: false,
+            channelTitle: 'Flow Games',
+            channelAvatarUrl: 'https://yt3.ggpht.com/avatar.jpg',
+          };
+        }
+        return { items: [], notFound: false };
+      });
+
+      jest.spyOn(provider, 'enrichShortsRealDurations').mockResolvedValue();
+
+      const results = await provider.scanChannel(`https://www.youtube.com/watch?v=${targetId}`);
+
+      // O vídeo para membros NÃO deve estar nos resultados e não deve estar selecionado
+      expect(results.some((i) => i.id === targetId)).toBe(false);
+      expect(results.length).toBe(1);
+      expect(results[0].id).toBe('publicVideo1');
+      expect(results[0].selected).toBeUndefined();
+      expect(results[0].wasMembersOnlyInput).toBe(true);
     });
   });
 });
+

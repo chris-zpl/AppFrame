@@ -39,8 +39,11 @@ export const useStudioQueue = (params: UseStudioQueueParams) => {
         : '');
 
     const isLiveUrl = /\/live(\/|$|\?)|\/streams(\/|$|\?)/i.test(fallbackUrl);
+    const isMembersOnly = /(?:só|so|exclusivo|apenas)\s+para\s+membros|^\[membros\]|\bmembers[\s-]only\b/i.test(
+      params.videoTitle || '',
+    );
 
-    if (fallbackUrl && !isLiveUrl) {
+    if (fallbackUrl && !isLiveUrl && !isMembersOnly) {
       return [
         {
           id: params.selectedVideos || 'selected-1',
