@@ -34,6 +34,7 @@ export interface StudioPlayerProps {
   loadVideoPreview?: (videoItem: any, force?: boolean) => void;
   onNavigateToVarredura?: () => void;
   isGenerating?: boolean;
+  renderProgress?: number;
   initialSeekTimeRef?: React.MutableRefObject<number | null>;
 }
 
@@ -65,6 +66,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
   const seekVideoTo = props.seekVideoTo ?? studio.seekVideoTo;
   const loadVideoPreview = props.loadVideoPreview ?? studio.loadVideoPreview;
   const isGenerating = props.isGenerating ?? studio.isGenerating;
+  const renderProgress = props.renderProgress ?? studio.renderProgress ?? 0;
   const initialSeekTimeRef = props.initialSeekTimeRef ?? studio.initialSeekTimeRef;
   const onNavigateToVarredura =
     props.onNavigateToVarredura ?? (() => studio.navigate("varredura"));
@@ -389,6 +391,26 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
             Safe Zone
           </span>
         </div>
+
+        {/* Overlay Escuro com Spinner Centralizado e Mensagem durante a Geração do Vídeo */}
+        {isGenerating && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="absolute inset-0 z-40 bg-black/65 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-4 transition-all duration-300 pointer-events-auto select-none"
+          >
+            <div className="relative flex items-center justify-center mb-3">
+              <span className="material-symbols-outlined text-[44px] sm:text-[52px] text-primary animate-spin">
+                progress_activity
+              </span>
+            </div>
+            <p className="font-bold text-white text-xs sm:text-title-sm tracking-wide leading-tight">
+              {renderProgress > 0 ? `Gerando vídeo (${renderProgress}%)...` : "Gerando vídeo..."}
+            </p>
+            <p className="text-[11px] sm:text-body-sm text-neutral-300 mt-1.5 max-w-[240px] sm:max-w-xs leading-tight">
+              Processando cortes e renderização pelo FFmpeg. Aguarde um momento.
+            </p>
+          </div>
+        )}
 
         {/* Botão Central de Play no Hover */}
         {!isPlaying && Boolean(previewStreamUrl) && !isPreparingPreview && !isGenerating && (
