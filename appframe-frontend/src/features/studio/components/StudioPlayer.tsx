@@ -396,19 +396,39 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
         {isGenerating && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="absolute inset-0 z-40 bg-black/65 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-4 transition-all duration-300 pointer-events-auto select-none"
+            className="absolute inset-0 z-40 rounded-2xl bg-black/70 backdrop-blur-[3px] flex flex-col items-center justify-center text-center p-4 transition-all duration-300 pointer-events-auto select-none"
           >
-            <div className="relative flex items-center justify-center mb-3">
-              <span className="material-symbols-outlined text-[44px] sm:text-[52px] text-primary animate-spin">
-                progress_activity
-              </span>
+            <div className="flex flex-col items-center justify-center p-5 sm:p-6 rounded-3xl bg-neutral-950/80 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md max-w-[280px] sm:max-w-xs">
+              <div className="relative flex items-center justify-center mb-3">
+                <svg
+                  className="animate-spin w-11 h-11 sm:w-12 sm:h-12 text-primary"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-20"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="3.5"
+                  />
+                  <path
+                    stroke="currentColor"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    d="M12 2a10 10 0 0 1 10 10"
+                  />
+                </svg>
+              </div>
+              <p className="font-bold text-white text-xs sm:text-title-sm tracking-wide leading-tight">
+                {renderProgress > 0 ? `Gerando vídeo (${renderProgress}%)...` : "Gerando vídeo..."}
+              </p>
+              <p className="text-[11px] sm:text-body-sm text-neutral-300 mt-1.5 max-w-[220px] leading-tight">
+                Processando cortes e renderização pelo FFmpeg. Aguarde um momento.
+              </p>
             </div>
-            <p className="font-bold text-white text-xs sm:text-title-sm tracking-wide leading-tight">
-              {renderProgress > 0 ? `Gerando vídeo (${renderProgress}%)...` : "Gerando vídeo..."}
-            </p>
-            <p className="text-[11px] sm:text-body-sm text-neutral-300 mt-1.5 max-w-[240px] sm:max-w-xs leading-tight">
-              Processando cortes e renderização pelo FFmpeg. Aguarde um momento.
-            </p>
           </div>
         )}
 

@@ -362,10 +362,9 @@ export const useStudioRender = ({
         startedAt: Date.now(),
       });
 
-      toast.info(
-        `Job despachado com sucesso para a fila! 
-        ID: ${createdJob.id}`
-      );
+      toast.info('Job despachado com sucesso para a fila!', {
+        description: `ID: ${createdJob.id}`,
+      });
 
       // Aguarda a conclusão do processamento FFmpeg no backend
       let currentJob = createdJob;
