@@ -315,5 +315,98 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
       const count = await provider.resolveChannelVideosAndShortsCount(undefined, 3700);
       expect(count).toBe(3700);
     });
+
+    it('deve somar vídeos longos e shorts (UULF + UUSH) excluindo livestreams', async () => {
+      const channelId = 'UCUZfhX79dQrJvAgYefiXCCA';
+      jest.spyOn(global, 'fetch').mockImplementation(async (url: any) => {
+        const urlStr = String(url);
+        if (urlStr.includes('list=UULF')) {
+          return {
+            ok: true,
+            text: async () => 'prefix "stats":[{"runs":[{"text":"478"},{"text":" vídeos"}]}] suffix',
+          } as any;
+        }
+        if (urlStr.includes('list=UUSH')) {
+          return {
+            ok: true,
+            text: async () => 'prefix "stats":[{"runs":[{"text":"2.159"},{"text":" vídeos"}]}] suffix',
+          } as any;
+        }
+        if (urlStr.includes('list=UULV')) {
+          return {
+            ok: true,
+            text: async () => 'prefix "stats":[{"runs":[{"text":"1.070"},{"text":" vídeos"}]}] suffix',
+          } as any;
+        }
+        if (urlStr.includes('list=UU')) {
+          return {
+            ok: true,
+            text: async () => 'prefix "stats":[{"runs":[{"text":"3.707"},{"text":" vídeos"}]}] suffix',
+          } as any;
+        }
+        return { ok: false } as any;
+      });
+
+      const count = await provider.resolveChannelVideosAndShortsCount(channelId, 3700);
+      expect(count).toBe(2637);
+    });
+
+    it('deve usar UULF diretamente se o canal não tiver shorts (UUSH 404)', async () => {
+      const channelId = 'UCxNehdbyTPxJO76kOPpHoCg';
+      jest.spyOn(global, 'fetch').mockImplementation(async (url: any) => {
+        const urlStr = String(url);
+        if (urlStr.includes('list=UULF')) {
+          return {
+            ok: true,
+            text: async () => 'prefix "stats":[{"runs":[{"text":"1.051"},{"text":" vídeos"}]}] suffix',
+          } as any;
+        }
+        if (urlStr.includes('list=UUSH')) {
+          return { ok: false, status: 404 } as any;
+        }
+        if (urlStr.includes('list=UULV')) {
+          return {
+            ok: true,
+            text: async () => 'prefix "stats":[{"runs":[{"text":"Um vídeo"}]}] suffix',
+          } as any;
+        }
+        if (urlStr.includes('list=UU')) {
+          return {
+            ok: true,
+            text: async () => 'prefix "stats":[{"runs":[{"text":"1.052"},{"text":" vídeos"}]}] suffix',
+          } as any;
+        }
+        return { ok: false } as any;
+      });
+
+      const count = await provider.resolveChannelVideosAndShortsCount(channelId, 1000);
+      expect(count).toBe(1051);
+    });
+
+    it('deve calcular a partir de UU - UULV se UULF e UUSH falharem', async () => {
+      const channelId = 'UCtest123456789012345678';
+      jest.spyOn(global, 'fetch').mockImplementation(async (url: any) => {
+        const urlStr = String(url);
+        if (urlStr.includes('list=UULF') || urlStr.includes('list=UUSH')) {
+          return { ok: false, status: 404 } as any;
+        }
+        if (urlStr.includes('list=UULV')) {
+          return {
+            ok: true,
+            text: async () => 'prefix "stats":[{"runs":[{"text":"20"},{"text":" vídeos"}]}] suffix',
+          } as any;
+        }
+        if (urlStr.includes('list=UU')) {
+          return {
+            ok: true,
+            text: async () => 'prefix "stats":[{"runs":[{"text":"120"},{"text":" vídeos"}]}] suffix',
+          } as any;
+        }
+        return { ok: false } as any;
+      });
+
+      const count = await provider.resolveChannelVideosAndShortsCount(channelId, 120);
+      expect(count).toBe(100);
+    });
   });
 });

@@ -249,7 +249,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       const fetchPlaylistCount = async (prefix: string): Promise<number | null> => {
         try {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 2000);
+          const timeout = setTimeout(() => controller.abort(), 2500);
           const res = await fetch(`https://www.youtube.com/playlist?list=${prefix}${suffix}`, {
             signal: controller.signal,
             headers,
@@ -259,7 +259,10 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
           const resHtml = await res.text();
           const match = resHtml.match(/"stats":\s*\[\s*\{\s*"runs":\s*\[\s*\{\s*"text":\s*"([^"]+)"/);
           if (!match || !match[1]) return null;
-          const clean = match[1].replace(/\./g, '').replace(/,/g, '').trim();
+          const text = match[1].trim().toLowerCase();
+          if (/^(?:um|one)\b/i.test(text)) return 1;
+          if (/^(?:nenhum|no\s+videos?)\b/i.test(text)) return 0;
+          const clean = text.replace(/\./g, '').replace(/,/g, '').trim();
           const val = parseInt(clean, 10);
           return isNaN(val) ? null : val;
         } catch {
@@ -267,19 +270,24 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         }
       };
 
-      const [uulf, uush, uulv] = await Promise.all([
+      const [uulf, uush, uulv, uu] = await Promise.all([
         fetchPlaylistCount('UULF'), // Vídeos normais
         fetchPlaylistCount('UUSH'), // Shorts
         fetchPlaylistCount('UULV'), // Livestreams
+        fetchPlaylistCount('UU'),   // Todos os uploads
       ]);
 
       let resolvedCount: number | undefined;
       if (typeof uulf === 'number' && typeof uush === 'number') {
         resolvedCount = uulf + uush;
+      } else if (typeof uulf === 'number') {
+        resolvedCount = uulf;
+      } else if (typeof uush === 'number') {
+        resolvedCount = uush;
+      } else if (typeof uu === 'number') {
+        resolvedCount = typeof uulv === 'number' ? Math.max(0, uu - uulv) : uu;
       } else if (typeof uulv === 'number' && typeof fallbackTotal === 'number') {
         resolvedCount = Math.max(0, fallbackTotal - uulv);
-      } else if (typeof uulf === 'number') {
-        resolvedCount = uulf + (uush || 0);
       } else {
         resolvedCount = fallbackTotal;
       }
@@ -291,7 +299,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       }
 
       this.logger.log(
-        `Contagem de Vídeos e Shorts (${channelId}): ${resolvedCount} (Longos: ${uulf ?? 'N/A'}, Shorts: ${uush ?? 'N/A'}, Livestreams excluídos: ${uulv ?? 0}, Total bruto: ${fallbackTotal ?? 'N/A'})`,
+        `Contagem de Vídeos e Shorts (${channelId}): ${resolvedCount} (Longos: ${uulf ?? 'N/A'}, Shorts: ${uush ?? 'N/A'}, Livestreams excluídos: ${uulv ?? 0}, Uploads gerais: ${uu ?? 'N/A'}, Total bruto: ${fallbackTotal ?? 'N/A'})`,
       );
 
       return resolvedCount || fallbackTotal;

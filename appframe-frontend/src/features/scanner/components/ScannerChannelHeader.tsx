@@ -16,6 +16,8 @@ export const ScannerChannelHeader: React.FC<ScannerChannelHeaderProps> = ({
     setImgError(false);
   }, [channelMeta.avatarUrl]);
 
+  const displayTotal = Math.max(channelMeta.totalChannelVideos || 0, totalVideos);
+
   return (
     <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-surface-container-low p-space-md sm:p-space-lg shadow-[0_6px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-neutral-200 dark:border-primary/20">
       <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
@@ -62,9 +64,9 @@ export const ScannerChannelHeader: React.FC<ScannerChannelHeaderProps> = ({
               <span className="font-semibold text-on-surface">Canal Oficial</span>
               <span className="text-outline">•</span>
               <span>
-                {channelMeta.totalChannelVideos && channelMeta.totalChannelVideos > channelMeta.totalIndexed
-                  ? `${channelMeta.totalIndexed} de ${channelMeta.totalChannelVideos.toLocaleString('pt-BR')} mídias carregadas`
-                  : `${channelMeta.totalIndexed} mídias extraídas`}
+                {displayTotal > channelMeta.totalIndexed
+                  ? `${channelMeta.totalIndexed.toLocaleString('pt-BR')} de ${displayTotal.toLocaleString('pt-BR')} mídias carregadas`
+                  : `${channelMeta.totalIndexed.toLocaleString('pt-BR')} mídias indexadas`}
               </span>
               <span className="text-outline">•</span>
               <span className="text-amber-700 dark:text-primary flex items-center gap-1 font-medium">
@@ -80,21 +82,19 @@ export const ScannerChannelHeader: React.FC<ScannerChannelHeaderProps> = ({
           <div className="bg-neutral-50 dark:bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-neutral-200 dark:border-outline/10">
             <span className="text-label-sm font-label-sm text-outline">Total</span>
             <span className="text-title-md font-title-md font-bold text-on-surface">
-              {channelMeta.totalChannelVideos
-                ? channelMeta.totalChannelVideos.toLocaleString('pt-BR')
-                : totalVideos}
+              {displayTotal.toLocaleString('pt-BR')}
             </span>
           </div>
           <div className="bg-neutral-50 dark:bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-neutral-200 dark:border-outline/10">
             <span className="text-label-sm font-label-sm text-outline">Vídeos</span>
             <span className="text-title-md font-title-md font-bold text-on-surface">
-              {channelMeta.longCount}
+              {channelMeta.longCount.toLocaleString('pt-BR')}
             </span>
           </div>
           <div className="bg-neutral-50 dark:bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-neutral-200 dark:border-outline/10">
             <span className="text-label-sm font-label-sm text-outline">Shorts</span>
             <span className="text-title-md font-title-md font-bold text-amber-700 dark:text-primary">
-              {channelMeta.shortsCount}
+              {channelMeta.shortsCount.toLocaleString('pt-BR')}
             </span>
           </div>
         </div>

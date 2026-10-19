@@ -20,13 +20,7 @@ export const ScannerPagination: React.FC<ScannerPaginationProps> = (props) => {
   const pageNumbers = props.pageNumbers ?? scanner.pageNumbers;
   const startItemIndex = props.startItemIndex ?? scanner.startItemIndex;
   const endItemIndex = props.endItemIndex ?? scanner.endItemIndex;
-  const totalFilteredCount = props.totalFilteredCount ?? (
-    !scanner.hasMore
-      ? scanner.filteredVideos.length
-      : scanner.filter === 'all' && scanner.channelMeta?.totalChannelVideos
-        ? Math.max(scanner.channelMeta.totalChannelVideos, scanner.filteredVideos.length)
-        : scanner.filteredVideos.length
-  );
+  const totalFilteredCount = props.totalFilteredCount ?? scanner.totalVideosAvailable;
   const onPageChange = props.onPageChange ?? scanner.handlePageChange;
 
   if (totalPages <= 1) return null;

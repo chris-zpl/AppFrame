@@ -112,14 +112,14 @@ export const useScanner = () => {
   const totalVideosAvailable =
     !hasMore
       ? filteredVideos.length
-      : filter === 'all' && channelMeta?.totalChannelVideos && channelMeta.totalChannelVideos > filteredVideos.length
-        ? channelMeta.totalChannelVideos
+      : filter === 'all'
+        ? Math.max(channelMeta?.totalChannelVideos || 0, filteredVideos.length)
         : filteredVideos.length;
 
   const totalPages = Math.max(
     1,
     Math.ceil(totalVideosAvailable / ITEMS_PER_PAGE) +
-      (!channelMeta?.totalChannelVideos && hasMore ? 1 : 0)
+      (hasMore && filteredVideos.length >= totalVideosAvailable ? 1 : 0)
   );
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
@@ -140,18 +140,42 @@ export const useScanner = () => {
       const moreItems = await scraperService.fetchMore(channelUrl, filter);
       if (moreItems && moreItems.length > 0) {
         const mapped = mapScannedItems(moreItems, channelUrl).videos;
+        const moreAvailable = Boolean(moreItems[0]?.hasMore);
+
         setVideos((prev) => {
           const existingIds = new Set(prev.map((v) => v.id));
           const fresh = mapped.filter((v) => !existingIds.has(v.id));
           if (fresh.length === 0) {
             setHasMore(false);
+            if (channelMeta) {
+              const updatedMeta = {
+                ...channelMeta,
+                totalIndexed: prev.length,
+                totalChannelVideos: prev.length,
+                shortsCount: prev.filter((v) => v.isShort).length,
+                longCount: prev.filter((v) => !v.isShort).length,
+              };
+              setChannelMeta(updatedMeta);
+              saveScannerCache({
+                channelUrl,
+                videos: prev,
+                channelMeta: updatedMeta,
+              });
+            }
             return prev;
           }
           const merged = [...prev, ...fresh];
+          const isComplete = !moreAvailable;
+          const currentTotal = channelMeta?.totalChannelVideos || 0;
+          const resolvedTotal = isComplete
+            ? merged.length
+            : Math.max(currentTotal, merged.length);
+
           const updatedMeta = channelMeta
             ? {
                 ...channelMeta,
                 totalIndexed: merged.length,
+                totalChannelVideos: resolvedTotal,
                 shortsCount: merged.filter((v) => v.isShort).length,
                 longCount: merged.filter((v) => !v.isShort).length,
               }
@@ -167,17 +191,29 @@ export const useScanner = () => {
           return merged;
         });
 
-        const moreAvailable = Boolean(moreItems[0]?.hasMore);
         setHasMore(moreAvailable);
       } else {
         setHasMore(false);
+        setChannelMeta((prevMeta) => {
+          if (!prevMeta) return null;
+          const finalizedMeta = {
+            ...prevMeta,
+            totalChannelVideos: prevMeta.totalIndexed,
+          };
+          saveScannerCache({
+            channelUrl,
+            videos,
+            channelMeta: finalizedMeta,
+          });
+          return finalizedMeta;
+        });
       }
     } catch (err: any) {
       console.warn('Erro ao carregar mais mídias do canal:', err?.message || err);
     } finally {
       setIsFetchingMore(false);
     }
-  }, [channelUrl, isFetchingMore, hasMore, filter, channelMeta]);
+  }, [channelUrl, isFetchingMore, hasMore, filter, channelMeta, videos]);
 
   // Se a página atual exigir mais mídias do que já carregamos, busca automaticamente
   useEffect(() => {
@@ -453,6 +489,7 @@ export const useScanner = () => {
     currentPage,
     safeCurrentPage,
     totalPages,
+    totalVideosAvailable,
     pageNumbers,
     startItemIndex,
     endItemIndex,
