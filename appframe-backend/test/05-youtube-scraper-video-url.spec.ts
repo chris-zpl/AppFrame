@@ -286,5 +286,34 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
       const count = provider.extractChannelTotalVideos({}, html);
       expect(count).toBe(4600);
     });
+
+    it('deve extrair channelId a partir de tabs ou html', () => {
+      const mockData = {
+        contents: {
+          twoColumnBrowseResultsRenderer: {
+            tabs: [
+              {
+                tabRenderer: {
+                  endpoint: {
+                    browseEndpoint: {
+                      browseId: 'UCUZfhX79dQrJvAgYefiXCCA',
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      };
+      expect(provider.extractChannelId(mockData)).toBe('UCUZfhX79dQrJvAgYefiXCCA');
+      expect(provider.extractChannelId({}, 'prefix "browseId":"UC6VcWc1rAoWdBCM0JxrRQ3A" suffix')).toBe(
+        'UC6VcWc1rAoWdBCM0JxrRQ3A',
+      );
+    });
+
+    it('deve retornar fallbackTotal se channelId for inválido ou não informado', async () => {
+      const count = await provider.resolveChannelVideosAndShortsCount(undefined, 3700);
+      expect(count).toBe(3700);
+    });
   });
 });

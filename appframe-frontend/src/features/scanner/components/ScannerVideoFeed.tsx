@@ -53,7 +53,7 @@ export const ScannerVideoFeed: React.FC<ScannerVideoFeedProps> = (props) => {
           )}
 
           {/* Grid responsivo de vídeos reais */}
-          {scanner.isFetchingMore && paginatedVideos.length === 0 ? (
+          {paginatedVideos.length === 0 && (scanner.isFetchingMore || scanner.hasMore) ? (
             <ScannerVideoSkeleton />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">

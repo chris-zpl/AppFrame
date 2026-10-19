@@ -110,9 +110,11 @@ export const useScanner = () => {
   }, [videos, filter]);
 
   const totalVideosAvailable =
-    filter === 'all' && channelMeta?.totalChannelVideos && channelMeta.totalChannelVideos > filteredVideos.length
-      ? channelMeta.totalChannelVideos
-      : filteredVideos.length;
+    !hasMore
+      ? filteredVideos.length
+      : filter === 'all' && channelMeta?.totalChannelVideos && channelMeta.totalChannelVideos > filteredVideos.length
+        ? channelMeta.totalChannelVideos
+        : filteredVideos.length;
 
   const totalPages = Math.max(
     1,
@@ -436,11 +438,9 @@ export const useScanner = () => {
   };
 
   const startItemIndex =
-    filteredVideos.length === 0 ? 0 : (safeCurrentPage - 1) * ITEMS_PER_PAGE + 1;
-  const endItemIndex = Math.min(
-    safeCurrentPage * ITEMS_PER_PAGE,
-    filteredVideos.length
-  );
+    paginatedVideos.length === 0 ? 0 : (safeCurrentPage - 1) * ITEMS_PER_PAGE + 1;
+  const endItemIndex =
+    paginatedVideos.length === 0 ? 0 : (safeCurrentPage - 1) * ITEMS_PER_PAGE + paginatedVideos.length;
 
   return {
     channelUrl,

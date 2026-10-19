@@ -194,6 +194,114 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   }
 
   /**
+   * Extrai o ID canônico do canal (iniciando com 'UC') do InnerTube ou HTML
+   */
+  extractChannelId(initialData: any, html?: string): string | undefined {
+    try {
+      const tabs = initialData?.contents?.twoColumnBrowseResultsRenderer?.tabs;
+      if (Array.isArray(tabs)) {
+        for (const t of tabs) {
+          const browseId = t?.tabRenderer?.endpoint?.browseEndpoint?.browseId;
+          if (browseId && browseId.startsWith('UC')) {
+            return browseId;
+          }
+        }
+      }
+      const metaChannelId = initialData?.metadata?.channelMetadataRenderer?.externalId;
+      if (metaChannelId && metaChannelId.startsWith('UC')) {
+        return metaChannelId;
+      }
+      if (html) {
+        const m = html.match(/"browseId":"(UC[a-zA-Z0-9_-]{22})"/);
+        if (m && m[1]) return m[1];
+      }
+    } catch {}
+    return undefined;
+  }
+
+  /**
+   * Obtém a contagem de mídias considerando estritamente Vídeos longos e Shorts,
+   * excluindo transmissões ao vivo gravadas (livestreams/streams) para refletir a grade do scanner.
+   */
+  async resolveChannelVideosAndShortsCount(
+    channelId: string | undefined,
+    fallbackTotal?: number,
+  ): Promise<number | undefined> {
+    if (!channelId || !channelId.startsWith('UC')) {
+      return fallbackTotal;
+    }
+
+    const cacheKey = `channel_videos_shorts_count:${channelId}`;
+    if (this.redisService) {
+      try {
+        const cached = await this.redisService.get(cacheKey);
+        if (cached) {
+          const parsed = parseInt(cached, 10);
+          if (!isNaN(parsed) && parsed > 0) return parsed;
+        }
+      } catch {}
+    }
+
+    try {
+      const suffix = channelId.slice(2);
+      const headers = this.getFetchHeaders();
+
+      const fetchPlaylistCount = async (prefix: string): Promise<number | null> => {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 2000);
+          const res = await fetch(`https://www.youtube.com/playlist?list=${prefix}${suffix}`, {
+            signal: controller.signal,
+            headers,
+          });
+          clearTimeout(timeout);
+          if (!res.ok) return null;
+          const resHtml = await res.text();
+          const match = resHtml.match(/"stats":\s*\[\s*\{\s*"runs":\s*\[\s*\{\s*"text":\s*"([^"]+)"/);
+          if (!match || !match[1]) return null;
+          const clean = match[1].replace(/\./g, '').replace(/,/g, '').trim();
+          const val = parseInt(clean, 10);
+          return isNaN(val) ? null : val;
+        } catch {
+          return null;
+        }
+      };
+
+      const [uulf, uush, uulv] = await Promise.all([
+        fetchPlaylistCount('UULF'), // Vídeos normais
+        fetchPlaylistCount('UUSH'), // Shorts
+        fetchPlaylistCount('UULV'), // Livestreams
+      ]);
+
+      let resolvedCount: number | undefined;
+      if (typeof uulf === 'number' && typeof uush === 'number') {
+        resolvedCount = uulf + uush;
+      } else if (typeof uulv === 'number' && typeof fallbackTotal === 'number') {
+        resolvedCount = Math.max(0, fallbackTotal - uulv);
+      } else if (typeof uulf === 'number') {
+        resolvedCount = uulf + (uush || 0);
+      } else {
+        resolvedCount = fallbackTotal;
+      }
+
+      if (resolvedCount && resolvedCount > 0 && this.redisService) {
+        try {
+          await this.redisService.set(cacheKey, String(resolvedCount), 'EX', 3600);
+        } catch {}
+      }
+
+      this.logger.log(
+        `Contagem de Vídeos e Shorts (${channelId}): ${resolvedCount} (Longos: ${uulf ?? 'N/A'}, Shorts: ${uush ?? 'N/A'}, Livestreams excluídos: ${uulv ?? 0}, Total bruto: ${fallbackTotal ?? 'N/A'})`,
+      );
+
+      return resolvedCount || fallbackTotal;
+    } catch (e: any) {
+      this.logger.warn(`Falha ao resolver contagem detalhada de vídeos e shorts: ${e.message}`);
+      return fallbackTotal;
+    }
+  }
+
+  /**
    * Obtém cookies configurados no servidor (storage/cookies.txt) formatados para o cabeçalho Cookie
    */
   private getCookiesHeader(): string | undefined {
@@ -621,7 +729,12 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
 
       const videosContinuationToken = (regularResult as any).continuationToken || null;
       const shortsContinuationToken = (shortsResult as any).continuationToken || null;
-      const channelTotalVideos = regularResult.channelTotalVideos || shortsResult.channelTotalVideos;
+      const rawChannelTotal = regularResult.channelTotalVideos || shortsResult.channelTotalVideos;
+      const channelId =
+        (regularResult as any).channelId ||
+        (shortsResult as any).channelId ||
+        (resolvedTarget as any)?.channelId;
+      const channelTotalVideos = await this.resolveChannelVideosAndShortsCount(channelId, rawChannelTotal);
 
       await this.saveTokens(baseUrl, {
         videosToken: videosContinuationToken,
@@ -683,6 +796,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
     channelAvatarUrl?: string;
     continuationToken?: string | null;
     channelTotalVideos?: number;
+    channelId?: string;
   }> {
     const headers = this.getFetchHeaders();
 
@@ -763,9 +877,10 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       }
 
       const channelTotalVideos = this.extractChannelTotalVideos(initialData, html);
+      const channelId = this.extractChannelId(initialData, html);
 
       if (!initialData) {
-        return { items: [], notFound: false, channelTitle, channelAvatarUrl, channelTotalVideos };
+        return { items: [], notFound: false, channelTitle, channelAvatarUrl, channelTotalVideos, channelId };
       }
 
       const visitedIds = new Set<string>();
@@ -841,6 +956,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         channelAvatarUrl,
         continuationToken,
         channelTotalVideos,
+        channelId,
       };
     } catch (err: any) {
       this.logger.warn(`Erro ao baixar página ${url}: ${err.message}`);
@@ -1180,9 +1296,9 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
               : `https://i.ytimg.com/vi/${id}/frame0.jpg`;
           const thumbnailUrl = thumb.startsWith('//') ? `https:${thumb}` : thumb;
 
-          const durationSeconds = 60;
-          const durationFormatted = '01:00';
-          const timestampFormatted = '00:01:00';
+          const durationSeconds = 0;
+          const durationFormatted = '--:--';
+          const timestampFormatted = '00:00:00';
 
           results.push({
             id,
@@ -1274,9 +1390,9 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             reelRenderer.headline?.runs?.[0]?.text ||
             'Short do YouTube';
 
-          const durationSeconds = 60;
-          const durationFormatted = '01:00';
-          const timestampFormatted = '00:01:00';
+          const durationSeconds = 0;
+          const durationFormatted = '--:--';
+          const timestampFormatted = '00:00:00';
 
           const bestThumb =
             reelRenderer.thumbnail?.thumbnails?.slice(-1)?.[0]?.url ||
@@ -1318,9 +1434,11 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
    * Executa em lotes paralelos (concorrência controlada) para garantir rapidez sem sobrecarga.
    */
   async enrichShortsRealDurations(items: ScrapedMediaItem[]): Promise<void> {
-    const shortsToEnrich = items
-      .filter((item) => (item.isShort || item.is_short) && (!item.durationSeconds || item.durationSeconds <= 0))
-      .slice(0, 6);
+    const shortsToEnrich = items.filter(
+      (item) =>
+        (item.isShort || item.is_short) &&
+        (!item.durationSeconds || item.durationSeconds <= 0 || item.durationSeconds === 60),
+    );
 
     if (shortsToEnrich.length === 0) return;
 
@@ -1328,7 +1446,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       `Consultando metadados de tempo real para ${shortsToEnrich.length} Shorts...`,
     );
 
-    const concurrency = 6;
+    const concurrency = 10;
     for (let i = 0; i < shortsToEnrich.length; i += concurrency) {
       const chunk = shortsToEnrich.slice(i, i + concurrency);
       await Promise.all(
@@ -1340,9 +1458,19 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
               item.duration_seconds = realDuration;
               item.durationFormatted = this.formatDuration(realDuration);
               item.timestamp_formatted = this.formatTimestamp(realDuration);
+            } else if (!item.durationSeconds || item.durationSeconds <= 0) {
+              item.durationSeconds = 60;
+              item.duration_seconds = 60;
+              item.durationFormatted = '01:00';
+              item.timestamp_formatted = '00:01:00';
             }
           } catch {
-            // Mantém valor existente caso haja falha de rede individual
+            if (!item.durationSeconds || item.durationSeconds <= 0) {
+              item.durationSeconds = 60;
+              item.duration_seconds = 60;
+              item.durationFormatted = '01:00';
+              item.timestamp_formatted = '00:01:00';
+            }
           }
         }),
       );
@@ -1351,53 +1479,126 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
 
   /**
    * Busca os metadados reais de tempo/duração de um vídeo/Short específico no YouTube.
+   * Utiliza a API leve InnerTube Player e fallbacks com cache Redis.
    */
   async fetchVideoRealDuration(videoId: string): Promise<number> {
+    if (!videoId) return 0;
+
+    const cacheKey = `video_duration:${videoId}`;
+    if (this.redisService) {
+      try {
+        const cached = await this.redisService.get(cacheKey);
+        if (cached) {
+          const val = parseInt(cached, 10);
+          if (!isNaN(val) && val > 0) return val;
+        }
+      } catch {}
+    }
+
+    // 1. Tenta API InnerTube Player (respostas JSON limpas e imediatas ~200ms)
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 1500);
-      const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      const timeout = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch('https://www.youtube.com/youtubei/v1/player', {
+        method: 'POST',
         signal: controller.signal,
         headers: {
+          'Content-Type': 'application/json',
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
         },
+        body: JSON.stringify({
+          context: {
+            client: {
+              clientName: 'WEB',
+              clientVersion: '2.20241001.00.00',
+              hl: 'pt-BR',
+              gl: 'BR',
+            },
+          },
+          videoId,
+        }),
+      });
+      clearTimeout(timeout);
+      if (res.ok) {
+        const data = await res.json();
+        const rawSecs = data?.videoDetails?.lengthSeconds;
+        if (rawSecs) {
+          const secs = parseInt(rawSecs, 10);
+          if (!isNaN(secs) && secs > 0) {
+            if (this.redisService) {
+              try {
+                await this.redisService.set(cacheKey, String(secs), 'EX', 86400 * 7);
+              } catch {}
+            }
+            return secs;
+          }
+        }
+      }
+    } catch {}
+
+    // 2. Fallback: Página HTML pública do vídeo
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+        signal: controller.signal,
+        headers: this.getFetchHeaders(),
       });
       clearTimeout(timeout);
 
-      if (!res.ok) return 0;
+      if (res.ok) {
+        const html = await res.text();
 
-      const html = await res.text();
+        // lengthSeconds
+        const lengthMatch = html.match(/"lengthSeconds":"(\d+)"/);
+        if (lengthMatch && lengthMatch[1]) {
+          const secs = parseInt(lengthMatch[1], 10);
+          if (secs > 0) {
+            if (this.redisService) {
+              try {
+                await this.redisService.set(cacheKey, String(secs), 'EX', 86400 * 7);
+              } catch {}
+            }
+            return secs;
+          }
+        }
 
-      // 1. Tenta "lengthSeconds":"XX"
-      const lengthMatch = html.match(/"lengthSeconds":"(\d+)"/);
-      if (lengthMatch && lengthMatch[1]) {
-        const secs = parseInt(lengthMatch[1], 10);
-        if (secs > 0) return secs;
+        // approxDurationMs
+        const approxMatch = html.match(/"approxDurationMs":"(\d+)"/);
+        if (approxMatch && approxMatch[1]) {
+          const ms = parseInt(approxMatch[1], 10);
+          if (ms > 0) {
+            const secs = Math.round(ms / 1000);
+            if (this.redisService) {
+              try {
+                await this.redisService.set(cacheKey, String(secs), 'EX', 86400 * 7);
+              } catch {}
+            }
+            return secs;
+          }
+        }
+
+        // itemprop="duration"
+        const metaMatch = html.match(
+          /itemprop="duration"\s+content="PT(?:(\d+)M)?(?:(\d+)S)?"/,
+        );
+        if (metaMatch) {
+          const mins = parseInt(metaMatch[1] || '0', 10);
+          const secs = parseInt(metaMatch[2] || '0', 10);
+          const total = mins * 60 + secs;
+          if (total > 0) {
+            if (this.redisService) {
+              try {
+                await this.redisService.set(cacheKey, String(total), 'EX', 86400 * 7);
+              } catch {}
+            }
+            return total;
+          }
+        }
       }
+    } catch {}
 
-      // 2. Tenta "approxDurationMs":"XXXXX"
-      const approxMatch = html.match(/"approxDurationMs":"(\d+)"/);
-      if (approxMatch && approxMatch[1]) {
-        const ms = parseInt(approxMatch[1], 10);
-        if (ms > 0) return Math.round(ms / 1000);
-      }
-
-      // 3. Tenta itemprop="duration" content="PT...S"
-      const metaMatch = html.match(
-        /itemprop="duration"\s+content="PT(?:(\d+)M)?(?:(\d+)S)?"/,
-      );
-      if (metaMatch) {
-        const mins = parseInt(metaMatch[1] || '0', 10);
-        const secs = parseInt(metaMatch[2] || '0', 10);
-        const total = mins * 60 + secs;
-        if (total > 0) return total;
-      }
-
-      return 0;
-    } catch {
-      return 0;
-    }
+    return 0;
   }
 }
