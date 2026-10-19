@@ -226,13 +226,14 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   async resolveChannelVideosAndShortsCount(
     channelId: string | undefined,
     fallbackTotal?: number,
+    forceRefresh = false,
   ): Promise<number | undefined> {
     if (!channelId || !channelId.startsWith('UC')) {
       return fallbackTotal;
     }
 
     const cacheKey = `channel_videos_shorts_count:${channelId}`;
-    if (this.redisService) {
+    if (!forceRefresh && this.redisService) {
       try {
         const cached = await this.redisService.get(cacheKey);
         if (cached) {
@@ -742,7 +743,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         (regularResult as any).channelId ||
         (shortsResult as any).channelId ||
         (resolvedTarget as any)?.channelId;
-      const channelTotalVideos = await this.resolveChannelVideosAndShortsCount(channelId, rawChannelTotal);
+      const channelTotalVideos = await this.resolveChannelVideosAndShortsCount(channelId, rawChannelTotal, true);
 
       await this.saveTokens(baseUrl, {
         videosToken: videosContinuationToken,
@@ -889,6 +890,26 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
 
       if (!initialData) {
         return { items: [], notFound: false, channelTitle, channelAvatarUrl, channelTotalVideos, channelId };
+      }
+
+      // Validação estrita da aba retornada pelo YouTube:
+      // Canais sem Shorts não retornam 404 ao acessar /shorts; o YouTube redireciona para a aba 'Início' (featured).
+      const tabs = initialData?.contents?.twoColumnBrowseResultsRenderer?.tabs;
+      if (Array.isArray(tabs)) {
+        if (isShortTab) {
+          const hasShortsTab = tabs.some((t: any) => {
+            const u = t.tabRenderer?.endpoint?.commandMetadata?.webCommandMetadata?.url || '';
+            return u.endsWith('/shorts');
+          });
+          const selectedTab = tabs.find((t: any) => t.tabRenderer?.selected);
+          const selectedUrl = selectedTab?.tabRenderer?.endpoint?.commandMetadata?.webCommandMetadata?.url || '';
+          const isShortsSelected = selectedUrl.endsWith('/shorts');
+
+          if (!hasShortsTab || !isShortsSelected) {
+            this.logger.log(`Canal não possui aba de Shorts pública (aba ativa: ${selectedUrl || 'Início'}). Ignorando extração de Shorts.`);
+            return { items: [], notFound: true, channelTitle, channelAvatarUrl, channelTotalVideos, channelId };
+          }
+        }
       }
 
       const visitedIds = new Set<string>();
@@ -1256,7 +1277,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
               : `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
           const thumbnailUrl = thumb.startsWith('//') ? `https:${thumb}` : thumb;
 
-          const isShort = isShortTab;
+          const isShort = isShortTab && durationSeconds <= 180;
 
           results.push({
             id,
@@ -1361,7 +1382,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
           const thumbnailUrl = bestThumb.startsWith('//') ? `https:${bestThumb}` : bestThumb;
 
-          const isShort = isShortTab;
+          const isShort = isShortTab && durationSeconds <= 180;
 
           results.push({
             id,
