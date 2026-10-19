@@ -21,6 +21,30 @@ import {
 
 @Injectable()
 export class MediaService {
+  private readonly previewCache = new Map<
+    string,
+    {
+      previewId: string;
+      streamUrl: string;
+      durationSeconds: number;
+      width: number;
+      height: number;
+      waveformPeaks: number[];
+    }
+  >();
+
+  private readonly inFlightPreviews = new Map<
+    string,
+    Promise<{
+      previewId: string;
+      streamUrl: string;
+      durationSeconds: number;
+      width: number;
+      height: number;
+      waveformPeaks: number[];
+    }>
+  >();
+
   constructor(
     @InjectRepository(VideoJob)
     private readonly videoJobRepository: Repository<VideoJob>,
@@ -34,6 +58,8 @@ export class MediaService {
   /**
    * Baixa o vídeo selecionado na varredura para visualização em tempo real no Studio
    * e retorna metadados reais (duração, dimensões, onda sonora real do áudio e URL de stream).
+   * Implementa cache em memória e deduplicação de requisições simultâneas para prevenir
+   * execuções repetidas e picos de uso de CPU/FFmpeg.
    */
   async prepareStudioPreview(sourceUrl: string): Promise<{
     previewId: string;
@@ -43,22 +69,60 @@ export class MediaService {
     height: number;
     waveformPeaks: number[];
   }> {
-    const { previewId, filePath } = await this.downloadService.ensurePreviewDownloaded(
-      sourceUrl,
-    );
-    const [metadata, waveformPeaks] = await Promise.all([
-      this.ffmpegService.probeMetadata(filePath),
-      this.ffmpegService.extractAudioWaveform(filePath, 70),
-    ]);
+    const cleanUrl = (sourceUrl || '').trim();
+    if (!cleanUrl) {
+      throw new BadRequestException('A URL do vídeo de origem é obrigatória.');
+    }
 
-    return {
-      previewId,
-      streamUrl: `/api/v1/media/preview/${previewId}/stream`,
-      durationSeconds: metadata.durationSeconds,
-      width: metadata.width,
-      height: metadata.height,
-      waveformPeaks,
-    };
+    const previewId = this.downloadService.getPreviewId(cleanUrl);
+
+    // 1. Verifica se já temos os metadados em cache e o arquivo existe em disco
+    const cached = this.previewCache.get(previewId);
+    if (cached) {
+      try {
+        const filePath = this.downloadService.getPreviewFilePath(previewId);
+        if (fs.existsSync(filePath)) {
+          return cached;
+        }
+      } catch {
+        this.previewCache.delete(previewId);
+      }
+    }
+
+    // 2. Se já houver um processamento em andamento para este mesmo preview, conecta à mesma Promise
+    const inFlight = this.inFlightPreviews.get(previewId);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const operationPromise = (async () => {
+      try {
+        const { filePath } = await this.downloadService.ensurePreviewDownloaded(
+          cleanUrl,
+        );
+        const [metadata, waveformPeaks] = await Promise.all([
+          this.ffmpegService.probeMetadata(filePath),
+          this.ffmpegService.extractAudioWaveform(filePath, 70),
+        ]);
+
+        const result = {
+          previewId,
+          streamUrl: `/api/v1/media/preview/${previewId}/stream`,
+          durationSeconds: metadata.durationSeconds,
+          width: metadata.width,
+          height: metadata.height,
+          waveformPeaks,
+        };
+
+        this.previewCache.set(previewId, result);
+        return result;
+      } finally {
+        this.inFlightPreviews.delete(previewId);
+      }
+    })();
+
+    this.inFlightPreviews.set(previewId, operationPromise);
+    return operationPromise;
   }
 
   getPreviewFilePath(previewId: string): string {
@@ -66,6 +130,8 @@ export class MediaService {
   }
 
   async deleteStudioPreview(previewId: string): Promise<{ success: boolean }> {
+    this.previewCache.delete(previewId);
+    this.inFlightPreviews.delete(previewId);
     await this.downloadService.deletePreviewFile(previewId);
     return { success: true };
   }

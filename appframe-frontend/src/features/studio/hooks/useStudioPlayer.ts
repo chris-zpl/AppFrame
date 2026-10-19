@@ -35,6 +35,15 @@ export const useStudioPlayer = ({
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const draggingHandleRef = useRef<'in' | 'out' | 'playhead' | null>(null);
 
+  // Referências para estabilização de callbacks e prevenção estrita de requisições infinitas
+  const onRestoreSavedStateRef = useRef(onRestoreSavedState);
+  useEffect(() => {
+    onRestoreSavedStateRef.current = onRestoreSavedState;
+  }, [onRestoreSavedState]);
+
+  const loadedVideoUrlRef = useRef<string | null>(null);
+  const inFlightVideoUrlRef = useRef<string | null>(null);
+
   // Identifica se o erro é decorrente de restrição de idade ou cookies do YouTube
   const isAuthError = Boolean(
     previewError &&
@@ -175,106 +184,132 @@ export const useStudioPlayer = ({
     seekVideoTo(newTime);
   };
 
-  // Carrega vídeo para preview no Studio
-  const loadVideoPreview = useCallback(async (videoItem: StudioVideoQueueItem) => {
-    setIsPlaying(false);
-    setIsPreparingPreview(true);
-    setPreviewError(null);
-    setPreviewStreamUrl(null);
-    setWaveformPeaks([]);
-    setTotalDuration(0.0);
-    setTrimIn(0.0);
-    setTrimOut(0.0);
-    setCurrentTime(0.0);
+  // Carrega vídeo para preview no Studio com proteção anti-loop
+  const loadVideoPreview = useCallback(
+    async (videoItem: StudioVideoQueueItem, force: boolean = false) => {
+      const videoUrl = videoItem?.url;
+      if (!videoUrl) return;
 
-    const storageKey = videoItem ? `appframe_studio_state_${videoItem.id || videoItem.url}` : null;
-    let saved: any = null;
-    if (storageKey) {
+      // Evita disparos duplicados ou simultâneos se já estiver carregando ou já estiver carregado
+      if (!force) {
+        if (inFlightVideoUrlRef.current === videoUrl) {
+          return;
+        }
+        if (loadedVideoUrlRef.current === videoUrl && previewStreamUrl && !previewError) {
+          return;
+        }
+      }
+
+      inFlightVideoUrlRef.current = videoUrl;
+      setIsPlaying(false);
+      setIsPreparingPreview(true);
+      setPreviewError(null);
+      setWaveformPeaks([]);
+      setTotalDuration(0.0);
+      setTrimIn(0.0);
+      setTrimOut(0.0);
+      setCurrentTime(0.0);
+
+      const storageKey = `appframe_studio_state_${videoItem.id || videoItem.url}`;
+      let saved: any = null;
       try {
         const raw = localStorage.getItem(storageKey);
         if (raw) saved = JSON.parse(raw);
       } catch {}
-    }
 
-    if (onRestoreSavedState) {
-      onRestoreSavedState(saved, videoItem);
-    }
-
-    try {
-      const preview = await mediaService.prepareStudioPreview(videoItem.url);
-      const streamUrl = preview.streamUrl
-        ? (preview.streamUrl.startsWith('http')
-            ? preview.streamUrl
-            : `${API_BASE_URL.replace(/\/api\/v1$/, '')}${preview.streamUrl.startsWith('/') ? '' : '/'}${preview.streamUrl}`)
-        : `${API_BASE_URL}/media/preview/${preview.previewId}/stream`;
-      const realDuration =
-        preview.durationSeconds && preview.durationSeconds > 0
-          ? Number(preview.durationSeconds.toFixed(2))
-          : 0.0;
-
-      const restoredTrimIn = typeof saved?.trimIn === 'number' ? saved.trimIn : 0.0;
-      const restoredTrimOut =
-        typeof saved?.trimOut === 'number' && saved.trimOut > 0
-          ? Math.min(saved.trimOut, realDuration > 0 ? realDuration : saved.trimOut)
-          : realDuration;
-
-      setPreviewStreamUrl(streamUrl);
-      setCurrentPreviewId(preview.previewId);
-      setTotalDuration(realDuration);
-      setTrimIn(restoredTrimIn);
-      setTrimOut(restoredTrimOut);
-      setCurrentTime(restoredTrimIn);
-      setWaveformPeaks(
-        Array.isArray(preview.waveformPeaks) && preview.waveformPeaks.length > 0
-          ? preview.waveformPeaks
-          : []
-      );
-
-      if (saved?.aspectRatio) {
-        setAspectRatio(saved.aspectRatio);
-      } else if (
-        videoItem.isShort ||
-        (preview.height && preview.width && preview.height > preview.width)
-      ) {
-        setAspectRatio('9:16');
-      } else if (preview.width && preview.height && preview.width >= preview.height) {
-        setAspectRatio('16:9');
+      if (onRestoreSavedStateRef.current) {
+        onRestoreSavedStateRef.current(saved, videoItem);
       }
-    } catch (err: any) {
-      console.error('Erro ao baixar vídeo para preview no Studio:', err);
-      const rawMsg =
-        err?.response?.data?.message ||
-        'Não foi possível baixar o vídeo selecionado para visualização em tempo real.';
-      const msgStr = Array.isArray(rawMsg) ? rawMsg[0] : String(rawMsg);
-      const isRestricted =
-        msgStr.toLowerCase().includes('sign in') ||
-        msgStr.toLowerCase().includes('confirm your age') ||
-        msgStr.toLowerCase().includes('cookies') ||
-        msgStr.toLowerCase().includes('not a bot') ||
-        msgStr.toLowerCase().includes('restrição de idade') ||
-        msgStr.toLowerCase().includes('conta global') ||
-        msgStr.toLowerCase().includes('authentication') ||
-        msgStr.toLowerCase().includes('login');
 
-      const friendlyMsg = isRestricted
-        ? 'Este vídeo possui restrição de idade (+18) do YouTube. O download requer autorização da conta global configurada no servidor (storage/cookies.txt).'
-        : msgStr;
+      try {
+        const preview = await mediaService.prepareStudioPreview(videoItem.url);
+        const streamUrl = preview.streamUrl
+          ? (preview.streamUrl.startsWith('http')
+              ? preview.streamUrl
+              : `${API_BASE_URL.replace(/\/api\/v1$/, '')}${preview.streamUrl.startsWith('/') ? '' : '/'}${preview.streamUrl}`)
+          : `${API_BASE_URL}/media/preview/${preview.previewId}/stream`;
+        const realDuration =
+          preview.durationSeconds && preview.durationSeconds > 0
+            ? Number(preview.durationSeconds.toFixed(2))
+            : 0.0;
 
-      setPreviewError(friendlyMsg);
-      toast.error(friendlyMsg);
-    } finally {
-      setIsPreparingPreview(false);
-    }
-  }, [onRestoreSavedState]);
+        const restoredTrimIn = typeof saved?.trimIn === 'number' ? saved.trimIn : 0.0;
+        const restoredTrimOut =
+          typeof saved?.trimOut === 'number' && saved.trimOut > 0
+            ? Math.min(saved.trimOut, realDuration > 0 ? realDuration : saved.trimOut)
+            : realDuration;
 
-  // Carrega vídeo atual sempre que o vídeo mudar
+        setPreviewStreamUrl(streamUrl);
+        setCurrentPreviewId(preview.previewId);
+        setTotalDuration(realDuration);
+        setTrimIn(restoredTrimIn);
+        setTrimOut(restoredTrimOut);
+        setCurrentTime(restoredTrimIn);
+        setWaveformPeaks(
+          Array.isArray(preview.waveformPeaks) && preview.waveformPeaks.length > 0
+            ? preview.waveformPeaks
+            : []
+        );
+
+        if (saved?.aspectRatio) {
+          setAspectRatio(saved.aspectRatio);
+        } else if (
+          videoItem.isShort ||
+          (preview.height && preview.width && preview.height > preview.width)
+        ) {
+          setAspectRatio('9:16');
+        } else if (preview.width && preview.height && preview.width >= preview.height) {
+          setAspectRatio('16:9');
+        }
+
+        loadedVideoUrlRef.current = videoUrl;
+      } catch (err: any) {
+        console.error('Erro ao baixar vídeo para preview no Studio:', err);
+        const rawMsg =
+          err?.response?.data?.message ||
+          'Não foi possível baixar o vídeo selecionado para visualização em tempo real.';
+        const msgStr = Array.isArray(rawMsg) ? rawMsg[0] : String(rawMsg);
+        const isRestricted =
+          msgStr.toLowerCase().includes('sign in') ||
+          msgStr.toLowerCase().includes('confirm your age') ||
+          msgStr.toLowerCase().includes('cookies') ||
+          msgStr.toLowerCase().includes('not a bot') ||
+          msgStr.toLowerCase().includes('restrição de idade') ||
+          msgStr.toLowerCase().includes('conta global') ||
+          msgStr.toLowerCase().includes('authentication') ||
+          msgStr.toLowerCase().includes('login');
+
+        const friendlyMsg = isRestricted
+          ? 'Este vídeo possui restrição de idade (+18) do YouTube. O download requer autorização da conta global configurada no servidor (storage/cookies.txt).'
+          : msgStr;
+
+        setPreviewError(friendlyMsg);
+        toast.error(friendlyMsg);
+      } finally {
+        inFlightVideoUrlRef.current = null;
+        setIsPreparingPreview(false);
+      }
+    },
+    [previewStreamUrl, previewError]
+  );
+
+  // Carrega vídeo atual estritamente quando a URL mudar
   useEffect(() => {
-    if (currentVideo?.url) {
-      queueMicrotask(() => {
-        loadVideoPreview(currentVideo);
-      });
+    const videoUrl = currentVideo?.url;
+    if (
+      videoUrl &&
+      videoUrl !== loadedVideoUrlRef.current &&
+      videoUrl !== inFlightVideoUrlRef.current
+    ) {
+      loadVideoPreview(currentVideo);
+    } else if (!videoUrl) {
+      loadedVideoUrlRef.current = null;
+      inFlightVideoUrlRef.current = null;
+      setPreviewStreamUrl(null);
+      setCurrentPreviewId(null);
+      setPreviewError(null);
     }
-  }, [currentVideo, loadVideoPreview]);
+  }, [currentVideo?.url, loadVideoPreview]);
 
   return {
     aspectRatio,

@@ -31,7 +31,7 @@ export interface StudioPlayerProps {
   setIsPlaying?: React.Dispatch<React.SetStateAction<boolean>>;
   handleTogglePlay?: () => void;
   seekVideoTo?: (time: number) => void;
-  loadVideoPreview?: (videoItem: any) => void;
+  loadVideoPreview?: (videoItem: any, force?: boolean) => void;
   onNavigateToVarredura?: () => void;
 }
 
@@ -291,7 +291,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
                 variant="secondary"
                 size="sm"
                 onClick={() => {
-                  if (currentVideo) loadVideoPreview(currentVideo);
+                  if (currentVideo) loadVideoPreview(currentVideo, true);
                 }}
                 className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 py-0.5 shrink-0"
                 leftIcon={

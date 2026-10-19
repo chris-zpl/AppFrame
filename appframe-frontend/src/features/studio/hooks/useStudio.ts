@@ -61,6 +61,11 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     }
   }, [isLoadingGeminiStatus, isGeminiConnected, subtitleMode]);
 
+  const watermarkRef = useRef(watermark);
+  useEffect(() => {
+    watermarkRef.current = watermark;
+  }, [watermark]);
+
   // Callback para restaurar estado salvo do localStorage
   const handleRestoreSavedState = useCallback(
     (saved: any, videoItem: StudioVideoQueueItem) => {
@@ -78,20 +83,21 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
       if (typeof saved?.fontSize === 'number') setFontSize(saved.fontSize);
       if (typeof saved?.useBackgroundBox === 'boolean') setUseBackgroundBox(saved.useBackgroundBox);
 
+      const wm = watermarkRef.current;
       if (saved?.selectedWatermarkId !== undefined) {
-        watermark.setSelectedWatermarkId(saved.selectedWatermarkId);
-      } else if (watermark.userWatermarks.length > 0) {
-        watermark.setSelectedWatermarkId(watermark.userWatermarks[0].id);
+        wm.setSelectedWatermarkId(saved.selectedWatermarkId);
+      } else if (wm.userWatermarks.length > 0) {
+        wm.setSelectedWatermarkId(wm.userWatermarks[0].id);
       } else {
-        watermark.setSelectedWatermarkId('none');
+        wm.setSelectedWatermarkId('none');
       }
-      watermark.markWatermarkAsSelected();
+      wm.markWatermarkAsSelected();
 
-      if (saved?.watermarkPosition) watermark.setWatermarkPosition(saved.watermarkPosition);
-      if (typeof saved?.watermarkOpacity === 'number') watermark.setWatermarkOpacity(saved.watermarkOpacity);
-      if (typeof saved?.watermarkScale === 'number') watermark.setWatermarkScale(saved.watermarkScale);
+      if (saved?.watermarkPosition) wm.setWatermarkPosition(saved.watermarkPosition);
+      if (typeof saved?.watermarkOpacity === 'number') wm.setWatermarkOpacity(saved.watermarkOpacity);
+      if (typeof saved?.watermarkScale === 'number') wm.setWatermarkScale(saved.watermarkScale);
     },
-    [watermark]
+    []
   );
 
   // 4. Gerenciamento do Player e Timeline
