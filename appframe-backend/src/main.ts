@@ -19,6 +19,11 @@ async function bootstrap() {
       : (cookieParser as any).default || require('cookie-parser');
   app.use(cookieMiddleware());
 
+  // Suporte a payloads de imagens pré-renderizadas de alta resolução (PNG transparentes do Canvas)
+  const express = require('express');
+  app.use(express.json({ limit: '25mb' }));
+  app.use(express.urlencoded({ limit: '25mb', extended: true }));
+
   // Configuração global de CORS com origem explícita para suporte a credentials: true
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const allowedOrigins = Array.from(

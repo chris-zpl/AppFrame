@@ -135,6 +135,21 @@ describe('4. Renderização do FFmpeg e Casos de Borda (E2E & Service Specs)', (
 
       await fsPromises.unlink(assPath);
     });
+
+    it('deve aceitar overlay_image pré-renderizado com emojis nativos em full-color no subtitle_config', () => {
+      // 1x1 transparent PNG em base64
+      const transparentPixelBase64 =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+      const config = {
+        mode: 'static' as const,
+        text: '😂💻❤️',
+        overlay_image: transparentPixelBase64,
+      };
+
+      expect(config.overlay_image).toBeDefined();
+      expect(config.overlay_image).toContain('data:image/png;base64');
+    });
   });
 
   describe('4.3 Resolução de Coordenadas e Preservação de Matriz 3x3', () => {

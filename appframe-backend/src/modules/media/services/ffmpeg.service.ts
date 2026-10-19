@@ -770,33 +770,96 @@ ${events.join('\n')}
 
     // 4.3. Filtro de Legendas na resolução e safe zone adequadas
     let tempAssFile: string | null = null;
-    const hasSubtitles = Boolean(
-      subtitleConfig?.text ||
-      (subtitleConfig?.lines && subtitleConfig.lines.length > 0) ||
-      (subtitleConfig?.segments && subtitleConfig.segments.length > 0),
-    );
+    const tempOverlayFiles: string[] = [];
 
-    if (hasSubtitles) {
-      // Gera arquivo de legendas .ass com fontes, emojis e posicionamento seguro
-      tempAssFile = await this.generateAssSubtitleFile(
-        targetWidth,
-        targetHeight,
-        subtitleConfig,
-        isVertical,
-        effectiveDuration,
-        trimStart || 0,
-        trimEnd,
+    // Prioridade 1: Overlay de Imagem PNG pré-renderizado pelo Studio Canvas (com suporte nativo a 100% de Emojis Coloridos)
+    if (subtitleConfig?.overlay_image) {
+      const tempOverlayPath = path.resolve(
+        process.cwd(),
+        `storage/temp/sub_overlay_${Date.now()}_${Math.random().toString(36).substring(7)}.png`,
       );
+      const base64Data = subtitleConfig.overlay_image.replace(/^data:image\/\w+;base64,/, '');
+      await fsPromises.mkdir(path.dirname(tempOverlayPath), { recursive: true });
+      await fsPromises.writeFile(tempOverlayPath, Buffer.from(base64Data, 'base64'));
+      tempOverlayFiles.push(tempOverlayPath);
 
-      // Escapa o caminho para o filtro subtitles do FFmpeg
-      const escapedAssPath = tempAssFile
-        .replace(/\\/g, '/')
-        .replace(/:/g, '\\:');
+      const subInputIndex = (hasWatermark ? 1 : 0) + 1;
+      args.push('-i', tempOverlayPath);
 
       filterParts.push(
-        `[${currentVideoLabel}]subtitles='${escapedAssPath}'[v_subtitled]`,
+        `[${currentVideoLabel}][${subInputIndex}:v]overlay=0:0:format=auto[v_subtitled]`,
       );
       currentVideoLabel = 'v_subtitled';
+    } else if (
+      subtitleConfig?.segments &&
+      subtitleConfig.segments.length > 0 &&
+      subtitleConfig.segments.some((s) => s.overlay_image)
+    ) {
+      let segCounter = 0;
+      let lastLabel = currentVideoLabel;
+      for (const seg of subtitleConfig.segments) {
+        if (!seg.overlay_image) continue;
+        const segStart = typeof seg.start === 'number' ? seg.start : 0;
+        const segEnd = typeof seg.end === 'number' ? seg.end : segStart + 2;
+
+        let effectiveStart = segStart - (trimStart || 0);
+        let effectiveEnd = segEnd - (trimStart || 0);
+
+        if (effectiveEnd <= 0) continue;
+        if (trimEnd && trimStart && segStart >= trimEnd) continue;
+
+        effectiveStart = Math.max(0, effectiveStart);
+        effectiveEnd = Math.max(effectiveStart + 0.1, effectiveEnd);
+
+        const tempSegPath = path.resolve(
+          process.cwd(),
+          `storage/temp/sub_seg_${Date.now()}_${segCounter}_${Math.random().toString(36).substring(7)}.png`,
+        );
+        const b64 = seg.overlay_image.replace(/^data:image\/\w+;base64,/, '');
+        await fsPromises.mkdir(path.dirname(tempSegPath), { recursive: true });
+        await fsPromises.writeFile(tempSegPath, Buffer.from(b64, 'base64'));
+        tempOverlayFiles.push(tempSegPath);
+
+        const inputIdx = (hasWatermark ? 1 : 0) + 1 + segCounter;
+        args.push('-i', tempSegPath);
+
+        const nextLabel = `v_sub_seg_${segCounter}`;
+        filterParts.push(
+          `[${lastLabel}][${inputIdx}:v]overlay=0:0:enable='between(t,${effectiveStart.toFixed(2)},${effectiveEnd.toFixed(2)})':format=auto[${nextLabel}]`,
+        );
+        lastLabel = nextLabel;
+        segCounter++;
+      }
+      currentVideoLabel = lastLabel;
+    } else {
+      const hasSubtitles = Boolean(
+        subtitleConfig?.text ||
+        (subtitleConfig?.lines && subtitleConfig.lines.length > 0) ||
+        (subtitleConfig?.segments && subtitleConfig.segments.length > 0),
+      );
+
+      if (hasSubtitles) {
+        // Gera arquivo de legendas .ass com fontes, emojis e posicionamento seguro
+        tempAssFile = await this.generateAssSubtitleFile(
+          targetWidth,
+          targetHeight,
+          subtitleConfig,
+          isVertical,
+          effectiveDuration,
+          trimStart || 0,
+          trimEnd,
+        );
+
+        // Escapa o caminho para o filtro subtitles do FFmpeg
+        const escapedAssPath = tempAssFile
+          .replace(/\\/g, '/')
+          .replace(/:/g, '\\:');
+
+        filterParts.push(
+          `[${currentVideoLabel}]subtitles='${escapedAssPath}'[v_subtitled]`,
+        );
+        currentVideoLabel = 'v_subtitled';
+      }
     }
 
     if (filterParts.length > 0) {
@@ -857,6 +920,15 @@ ${events.join('\n')}
           try {
             await fsPromises.unlink(tempAssFile);
           } catch {}
+        }
+
+        // Limpeza de arquivos temporários de overlay de imagem
+        for (const f of tempOverlayFiles) {
+          if (fs.existsSync(f)) {
+            try {
+              await fsPromises.unlink(f);
+            } catch {}
+          }
         }
 
         if (code === 0) {

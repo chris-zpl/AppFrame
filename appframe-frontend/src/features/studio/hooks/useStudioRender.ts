@@ -158,17 +158,83 @@ export const useStudioRender = ({
         }));
       };
 
+      // Renderização determinística de alta fidelidade do overlay de legendas com suporte nativo a Emojis Coloridos
+      const renderSubtitleOverlay = (linesToRender: string[]): string | undefined => {
+        if (!linesToRender || linesToRender.length === 0) return undefined;
+
+        const targetWidth = aspectRatio === '9:16' ? 1080 : 1920;
+        const targetHeight = aspectRatio === '9:16' ? 1920 : 1080;
+        const scale = targetWidth / (aspectRatio === '9:16' ? 360 : 640);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return undefined;
+
+        const scaledFontSize = Math.round(fontSize * scale);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `bold ${scaledFontSize}px "${fontFamily}", sans-serif`;
+
+        const startY = targetHeight * (aspectRatio === '9:16' ? 0.72 : 0.78);
+        const paddingX = Math.round(14 * scale);
+        const paddingY = Math.round(8 * scale);
+        const boxHeight = scaledFontSize + paddingY;
+        const boxGap = Math.round(4 * scale);
+        const lineHeight = boxHeight + boxGap;
+        const radius = Math.round(8 * scale);
+
+        linesToRender.forEach((line, index) => {
+          const lineY = startY + index * lineHeight;
+          const lineMetrics = ctx.measureText(line);
+          const boxWidth = Math.min(lineMetrics.width + paddingX * 2, targetWidth - 24);
+
+          if (useBackgroundBox) {
+            ctx.save();
+            ctx.fillStyle = bgColor;
+            ctx.beginPath();
+            const rx = targetWidth / 2 - boxWidth / 2;
+            const ry = lineY - boxHeight / 2;
+            ctx.roundRect(rx, ry, boxWidth, boxHeight, radius);
+            ctx.fill();
+            ctx.restore();
+          }
+
+          ctx.save();
+          ctx.lineWidth = Math.round(4 * scale);
+          ctx.strokeStyle = strokeColor;
+          ctx.lineJoin = 'round';
+          ctx.strokeText(line, targetWidth / 2, lineY);
+
+          ctx.fillStyle = textColor;
+          ctx.fillText(line, targetWidth / 2, lineY);
+          ctx.restore();
+        });
+
+        return canvas.toDataURL('image/png');
+      };
+
       const staticLinesData: SubtitleLineData[] | undefined =
         subtitleMode === 'static' ? wrapAndMeasure(staticText) : undefined;
 
+      const staticOverlayImage =
+        subtitleMode === 'static' && staticLinesData && staticLinesData.length > 0
+          ? renderSubtitleOverlay(staticLinesData.map((l) => l.text))
+          : undefined;
+
       const dynamicSegmentsData: SubtitleSegmentData[] | undefined =
         subtitleMode === 'dynamic' && dynamicSegments.length > 0
-          ? dynamicSegments.map((seg) => ({
-              start: seg.start,
-              end: seg.end,
-              text: seg.text,
-              lines: wrapAndMeasure(seg.text),
-            }))
+          ? dynamicSegments.map((seg) => {
+              const segLines = wrapAndMeasure(seg.text);
+              return {
+                start: seg.start,
+                end: seg.end,
+                text: seg.text,
+                lines: segLines,
+                overlay_image: renderSubtitleOverlay(segLines.map((l) => l.text)),
+              };
+            })
           : undefined;
 
       const payload: CreateVideoJobPayload = {
@@ -187,6 +253,7 @@ export const useStudioRender = ({
           text: resolvedSubtitleText,
           lines: staticLinesData,
           segments: dynamicSegmentsData,
+          overlay_image: staticOverlayImage,
           font_family: fontFamily,
           font_size: fontSize,
           text_color: textColor,

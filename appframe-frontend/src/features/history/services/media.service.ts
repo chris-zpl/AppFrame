@@ -18,6 +18,7 @@ export interface SubtitleSegmentData {
   end: number;
   text: string;
   lines?: SubtitleLineData[];
+  overlay_image?: string;
 }
 
 export interface SubtitleConfigPayload {
@@ -25,6 +26,7 @@ export interface SubtitleConfigPayload {
   text?: string;
   lines?: SubtitleLineData[];
   segments?: SubtitleSegmentData[];
+  overlay_image?: string;
   font_family?: string;
   font_size?: number;
   text_color?: string;
