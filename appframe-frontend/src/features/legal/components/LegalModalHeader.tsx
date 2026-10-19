@@ -19,7 +19,7 @@ export const LegalModalHeader: React.FC<LegalModalHeaderProps> = ({
   const currentTitle = activeDoc === 'terms' ? 'Termos de Serviço' : 'Política de Privacidade';
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4.5 border-b border-neutral-200 dark:border-surface-container-high bg-neutral-50 dark:bg-surface-container-high/40">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-b border-neutral-200 dark:border-surface-container-high bg-neutral-50 dark:bg-surface-container-high/40">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-amber-500/15 dark:bg-primary/10 border border-amber-600/30 dark:border-primary/20 flex items-center justify-center text-amber-700 dark:text-primary flex-shrink-0">
           <span className="material-symbols-outlined text-[24px]">
