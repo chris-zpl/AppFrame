@@ -114,15 +114,16 @@ export const useStudioCanvas = ({
 
       // Posicionamento vertical: inferior (72% da altura em 9:16, 78% em 16:9)
       const startY = height * (aspectRatio === '9:16' ? 0.72 : 0.78);
-      const lineHeight = fontSize * 1.35;
+      const paddingX = 14;
+      const paddingY = 8;
+      const boxHeight = fontSize + paddingY;
+      const boxGap = 4;
+      const lineHeight = boxHeight + boxGap;
 
       displayLines.forEach((line, index) => {
         const lineY = startY + index * lineHeight;
         const lineMetrics = ctx.measureText(line);
-        const paddingX = 14;
-        const paddingY = 8;
         const boxWidth = Math.min(lineMetrics.width + paddingX * 2, width - 24);
-        const boxHeight = fontSize + paddingY;
 
         // Fundo com caixa arredondada se habilitado
         if (useBackgroundBox) {

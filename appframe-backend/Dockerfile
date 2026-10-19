@@ -36,6 +36,8 @@ RUN apk add --no-cache \
     font-noto \
     font-noto-cjk \
     font-noto-extra \
+    font-noto-emoji \
+    font-twemoji \
     curl \
     ca-certificates \
   && mkdir -p /usr/share/fonts/google-fonts \
@@ -43,7 +45,11 @@ RUN apk add --no-cache \
   && curl -sSL https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/Montserrat%5Bwght%5D.ttf -o /usr/share/fonts/google-fonts/Montserrat.ttf \
   && curl -sSL https://raw.githubusercontent.com/google/fonts/main/ofl/anton/Anton-Regular.ttf -o /usr/share/fonts/google-fonts/Anton.ttf \
   && curl -sSL https://raw.githubusercontent.com/google/fonts/main/ofl/bebasneue/BebasNeue-Regular.ttf -o /usr/share/fonts/google-fonts/BebasNeue.ttf \
+  && curl -sSL https://raw.githubusercontent.com/google/fonts/main/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf -o /usr/share/fonts/google-fonts/NotoEmoji.ttf \
   && fc-cache -f
+
+COPY fonts.conf /etc/fonts/local.conf
+
 
 ENV NODE_ENV=production
 ENV PORT=3000

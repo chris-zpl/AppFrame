@@ -326,11 +326,19 @@ export class FFmpegService {
 
   /**
    * Estimativa de largura em pixels para fontes proporcionais modernas em caso de ausência de medição prévia.
+   * Suporta glifos Emoji e caracteres especiais Unicode.
    */
   private estimateLineWidth(text: string, fontSize: number): number {
     let w = 0;
-    for (const ch of text) {
-      if ('ijlIt1.,;:!| \''.includes(ch)) {
+    for (const ch of Array.from(text)) {
+      const cp = ch.codePointAt(0) || 0;
+      if (
+        (cp >= 0x1F300 && cp <= 0x1FAFF) ||
+        (cp >= 0x2600 && cp <= 0x27BF) ||
+        (cp >= 0xFE00 && cp <= 0xFE0F)
+      ) {
+        w += fontSize * 1.05;
+      } else if ('ijlIt1.,;:!| \''.includes(ch)) {
         w += fontSize * 0.28;
       } else if ('mwMW@%#&'.includes(ch)) {
         w += fontSize * 0.85;
@@ -462,14 +470,32 @@ export class FFmpegService {
     const validFonts = ['Plus Jakarta Sans', 'Montserrat', 'Bebas Neue', 'Anton'];
     const fontFamily = validFonts.includes(userFont) ? userFont : (userFont || 'Plus Jakarta Sans');
 
-    const canvasScale = 3.0;
+    const previewCanvasWidth = isVertical ? 360 : 640;
+    const canvasScale = width / previewCanvasWidth;
     const rawFontSize = config?.font_size || 28;
-    const fontSize = Math.round(rawFontSize * canvasScale);
+
+    // Fator de escala métrica do FreeType/libass para equiparar ao box model do Canvas HTML5 (EM square)
+    // Libass utiliza REAL_DIM (ascender - descender / win_span), necessitando de compensação proporcional
+    const FONT_METRIC_SCALES: Record<string, number> = {
+      'Plus Jakarta Sans': 1.60,
+      'Montserrat': 1.55,
+      'Anton': 1.65,
+      'Bebas Neue': 1.30,
+    };
+    const fontMetricScale = FONT_METRIC_SCALES[fontFamily] || 1.55;
+
+    const baseScaledFontSize = rawFontSize * canvasScale;
+    const assFontSize = Math.round(baseScaledFontSize * fontMetricScale);
+
     const paddingX = Math.round(14 * canvasScale);
-    const paddingY = Math.round(8 * canvasScale);
-    const boxHeight = fontSize + paddingY;
     const radius = Math.round(8 * canvasScale);
-    const lineHeight = Math.round(fontSize * 1.35);
+    const outlineThickness = Math.max(2, Math.round(2 * canvasScale));
+
+    // Altura e espaçamento vertical com gaps limpos entre badges de linhas consecutivas
+    const boxHeight = Math.round(assFontSize * 1.05);
+    const boxGap = Math.round(6 * canvasScale);
+    const lineHeight = boxHeight + boxGap;
+
     const startY = Math.round(height * (isVertical ? 0.72 : 0.78));
     const centerX = Math.round(width / 2);
 
@@ -478,12 +504,12 @@ export class FFmpegService {
     const boxColor = this.formatAssColor(config?.background_color || '#10131A');
     const highlightColor = '&H005EBEF2&'; // Âmbar #F2BE5E
     const useBackgroundBox = config?.use_background_box ?? true;
-    const outlineThickness = Math.round(4 * canvasScale);
 
-    let stylesSection = `Style: Default,${fontFamily},${fontSize},${primaryColor},&H00FFFFFF&,${outlineColor},&H00000000&,1,0,0,0,100,100,0,0,1,${outlineThickness},0,5,0,0,0,1\n`;
-    stylesSection += `Style: HighlightText,${fontFamily},${fontSize},${highlightColor},${primaryColor},${outlineColor},&H00000000&,1,0,0,0,100,100,0,0,1,${outlineThickness},0,5,0,0,0,1\n`;
+    // Bold = -1 (padrão ASS True para negrito com suporte a outline fonts)
+    let stylesSection = `Style: Default,${fontFamily},${assFontSize},${primaryColor},&H00FFFFFF&,${outlineColor},&H00000000&,-1,0,0,0,100,100,0,0,1,${outlineThickness},0,5,0,0,0,1\n`;
+    stylesSection += `Style: HighlightText,${fontFamily},${assFontSize},${highlightColor},${primaryColor},${outlineColor},&H00000000&,-1,0,0,0,100,100,0,0,1,${outlineThickness},0,5,0,0,0,1\n`;
     if (useBackgroundBox) {
-      stylesSection += `Style: Box,${fontFamily},${fontSize},${boxColor},&H000000FF,&H00000000&,&H00000000&,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1\n`;
+      stylesSection += `Style: Box,${fontFamily},${assFontSize},${boxColor},&H000000FF,&H00000000&,&H00000000&,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1\n`;
     }
 
     const events: string[] = [];
@@ -508,7 +534,7 @@ export class FFmpegService {
         const lines =
           seg.lines && seg.lines.length > 0
             ? seg.lines
-            : this.calculateDeterministicLines(seg.text, width, fontSize, canvasScale);
+            : this.calculateDeterministicLines(seg.text, width, baseScaledFontSize, canvasScale);
 
         const segDuration = Math.max(0.2, effectiveEnd - effectiveStart);
         const segWords = seg.text.trim().split(/\s+/).filter(Boolean);
@@ -518,7 +544,9 @@ export class FFmpegService {
 
         lines.forEach((l, index) => {
           const lineY = Math.round(startY + index * lineHeight);
-          const rawLineWidth = l.width ? l.width * canvasScale : this.estimateLineWidth(l.text, fontSize);
+          const rawLineWidth = l.width
+            ? Math.round(l.width * canvasScale)
+            : Math.round(this.estimateLineWidth(l.text, baseScaledFontSize));
           const currentBoxWidth = Math.min(width - 24, Math.round(rawLineWidth + paddingX * 2));
           const rx = Math.round(centerX - currentBoxWidth / 2);
           const ry = Math.round(lineY - boxHeight / 2);
@@ -546,11 +574,13 @@ export class FFmpegService {
       const lines =
         config?.lines && config.lines.length > 0
           ? config.lines
-          : this.calculateDeterministicLines(config?.text || '', width, fontSize, canvasScale);
+          : this.calculateDeterministicLines(config?.text || '', width, baseScaledFontSize, canvasScale);
 
       lines.forEach((l, index) => {
         const lineY = Math.round(startY + index * lineHeight);
-        const rawLineWidth = l.width ? l.width * canvasScale : this.estimateLineWidth(l.text, fontSize);
+        const rawLineWidth = l.width
+          ? Math.round(l.width * canvasScale)
+          : Math.round(this.estimateLineWidth(l.text, baseScaledFontSize));
         const currentBoxWidth = Math.min(width - 24, Math.round(rawLineWidth + paddingX * 2));
         const rx = Math.round(centerX - currentBoxWidth / 2);
         const ry = Math.round(lineY - boxHeight / 2);

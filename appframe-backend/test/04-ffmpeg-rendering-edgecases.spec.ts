@@ -88,6 +88,53 @@ describe('4. Renderização do FFmpeg e Casos de Borda (E2E & Service Specs)', (
       // Limpeza de arquivo temporário
       await fsPromises.unlink(assPath);
     });
+
+    it('deve gerar badges com cantos arredondados e escala de fonte calibrada para corresponder ao preview do Studio', async () => {
+      const width = 1920;
+      const height = 1080;
+      const config = {
+        mode: 'static' as const,
+        text: 'Linha 1\nLinha 2',
+        lines: [
+          { text: 'Linha 1', width: 200 },
+          { text: 'Linha 2', width: 180 },
+        ],
+        font_family: 'Plus Jakarta Sans',
+        font_size: 22,
+        use_background_box: true,
+        background_color: '#0045E6',
+        text_color: '#FFFFFF',
+      };
+
+      const assPath = await ffmpegService.generateAssSubtitleFile(
+        width,
+        height,
+        config,
+        false,
+        60,
+        0,
+      );
+
+      expect(fs.existsSync(assPath)).toBe(true);
+      const content = await fsPromises.readFile(assPath, 'utf-8');
+
+      // Escala métrica: 22 * 3.0 * 1.60 = ~106
+      expect(content).toMatch(/Style: Default,Plus Jakarta Sans,10[56],/);
+      expect(content).toContain('Bold');
+      // O estilo Default deve ter negrito (-1)
+      expect(content).toMatch(/Style: Default,[^,]+,[^,]+,[^,]+,[^,]+,[^,]+,[^,]+,-1,/);
+
+      // Deve gerar eventos de desenho vetorial com \p1 ... \p0 para cada linha
+      expect(content).toContain('Style: Box');
+      const boxMatches = content.match(/Dialogue: 0,[^,]+,[^,]+,Box,,0,0,0,,{\\an7\\pos\(\d+,\d+\)\\p1}m \d+ 0/g);
+      expect(boxMatches).toHaveLength(2);
+
+      // Linha 1 e Linha 2 com posições Y distintas (gaps limpos)
+      const textMatches = content.match(/Dialogue: 1,[^,]+,[^,]+,Default,,0,0,0,,{\\an5\\pos\(960,(\d+)\)}Linha/g);
+      expect(textMatches).toHaveLength(2);
+
+      await fsPromises.unlink(assPath);
+    });
   });
 
   describe('4.3 Resolução de Coordenadas e Preservação de Matriz 3x3', () => {
