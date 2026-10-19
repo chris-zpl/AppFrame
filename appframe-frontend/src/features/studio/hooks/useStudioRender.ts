@@ -43,7 +43,7 @@ export interface UseStudioRenderProps {
   completedVideoIds: string[];
   setCompletedVideoIds: (ids: string[]) => void;
   setIsPlaying: (playing: boolean) => void;
-  navigate: (path: string, params?: Record<string, string>) => void;
+  navigate?: (path: string, params?: Record<string, string>) => void;
 }
 
 export const useStudioRender = ({
@@ -74,7 +74,6 @@ export const useStudioRender = ({
   completedVideoIds,
   setCompletedVideoIds,
   setIsPlaying,
-  navigate,
 }: UseStudioRenderProps) => {
   const queryClient = useQueryClient();
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -200,6 +199,10 @@ export const useStudioRender = ({
       const createdJob = await mediaService.render(payload);
       setRenderProgress(15);
 
+      toast.info(
+        `Job despachado com sucesso para a fila! ID: ${createdJob.id} • Orquestração BullMQ e processamento FFmpeg em andamento.`
+      );
+
       // Aguarda a conclusão do processamento FFmpeg no backend
       let currentJob = createdJob;
       const maxAttempts = 180; // até ~4.5 minutos
@@ -238,7 +241,7 @@ export const useStudioRender = ({
       );
 
       toast.success(
-        'Vídeo gerado com sucesso, salvo no histórico e baixado para o seu computador!'
+        'Vídeo gerado com sucesso e download concluído!'
       );
 
       // Marca o vídeo atual como concluído na fila de espera
@@ -258,13 +261,6 @@ export const useStudioRender = ({
         toast.info(
           `Carregando próximo vídeo da fila (${nextWaitingIndex + 1} de ${videoQueue.length}): "${videoQueue[nextWaitingIndex].title}"`
         );
-      } else {
-        sessionStorage.removeItem('appframe_studio_queue');
-        navigate('historico', {
-          jobCreated: 'true',
-          jobId: currentJob.id,
-          title: currentJob.original_title || originalTitle,
-        });
       }
     } catch (err: any) {
       console.error('Falha ao gerar e baixar vídeo:', err);

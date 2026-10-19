@@ -8,6 +8,8 @@ export interface ScannerSearchBarProps {
   setChannelUrl?: (val: string) => void;
   isScanning?: boolean;
   onScan?: (url: string) => void;
+  hasScanned?: boolean;
+  onClearCache?: () => void;
 }
 
 export const ScannerSearchBar: React.FC<ScannerSearchBarProps> = (props) => {
@@ -17,6 +19,8 @@ export const ScannerSearchBar: React.FC<ScannerSearchBarProps> = (props) => {
   const setChannelUrl = props.setChannelUrl ?? scanner.setChannelUrl;
   const isScanning = props.isScanning ?? scanner.isScanning;
   const onScan = props.onScan ?? scanner.executeScan;
+  const hasScanned = props.hasScanned ?? scanner.hasScanned;
+  const onClearCache = props.onClearCache ?? scanner.handleClearCache;
 
   return (
     <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
@@ -66,6 +70,24 @@ export const ScannerSearchBar: React.FC<ScannerSearchBarProps> = (props) => {
       >
         <span>{isScanning ? 'Varrendo canal...' : 'Varrer Canal'}</span>
       </Button>
+
+      {hasScanned && (
+        <Button
+          variant="secondary"
+          size="lg"
+          disabled={isScanning}
+          onClick={onClearCache}
+          className="w-full sm:w-auto px-5 h-12 shrink-0 font-semibold text-neutral-700 dark:text-neutral-200 hover:text-red-600 dark:hover:text-red-400 border border-neutral-300 dark:border-outline/20"
+          title="Limpar dados em cache da varredura"
+          leftIcon={
+            <span className="material-symbols-outlined text-[20px]">
+              delete_sweep
+            </span>
+          }
+        >
+          <span>Limpar Cache</span>
+        </Button>
+      )}
     </div>
   );
 };

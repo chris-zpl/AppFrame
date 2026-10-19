@@ -4,7 +4,6 @@ import { AppShell } from '../components/layout/AppShell';
 import {
   HistoryProvider,
   HistoryHeader,
-  HistoryJobNotification,
   HistoryRetentionBanner,
   HistoryFilterTabs,
   HistoryJobList,
@@ -12,7 +11,7 @@ import {
 } from '../features/history';
 
 export const HistoryPage: React.FC = () => {
-  const { navigate, params } = useNavigation();
+  const { navigate } = useNavigation();
 
   return (
     <HistoryProvider>
@@ -24,11 +23,6 @@ export const HistoryPage: React.FC = () => {
         <div className="flex flex-col w-full text-neutral-900 dark:text-on-surface pb-12">
           <HistoryHeader
             onNewCut={() => navigate('studio')}
-          />
-
-          <HistoryJobNotification
-            jobCreated={Boolean(params.jobCreated)}
-            jobId={params.jobId}
           />
 
           <HistoryRetentionBanner />

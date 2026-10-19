@@ -9,6 +9,7 @@ interface WatermarkGridProps {
   watermarks: WatermarkItem[];
   defaultWatermarkId: string | null;
   onSetDefault: (id: string) => void;
+  onRemoveDefault: (id: string) => void;
   onConfirmDelete: (id: string) => void;
 }
 
@@ -16,6 +17,7 @@ export const WatermarkGrid: React.FC<WatermarkGridProps> = ({
   watermarks,
   defaultWatermarkId,
   onSetDefault,
+  onRemoveDefault,
   onConfirmDelete,
 }) => {
   return (
@@ -103,14 +105,21 @@ export const WatermarkGrid: React.FC<WatermarkGridProps> = ({
                     <button
                       type="button"
                       onClick={() => onSetDefault(wm.id)}
-                      className="text-label-sm font-label-sm text-amber-800 dark:text-primary hover:underline font-semibold cursor-pointer"
+                      className="text-label-sm font-label-sm text-amber-800 dark:text-primary hover:underline font-semibold cursor-pointer inline-flex items-center gap-1"
                     >
-                      Tornar Padrão
+                      <span className="material-symbols-outlined text-[16px]">star</span>
+                      <span>Tornar Padrão</span>
                     </button>
                   ) : (
-                    <span className="text-label-sm font-label-sm text-amber-800 dark:text-primary font-medium">
-                      Logo Ativo
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveDefault(wm.id)}
+                      className="text-label-sm font-label-sm text-neutral-500 hover:text-red-500 dark:text-neutral-400 dark:hover:text-red-400 hover:underline font-semibold cursor-pointer inline-flex items-center gap-1"
+                      title="Remover como marca d'água padrão"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">star_half</span>
+                      <span>Remover do Padrão</span>
+                    </button>
                   )}
 
                   <button

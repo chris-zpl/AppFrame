@@ -10,6 +10,7 @@ export interface WatermarkGridSectionProps {
   isLoading?: boolean;
   defaultWatermarkId?: string | null;
   onSetDefault?: (id: string) => void;
+  onRemoveDefault?: (id: string) => void;
   onConfirmDelete?: (id: string) => void;
   onUploadClick?: () => void;
 }
@@ -21,6 +22,7 @@ export const WatermarkGridSection: React.FC<WatermarkGridSectionProps> = (props)
   const isLoading = props.isLoading ?? watermarksContext.isLoading;
   const defaultWatermarkId = props.defaultWatermarkId !== undefined ? props.defaultWatermarkId : watermarksContext.defaultWatermarkId;
   const onSetDefault = props.onSetDefault ?? watermarksContext.handleSelectDefault;
+  const onRemoveDefault = props.onRemoveDefault ?? watermarksContext.handleRemoveDefault;
   const onConfirmDelete = props.onConfirmDelete ?? watermarksContext.setDeleteConfirmId;
   const onUploadClick = props.onUploadClick ?? watermarksContext.openFileDialog;
   if (isLoading) {
@@ -38,6 +40,7 @@ export const WatermarkGridSection: React.FC<WatermarkGridSectionProps> = (props)
         watermarks={watermarks}
         defaultWatermarkId={defaultWatermarkId}
         onSetDefault={onSetDefault}
+        onRemoveDefault={onRemoveDefault}
         onConfirmDelete={onConfirmDelete}
       />
     );

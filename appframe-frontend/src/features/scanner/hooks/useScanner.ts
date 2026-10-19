@@ -42,10 +42,12 @@ interface ScannerCachedData {
   channelMeta: ChannelMeta | null;
 }
 
+const SCANNER_CACHE_KEY = 'appframe_scanner_cache';
+
 const getScannerCache = (): ScannerCachedData | null => {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = sessionStorage.getItem('appframe_scanner_cache');
+    const raw = localStorage.getItem(SCANNER_CACHE_KEY) || sessionStorage.getItem(SCANNER_CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed?.videos) && parsed.videos.length > 0) {
@@ -54,6 +56,21 @@ const getScannerCache = (): ScannerCachedData | null => {
     }
   } catch {}
   return null;
+};
+
+const saveScannerCache = (data: ScannerCachedData) => {
+  try {
+    const serialized = JSON.stringify(data);
+    localStorage.setItem(SCANNER_CACHE_KEY, serialized);
+    sessionStorage.setItem(SCANNER_CACHE_KEY, serialized);
+  } catch {}
+};
+
+const removeScannerCache = () => {
+  try {
+    localStorage.removeItem(SCANNER_CACHE_KEY);
+    sessionStorage.removeItem(SCANNER_CACHE_KEY);
+  } catch {}
 };
 
 export const useScanner = () => {
@@ -140,16 +157,11 @@ export const useScanner = () => {
           if (updatedMeta) {
             setChannelMeta(updatedMeta);
           }
-          try {
-            sessionStorage.setItem(
-              'appframe_scanner_cache',
-              JSON.stringify({
-                channelUrl,
-                videos: merged,
-                channelMeta: updatedMeta || channelMeta,
-              })
-            );
-          } catch {}
+          saveScannerCache({
+            channelUrl,
+            videos: merged,
+            channelMeta: updatedMeta || channelMeta,
+          });
           return merged;
         });
 
@@ -289,16 +301,11 @@ export const useScanner = () => {
         const moreAvailable = Boolean((items[0] as any)?.hasMore ?? true);
         setHasMore(moreAvailable);
 
-        try {
-          sessionStorage.setItem(
-            'appframe_scanner_cache',
-            JSON.stringify({
-              channelUrl: cleanUrl,
-              videos: result.videos,
-              channelMeta: result.channelMeta,
-            })
-          );
-        } catch {}
+        saveScannerCache({
+          channelUrl: cleanUrl,
+          videos: result.videos,
+          channelMeta: result.channelMeta,
+        });
 
         setSearchParams(
           (prev) => {
@@ -325,21 +332,9 @@ export const useScanner = () => {
           );
         }
       } else {
-        setVideos([]);
-        setHasScanned(false);
-        setHasMore(false);
-        try {
-          sessionStorage.removeItem('appframe_scanner_cache');
-        } catch {}
         toast.error('Nenhum vídeo público encontrado para este canal.');
       }
     } catch (err: any) {
-      setVideos([]);
-      setHasScanned(false);
-      setHasMore(false);
-      try {
-        sessionStorage.removeItem('appframe_scanner_cache');
-      } catch {}
       const message =
         err?.response?.data?.message ||
         err?.message ||
@@ -349,6 +344,31 @@ export const useScanner = () => {
       setIsScanning(false);
     }
   };
+
+  const handleClearCache = useCallback(() => {
+    removeScannerCache();
+    setVideos([]);
+    setChannelMeta(null);
+    setChannelUrl('');
+    setHasScanned(false);
+    setSelectedIds(new Set());
+    setHasMore(false);
+    setCurrentPage(1);
+    setFilter('all');
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('filter');
+        next.delete('tab');
+        next.delete('type');
+        next.delete('page');
+        next.delete('p');
+        return next;
+      },
+      { replace: true }
+    );
+    toast.success('Cache da varredura limpo com sucesso.');
+  }, [setSearchParams]);
 
   const handleDownloadSelected = async (onSuccess?: () => void) => {
     const selectedVideos = videos.filter((v) => selectedIds.has(v.id));
@@ -453,5 +473,6 @@ export const useScanner = () => {
     handleClearSelection,
     handleDownloadSelected,
     handleOpenStudio,
+    handleClearCache,
   };
 };

@@ -164,7 +164,11 @@ export const useStudioPersistence = ({
     if (onMarkWatermarkAsSelected) {
       onMarkWatermarkAsSelected();
     }
-    setSelectedWatermarkId(userWatermarks[0]?.id || 'none');
+    const defaultWmId = localStorage.getItem('appframe_default_watermark_id');
+    const resetWmId = defaultWmId && userWatermarks.some((w) => w.id === defaultWmId)
+      ? defaultWmId
+      : 'none';
+    setSelectedWatermarkId(resetWmId);
     setWatermarkPosition('top-right');
     setWatermarkOpacity(85);
     setWatermarkScale(100);

@@ -60,6 +60,12 @@ export const useWatermarks = () => {
     toast.success('Marca d’água padrão para novos cortes atualizada.');
   };
 
+  const handleRemoveDefault = (_id?: string) => {
+    setDefaultWatermarkId(null);
+    localStorage.removeItem('appframe_default_watermark_id');
+    toast.success('Marca d’água padrão removida.');
+  };
+
   const uploadFile = (file: File) => {
     const validation = validateWatermarkFile(file);
     if (!validation.isValid) {
@@ -112,6 +118,7 @@ export const useWatermarks = () => {
     setDeleteConfirmId,
     defaultWatermarkId,
     handleSelectDefault,
+    handleRemoveDefault,
     uploadFile,
     deleteWatermark,
     isUploading: uploadMutation.isPending,

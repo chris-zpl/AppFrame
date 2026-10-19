@@ -42,8 +42,12 @@ export const useStudioWatermark = ({ currentVideo }: UseStudioWatermarkProps) =>
     }
 
     if (!hasSavedWatermark) {
+      const defaultId = localStorage.getItem('appframe_default_watermark_id');
+      const targetId = defaultId && userWatermarks.some((w) => w.id === defaultId)
+        ? defaultId
+        : 'none';
       queueMicrotask(() => {
-        setSelectedWatermarkId(userWatermarks[0].id);
+        setSelectedWatermarkId(targetId);
       });
     }
     hasAutoSelectedWatermarkRef.current = true;
