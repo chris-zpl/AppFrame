@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppShell } from '../components/layout/AppShell';
 import {
   type AdminTab,
@@ -20,14 +20,77 @@ import {
 } from '../features/admin';
 import { useAuth, isSuperAdminUser, isAdminUser } from '../features/auth';
 
+const VALID_ADMIN_TABS: Record<string, AdminTab> = {
+  users: 'users',
+  usuarios: 'users',
+  sessoes: 'users',
+  youtube: 'youtube',
+  yt: 'youtube',
+  cookies: 'youtube',
+  gemini: 'gemini',
+  ai: 'gemini',
+  ia: 'gemini',
+  smtp: 'smtp',
+  email: 'smtp',
+  audit: 'audit',
+  auditoria: 'audit',
+  logs: 'audit',
+  legal: 'legal',
+  termos: 'legal',
+  privacidade: 'legal',
+};
+
+function resolveAdminTab(searchParams: URLSearchParams, isSuperAdmin: boolean): AdminTab {
+  const raw = (
+    searchParams.get('tab') ||
+    searchParams.get('section') ||
+    (typeof window !== 'undefined' ? window.location.hash.replace('#', '') : '')
+  ).toLowerCase();
+  const candidate = VALID_ADMIN_TABS[raw] || 'users';
+  if (!isSuperAdmin && candidate !== 'users' && candidate !== 'audit') {
+    return 'users';
+  }
+  return candidate;
+}
+
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
 
   const isSuperAdmin = isSuperAdminUser(user);
   const isAdmin = isAdminUser(user);
 
-  const [activeTab, setActiveTab] = useState<AdminTab>('users');
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => resolveAdminTab(searchParams, isSuperAdmin));
+
+  const handleSelectTab = useCallback(
+    (tab: AdminTab) => {
+      setActiveTab(tab);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (tab === 'users') {
+            next.delete('tab');
+            next.delete('section');
+          } else {
+            next.set('tab', tab);
+            next.delete('section');
+          }
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
+  // Sincroniza activeTab se a URL mudar (ex: botão voltar/avançar do navegador)
+  useEffect(() => {
+    const nextTab = resolveAdminTab(searchParams, isSuperAdmin);
+    if (nextTab !== activeTab) {
+      setActiveTab(nextTab);
+    }
+  }, [searchParams, isSuperAdmin]);
 
   // Guard de acesso e permissões de abas
   useAdminGuard({
@@ -35,7 +98,7 @@ export const AdminPage: React.FC = () => {
     isAdmin,
     isSuperAdmin,
     activeTab,
-    setActiveTab,
+    setActiveTab: handleSelectTab,
   });
 
   // Hook de Dados Admin
@@ -108,7 +171,7 @@ export const AdminPage: React.FC = () => {
           <AdminHeader isSuperAdmin={isSuperAdmin} />
           <AdminNavigationTabs
             activeTab={activeTab}
-            onSelectTab={setActiveTab}
+            onSelectTab={handleSelectTab}
             isSuperAdmin={isSuperAdmin}
             usersCount={users.length}
             auditCount={auditLogs.length}

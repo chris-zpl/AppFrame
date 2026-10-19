@@ -1,12 +1,76 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { mediaService } from '../services';
 import type { VideoJobItem, HistoryFilterType } from '../types';
 import { filterHistoryJobs } from '../utils';
 
+const VALID_HISTORY_FILTERS: Record<string, HistoryFilterType> = {
+  all: 'all',
+  todos: 'all',
+  processing: 'processing',
+  andamento: 'processing',
+  processando: 'processing',
+  completed: 'completed',
+  concluidos: 'completed',
+  concluido: 'completed',
+  prontos: 'completed',
+  expired: 'expired',
+  expirados: 'expired',
+  expirado: 'expired',
+  failed: 'failed',
+  falhas: 'failed',
+  falha: 'failed',
+  erros: 'failed',
+  erro: 'failed',
+};
+
+function resolveHistoryFilter(searchParams: URLSearchParams): HistoryFilterType {
+  const raw = (
+    searchParams.get('filter') ||
+    searchParams.get('tab') ||
+    searchParams.get('status') ||
+    ''
+  ).toLowerCase();
+  return VALID_HISTORY_FILTERS[raw] || 'all';
+}
+
 export const useHistoryJobs = () => {
-  const [filter, setFilter] = useState<HistoryFilterType>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filter, setFilterState] = useState<HistoryFilterType>(() => resolveHistoryFilter(searchParams));
+
+  const setFilter = useCallback(
+    (nextFilter: HistoryFilterType) => {
+      setFilterState(nextFilter);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (nextFilter === 'all') {
+            next.delete('filter');
+            next.delete('tab');
+            next.delete('status');
+          } else {
+            next.set('filter', nextFilter);
+            next.delete('tab');
+            next.delete('status');
+          }
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
+  // Sincroniza filter se a URL mudar (ex: botão voltar/avançar do navegador)
+  useEffect(() => {
+    const nextFilter = resolveHistoryFilter(searchParams);
+    if (nextFilter !== filter) {
+      setFilterState(nextFilter);
+    }
+  }, [searchParams]);
+
   const [errorDrawerJob, setErrorDrawerJob] = useState<VideoJobItem | null>(null);
   const [jobToDelete, setJobToDelete] = useState<VideoJobItem | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);

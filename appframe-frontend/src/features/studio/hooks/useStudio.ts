@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { mediaService, type StudioVideoQueueItem } from '../../history';
 import type { FontFamily, SubtitleMode } from '../types';
@@ -9,6 +10,26 @@ import { useStudioSubtitles } from './useStudioSubtitles';
 import { useStudioCanvas } from './useStudioCanvas';
 import { useStudioRender } from './useStudioRender';
 import { useStudioPersistence } from './useStudioPersistence';
+
+const VALID_STUDIO_TABS: Record<string, 'legendas' | 'marca-dagua'> = {
+  legendas: 'legendas',
+  legenda: 'legendas',
+  subtitles: 'legendas',
+  subtitle: 'legendas',
+  'marca-dagua': 'marca-dagua',
+  marcadagua: 'marca-dagua',
+  watermark: 'marca-dagua',
+  watermarks: 'marca-dagua',
+};
+
+function resolveStudioTab(searchParams: URLSearchParams): 'legendas' | 'marca-dagua' {
+  const raw = (
+    searchParams.get('tab') ||
+    searchParams.get('sidebar') ||
+    ''
+  ).toLowerCase();
+  return VALID_STUDIO_TABS[raw] || 'legendas';
+}
 
 export interface UseStudioProps {
   navigate: (path: string, params?: Record<string, string>) => void;
@@ -21,6 +42,8 @@ export interface UseStudioProps {
 }
 
 export const useStudio = ({ navigate, params }: UseStudioProps) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // Consulta real do status de vinculação da conta Google AI Studio (Gemini)
   const { data: geminiStatus, isLoading: isLoadingGeminiStatus } = useQuery({
     queryKey: ['gemini-status'],
@@ -36,7 +59,36 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
   const watermark = useStudioWatermark({ currentVideo: queue.currentVideo });
 
   // 3. Estados de Customização de Legenda e Painel
-  const [activeTab, setActiveTab] = useState<'legendas' | 'marca-dagua'>('legendas');
+  const [activeTab, setActiveTabState] = useState<'legendas' | 'marca-dagua'>(() => resolveStudioTab(searchParams));
+
+  const setActiveTab = useCallback(
+    (nextTab: 'legendas' | 'marca-dagua') => {
+      setActiveTabState(nextTab);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (nextTab === 'legendas') {
+            next.delete('tab');
+            next.delete('sidebar');
+          } else {
+            next.set('tab', nextTab);
+            next.delete('sidebar');
+          }
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
+  // Sincroniza activeTab se a URL mudar (ex: botão voltar/avançar do navegador)
+  useEffect(() => {
+    const nextTab = resolveStudioTab(searchParams);
+    if (nextTab !== activeTab) {
+      setActiveTabState(nextTab);
+    }
+  }, [searchParams]);
   const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>('static');
   const [staticText, setStaticText] = useState<string>(
     queue.currentVideo?.title || params.videoTitle || ''

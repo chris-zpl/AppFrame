@@ -37,7 +37,8 @@ interface NavigationContextType {
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
 
 function parsePathname(pathname: string): AppRoute {
-  const clean = pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
+  const [pathOnly] = pathname.split('?');
+  const clean = pathOnly.replace(/^\/+|\/+$/g, '').toLowerCase();
   if (clean === 'register') return 'register';
   if (clean === 'login') return 'login';
   if (clean === 'reset-password' || clean === 'recuperar-senha' || clean === 'forgot-password') return 'reset-password';
@@ -77,7 +78,8 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       paramsOrOptions?: Record<string, any>,
       options?: NavigateOptions,
     ) => {
-      const clean = (route || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+      const [routePart, inlineQuery] = (route || '').split('?');
+      const clean = routePart.replace(/^\/+|\/+$/g, '').toLowerCase();
       let path = '/varredura';
       if (clean === 'register') path = '/register';
       else if (clean === 'login') path = '/login';
@@ -98,7 +100,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       else if (clean === 'terms' || clean === 'termos') path = '/terms';
       else if (clean === 'privacy' || clean === 'privacidade') path = '/privacy';
       else if (clean === 'scraper' || clean === 'varredura' || clean === '') path = '/varredura';
-      else if (route.startsWith('/')) path = route;
+      else if (routePart.startsWith('/')) path = routePart;
 
       let finalOptions = options;
       let queryParams: Record<string, string> | undefined;
@@ -115,9 +117,16 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       }
 
-      if (queryParams && Object.keys(queryParams).length > 0) {
-        const query = new URLSearchParams(queryParams).toString();
-        path += `?${query}`;
+      const mergedParams = new URLSearchParams(inlineQuery || '');
+      if (queryParams) {
+        Object.entries(queryParams).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) mergedParams.set(k, String(v));
+        });
+      }
+
+      const queryString = mergedParams.toString();
+      if (queryString) {
+        path += `?${queryString}`;
       }
 
       routerNavigate(path, finalOptions);

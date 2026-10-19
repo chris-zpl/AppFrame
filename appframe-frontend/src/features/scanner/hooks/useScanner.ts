@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { scraperService, mediaService } from '../services';
 import { ITEMS_PER_PAGE } from '../constants';
@@ -9,16 +10,45 @@ import type {
 } from '../types';
 import { calculatePageNumbers, mapScannedItems } from '../utils';
 
+const VALID_SCANNER_FILTERS: Record<string, ScannerFilterType> = {
+  all: 'all',
+  todos: 'all',
+  long: 'long',
+  videos: 'long',
+  longos: 'long',
+  shorts: 'shorts',
+  short: 'shorts',
+};
+
+function resolveScannerFilter(searchParams: URLSearchParams): ScannerFilterType {
+  const raw = (
+    searchParams.get('filter') ||
+    searchParams.get('tab') ||
+    searchParams.get('type') ||
+    ''
+  ).toLowerCase();
+  return VALID_SCANNER_FILTERS[raw] || 'all';
+}
+
 export const useScanner = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [channelUrl, setChannelUrl] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [hasScanned, setHasScanned] = useState(false);
   const [videos, setVideos] = useState<ScrapedVideoCardData[]>([]);
-  const [filter, setFilter] = useState<ScannerFilterType>('all');
+  const [filter, setFilter] = useState<ScannerFilterType>(() => resolveScannerFilter(searchParams));
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [channelMeta, setChannelMeta] = useState<ChannelMeta | null>(null);
+
+  // Sincroniza filter se a URL mudar (ex: botão voltar/avançar do navegador)
+  useEffect(() => {
+    const nextFilter = resolveScannerFilter(searchParams);
+    if (nextFilter !== filter) {
+      setFilter(nextFilter);
+    }
+  }, [searchParams]);
 
   // Filtragem dos cards
   const filteredVideos = useMemo(() => {
@@ -42,10 +72,26 @@ export const useScanner = () => {
     return calculatePageNumbers(safeCurrentPage, totalPages);
   }, [totalPages, safeCurrentPage]);
 
-  const handleFilterChange = (nextFilter: ScannerFilterType) => {
+  const handleFilterChange = useCallback((nextFilter: ScannerFilterType) => {
     setFilter(nextFilter);
     setCurrentPage(1);
-  };
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (nextFilter === 'all') {
+          next.delete('filter');
+          next.delete('tab');
+          next.delete('type');
+        } else {
+          next.set('filter', nextFilter);
+          next.delete('tab');
+          next.delete('type');
+        }
+        return next;
+      },
+      { replace: true }
+    );
+  }, [setSearchParams]);
 
   const handlePageChange = (page: number) => {
     const clamped = Math.max(1, Math.min(totalPages, page));

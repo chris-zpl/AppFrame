@@ -1,9 +1,33 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth';
 import { useNavigation } from '../../../contexts/NavigationContext';
 import { toast } from 'sonner';
 import { useSettings } from '../hooks/useSettings';
 import type { SettingsSection } from '../types';
+
+const VALID_SETTINGS_SECTIONS: Record<string, SettingsSection> = {
+  profile: 'profile',
+  perfil: 'profile',
+  conta: 'profile',
+  security: 'security',
+  seguranca: 'security',
+  '2fa': 'security',
+  sessions: 'sessions',
+  sessoes: 'sessions',
+  dispositivos: 'sessions',
+  danger: 'danger',
+  perigo: 'danger',
+};
+
+function resolveSettingsSection(searchParams: URLSearchParams): SettingsSection {
+  const raw = (
+    searchParams.get('tab') ||
+    searchParams.get('section') ||
+    (typeof window !== 'undefined' ? window.location.hash.replace('#', '') : '')
+  ).toLowerCase();
+  return VALID_SETTINGS_SECTIONS[raw] || 'profile';
+}
 
 export interface SettingsContextType extends ReturnType<typeof useSettings> {
   activeSection: SettingsSection;
@@ -42,8 +66,9 @@ export interface SettingsProviderProps {
 export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) => {
   const { navigate } = useNavigation();
   const { user, refreshProfile, logout } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
+  const [activeSection, setActiveSection] = useState<SettingsSection>(() => resolveSettingsSection(searchParams));
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
 
@@ -112,12 +137,44 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     }
   };
 
-  const handleSelectSection = (section: SettingsSection) => {
+  // Sincroniza activeSection se a URL mudar (ex: botão voltar/avançar do navegador)
+  useEffect(() => {
+    const nextSection = resolveSettingsSection(searchParams);
+    if (nextSection !== activeSection) {
+      setActiveSection(nextSection);
+      if (nextSection === 'sessions') {
+        settings.fetchSessions();
+      }
+    }
+  }, [searchParams]);
+
+  // Se carregar a página inicialmente já na aba de sessões, dispara fetchSessions
+  useEffect(() => {
+    if (activeSection === 'sessions') {
+      settings.fetchSessions();
+    }
+  }, []);
+
+  const handleSelectSection = useCallback((section: SettingsSection) => {
     setActiveSection(section);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (section === 'profile') {
+          next.delete('tab');
+          next.delete('section');
+        } else {
+          next.set('tab', section);
+          next.delete('section');
+        }
+        return next;
+      },
+      { replace: true }
+    );
     if (section === 'sessions') {
       settings.fetchSessions();
     }
-  };
+  }, [setSearchParams, settings]);
 
   const value: SettingsContextType = {
     ...settings,
