@@ -5,7 +5,14 @@ export class AddExpiredStatusToVideoJob1740000000004 implements MigrationInterfa
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      ALTER TYPE "video_job_status_enum" ADD VALUE IF NOT EXISTS 'expired';
+      DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'video_jobs_status_enum') THEN
+          ALTER TYPE "video_jobs_status_enum" ADD VALUE IF NOT EXISTS 'expired';
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'video_job_status_enum') THEN
+          ALTER TYPE "video_job_status_enum" ADD VALUE IF NOT EXISTS 'expired';
+        END IF;
+      END $$;
     `);
   }
 
