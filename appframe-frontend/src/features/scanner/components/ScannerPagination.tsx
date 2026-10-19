@@ -20,7 +20,11 @@ export const ScannerPagination: React.FC<ScannerPaginationProps> = (props) => {
   const pageNumbers = props.pageNumbers ?? scanner.pageNumbers;
   const startItemIndex = props.startItemIndex ?? scanner.startItemIndex;
   const endItemIndex = props.endItemIndex ?? scanner.endItemIndex;
-  const totalFilteredCount = props.totalFilteredCount ?? scanner.filteredVideos.length;
+  const totalFilteredCount = props.totalFilteredCount ?? (
+    scanner.filter === 'all' && scanner.channelMeta?.totalChannelVideos
+      ? Math.max(scanner.channelMeta.totalChannelVideos, scanner.filteredVideos.length)
+      : scanner.filteredVideos.length
+  );
   const onPageChange = props.onPageChange ?? scanner.handlePageChange;
 
   if (totalPages <= 1) return null;
@@ -30,7 +34,7 @@ export const ScannerPagination: React.FC<ScannerPaginationProps> = (props) => {
       <div className="flex items-center gap-3">
         <span className="font-body-sm text-body-sm text-on-surface-variant">
           Mostrando <strong className="text-on-surface">{startItemIndex}–{endItemIndex}</strong> de{' '}
-          <strong className="text-on-surface">{totalFilteredCount}</strong> mídias
+          <strong className="text-on-surface">{typeof totalFilteredCount === 'number' ? totalFilteredCount.toLocaleString('pt-BR') : totalFilteredCount}</strong> mídias
         </span>
         {scanner.isFetchingMore && (
           <span className="inline-flex items-center gap-1.5 text-xs text-primary font-medium animate-pulse">

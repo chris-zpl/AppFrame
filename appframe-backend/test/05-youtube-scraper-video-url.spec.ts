@@ -239,4 +239,52 @@ describe('5. Varredura com URL de Vídeo e Resolução de Canal (YouTubeScraperP
       expect(Array.isArray(items)).toBe(true);
     });
   });
+
+  describe('5.5 Contagem Total de Vídeos do Canal (parseVideoCountText & extractChannelTotalVideos)', () => {
+    it('deve converter strings de contagem em inteiros', () => {
+      expect(provider.parseVideoCountText('431 vídeos')).toBe(431);
+      expect(provider.parseVideoCountText('4,6\u00a0mil vídeos')).toBe(4600);
+      expect(provider.parseVideoCountText('1 mil vídeos')).toBe(1000);
+      expect(provider.parseVideoCountText('1.250 vídeos')).toBe(1250);
+      expect(provider.parseVideoCountText('25 videos')).toBe(25);
+      expect(provider.parseVideoCountText('1 vídeo')).toBe(1);
+      expect(provider.parseVideoCountText(undefined)).toBeNull();
+      expect(provider.parseVideoCountText('sem número')).toBeNull();
+    });
+
+    it('deve extrair total de vídeos de pageHeaderViewModel metadataRows', () => {
+      const mockInitialData = {
+        header: {
+          pageHeaderRenderer: {
+            content: {
+              pageHeaderViewModel: {
+                metadata: {
+                  contentMetadataViewModel: {
+                    metadataRows: [
+                      { metadataParts: [{ text: { content: '@Canal' } }] },
+                      {
+                        metadataParts: [
+                          { text: { content: '10 mil inscritos' } },
+                          { text: { content: '431 vídeos' } },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const count = provider.extractChannelTotalVideos(mockInitialData, '');
+      expect(count).toBe(431);
+    });
+
+    it('deve extrair total de vídeos via fallback regex no HTML', () => {
+      const html = 'some prefix "content":"4,6 mil vídeos" some suffix';
+      const count = provider.extractChannelTotalVideos({}, html);
+      expect(count).toBe(4600);
+    });
+  });
 });

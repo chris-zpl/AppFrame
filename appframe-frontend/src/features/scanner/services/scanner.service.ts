@@ -22,6 +22,7 @@ export interface ScrapedMediaItem {
   channelAvatarUrl?: string;
   channelUrl?: string;
   hasMore?: boolean;
+  channelTotalVideos?: number;
 }
 
 export interface ScrapedVideoMetadata {

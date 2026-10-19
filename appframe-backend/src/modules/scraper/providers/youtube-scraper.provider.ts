@@ -105,6 +105,95 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   }
 
   /**
+   * Converte strings de contagem de vídeos do YouTube em número inteiro
+   * Exemplos: "431 vídeos" => 431, "4,6 mil vídeos" => 4600, "1 mil vídeos" => 1000, "1.250 vídeos" => 1250
+   */
+  parseVideoCountText(raw?: string): number | null {
+    if (!raw) return null;
+    const clean = raw.replace(/\u00a0/g, ' ').trim();
+    const match = clean.match(/([\d.,]+)\s*(mil|k|mi|m|b|bi)?\s*(?:vídeo|video|vidéo)s?/i);
+    if (!match) return null;
+
+    let numStr = match[1];
+    const multiplier = match[2]?.toLowerCase();
+
+    if (multiplier) {
+      numStr = numStr.replace(',', '.');
+      const val = parseFloat(numStr);
+      if (isNaN(val)) return null;
+      if (multiplier === 'mil' || multiplier === 'k') return Math.round(val * 1000);
+      if (multiplier === 'mi' || multiplier === 'm') return Math.round(val * 1000000);
+      if (multiplier === 'bi' || multiplier === 'b') return Math.round(val * 1000000000);
+      return Math.round(val);
+    } else {
+      if (numStr.includes('.') && numStr.includes(',')) {
+        numStr = numStr.replace(/\./g, '').replace(',', '.');
+      } else if (numStr.includes('.')) {
+        if (numStr.split('.')[1]?.length === 3) {
+          numStr = numStr.replace(/\./g, '');
+        }
+      } else if (numStr.includes(',')) {
+        if (numStr.split(',')[1]?.length === 3) {
+          numStr = numStr.replace(/,/g, '');
+        }
+      }
+      const val = parseInt(numStr, 10);
+      return isNaN(val) ? null : val;
+    }
+  }
+
+  /**
+   * Extrai a contagem total de vídeos do canal a partir dos metadados da página
+   */
+  extractChannelTotalVideos(initialData: any, html: string): number | undefined {
+    try {
+      // 1. Tenta extrair de pageHeaderViewModel -> metadataRows -> metadataParts
+      const rows =
+        initialData?.header?.pageHeaderRenderer?.content?.pageHeaderViewModel
+          ?.metadata?.contentMetadataViewModel?.metadataRows;
+      if (Array.isArray(rows)) {
+        for (const row of rows) {
+          const parts = row?.metadataParts;
+          if (Array.isArray(parts)) {
+            for (const part of parts) {
+              const content = part?.text?.content;
+              const count = this.parseVideoCountText(content);
+              if (count !== null && count > 0) {
+                return count;
+              }
+            }
+          }
+        }
+      }
+
+      // 2. Tenta c4TabbedHeaderRenderer (videosCountText)
+      const c4VideosText =
+        initialData?.header?.c4TabbedHeaderRenderer?.videosCountText?.runs?.[0]?.text ||
+        initialData?.header?.c4TabbedHeaderRenderer?.videosCountText?.simpleText;
+      if (c4VideosText) {
+        const count = this.parseVideoCountText(c4VideosText);
+        if (count !== null && count > 0) return count;
+      }
+
+      // 3. Fallbacks via regex no HTML
+      const htmlMatches = [
+        html.match(/"content":\s*"([^"]*(?:vídeo|video)s?)"/i),
+        html.match(/"videoCountText":\s*\{\s*"runs":\s*\[\s*\{\s*"text":\s*"([^"]+)"/i),
+        html.match(/"videosCountText":\s*\{\s*"runs":\s*\[\s*\{\s*"text":\s*"([^"]+)"/i),
+      ];
+      for (const m of htmlMatches) {
+        if (m && m[1]) {
+          const count = this.parseVideoCountText(m[1]);
+          if (count !== null && count > 0) return count;
+        }
+      }
+    } catch {
+      // Retorna undefined se não encontrar
+    }
+    return undefined;
+  }
+
+  /**
    * Obtém cookies configurados no servidor (storage/cookies.txt) formatados para o cabeçalho Cookie
    */
   private getCookiesHeader(): string | undefined {
@@ -532,6 +621,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
 
       const videosContinuationToken = (regularResult as any).continuationToken || null;
       const shortsContinuationToken = (shortsResult as any).continuationToken || null;
+      const channelTotalVideos = regularResult.channelTotalVideos || shortsResult.channelTotalVideos;
 
       await this.saveTokens(baseUrl, {
         videosToken: videosContinuationToken,
@@ -539,6 +629,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         visitedIds: Array.from(itemsMap.keys()),
         channelTitle,
         channelAvatarUrl,
+        channelTotalVideos,
       });
 
       const hasMore = Boolean(videosContinuationToken || shortsContinuationToken);
@@ -548,6 +639,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         if (channelTitle && !item.channelTitle) item.channelTitle = channelTitle;
         if (channelAvatarUrl && !item.channelAvatarUrl) item.channelAvatarUrl = channelAvatarUrl;
         if (!item.channelUrl) item.channelUrl = baseUrl;
+        if (channelTotalVideos && !item.channelTotalVideos) item.channelTotalVideos = channelTotalVideos;
         item.hasMore = hasMore;
       }
 
@@ -590,6 +682,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
     channelTitle?: string;
     channelAvatarUrl?: string;
     continuationToken?: string | null;
+    channelTotalVideos?: number;
   }> {
     const headers = this.getFetchHeaders();
 
@@ -669,8 +762,10 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         channelAvatarUrl = this.cleanAvatarUrl(channelAvatarUrl);
       }
 
+      const channelTotalVideos = this.extractChannelTotalVideos(initialData, html);
+
       if (!initialData) {
-        return { items: [], notFound: false, channelTitle, channelAvatarUrl };
+        return { items: [], notFound: false, channelTitle, channelAvatarUrl, channelTotalVideos };
       }
 
       const visitedIds = new Set<string>();
@@ -745,6 +840,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         channelTitle,
         channelAvatarUrl,
         continuationToken,
+        channelTotalVideos,
       };
     } catch (err: any) {
       this.logger.warn(`Erro ao baixar página ${url}: ${err.message}`);
@@ -831,6 +927,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       for (const it of newItems) {
         if (session.channelTitle) it.channelTitle = session.channelTitle;
         if (session.channelAvatarUrl) it.channelAvatarUrl = session.channelAvatarUrl;
+        if (session.channelTotalVideos) it.channelTotalVideos = session.channelTotalVideos;
         it.channelUrl = baseUrl;
         it.hasMore = hasMore;
       }

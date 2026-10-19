@@ -61,7 +61,11 @@ export const ScannerChannelHeader: React.FC<ScannerChannelHeaderProps> = ({
             <div className="flex flex-wrap items-center gap-2 mt-1 font-body-sm text-body-sm text-on-surface-variant">
               <span className="font-semibold text-on-surface">Canal Oficial</span>
               <span className="text-outline">•</span>
-              <span>{channelMeta.totalIndexed} mídias extraídas</span>
+              <span>
+                {channelMeta.totalChannelVideos && channelMeta.totalChannelVideos > channelMeta.totalIndexed
+                  ? `${channelMeta.totalIndexed} de ${channelMeta.totalChannelVideos.toLocaleString('pt-BR')} mídias carregadas`
+                  : `${channelMeta.totalIndexed} mídias extraídas`}
+              </span>
               <span className="text-outline">•</span>
               <span className="text-amber-700 dark:text-primary flex items-center gap-1 font-medium">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-primary" />
@@ -76,7 +80,9 @@ export const ScannerChannelHeader: React.FC<ScannerChannelHeaderProps> = ({
           <div className="bg-neutral-50 dark:bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-neutral-200 dark:border-outline/10">
             <span className="text-label-sm font-label-sm text-outline">Total</span>
             <span className="text-title-md font-title-md font-bold text-on-surface">
-              {totalVideos}
+              {channelMeta.totalChannelVideos
+                ? channelMeta.totalChannelVideos.toLocaleString('pt-BR')
+                : totalVideos}
             </span>
           </div>
           <div className="bg-neutral-50 dark:bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-neutral-200 dark:border-outline/10">

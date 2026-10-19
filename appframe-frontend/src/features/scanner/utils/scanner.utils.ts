@@ -108,6 +108,11 @@ export function mapScannedItems(items: any[], cleanUrl: string): MappedScanResul
     (v) => v.isTargetVideo || (targetVideoId && v.id === targetVideoId),
   );
 
+  const totalVideosItem = items.find(
+    (it) => typeof it.channelTotalVideos === 'number' && it.channelTotalVideos > 0,
+  );
+  const totalChannelVideos = totalVideosItem?.channelTotalVideos || items[0]?.channelTotalVideos;
+
   return {
     videos: mappedVideos,
     channelMeta: {
@@ -116,6 +121,7 @@ export function mapScannedItems(items: any[], cleanUrl: string): MappedScanResul
       totalIndexed: mappedVideos.length,
       shortsCount,
       longCount,
+      totalChannelVideos,
     },
     targetVideo,
     shortsCount,

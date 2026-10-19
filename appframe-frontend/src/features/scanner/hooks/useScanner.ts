@@ -92,9 +92,15 @@ export const useScanner = () => {
     });
   }, [videos, filter]);
 
+  const totalVideosAvailable =
+    filter === 'all' && channelMeta?.totalChannelVideos && channelMeta.totalChannelVideos > filteredVideos.length
+      ? channelMeta.totalChannelVideos
+      : filteredVideos.length;
+
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredVideos.length / ITEMS_PER_PAGE) + (hasMore ? 1 : 0)
+    Math.ceil(totalVideosAvailable / ITEMS_PER_PAGE) +
+      (!channelMeta?.totalChannelVideos && hasMore ? 1 : 0)
   );
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
@@ -123,13 +129,24 @@ export const useScanner = () => {
             return prev;
           }
           const merged = [...prev, ...fresh];
+          const updatedMeta = channelMeta
+            ? {
+                ...channelMeta,
+                totalIndexed: merged.length,
+                shortsCount: merged.filter((v) => v.isShort).length,
+                longCount: merged.filter((v) => !v.isShort).length,
+              }
+            : null;
+          if (updatedMeta) {
+            setChannelMeta(updatedMeta);
+          }
           try {
             sessionStorage.setItem(
               'appframe_scanner_cache',
               JSON.stringify({
                 channelUrl,
                 videos: merged,
-                channelMeta,
+                channelMeta: updatedMeta || channelMeta,
               })
             );
           } catch {}
