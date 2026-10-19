@@ -125,13 +125,17 @@ export class MediaService {
     return operationPromise;
   }
 
+  evictPreviewCache(previewId: string): void {
+    this.previewCache.delete(previewId);
+    this.inFlightPreviews.delete(previewId);
+  }
+
   getPreviewFilePath(previewId: string): string {
     return this.downloadService.getPreviewFilePath(previewId);
   }
 
   async deleteStudioPreview(previewId: string): Promise<{ success: boolean }> {
-    this.previewCache.delete(previewId);
-    this.inFlightPreviews.delete(previewId);
+    this.evictPreviewCache(previewId);
     await this.downloadService.deletePreviewFile(previewId);
     return { success: true };
   }
@@ -163,6 +167,12 @@ export class MediaService {
       throw new NotFoundException('Job de vídeo não encontrado.');
     }
 
+    if (job.status === VideoJobStatus.EXPIRED) {
+      throw new BadRequestException(
+        'O download deste vídeo expirou após 24 horas e não está mais disponível no servidor.',
+      );
+    }
+
     if (job.status !== VideoJobStatus.COMPLETED || !job.final_video_path) {
       throw new BadRequestException('O vídeo ainda não finalizou o processamento.');
     }
@@ -172,7 +182,13 @@ export class MediaService {
       : path.resolve(process.cwd(), job.final_video_path);
 
     if (!fs.existsSync(resolvedPath)) {
-      throw new NotFoundException('Arquivo de vídeo processado não encontrado no servidor.');
+      await this.videoJobRepository.update(id, {
+        status: VideoJobStatus.EXPIRED,
+        final_video_path: null,
+      });
+      throw new BadRequestException(
+        'O arquivo deste vídeo expirou após 24 horas e não está mais disponível para download.',
+      );
     }
 
     const safeTitle = (job.original_title || `video_${job.id.substring(0, 8)}`)

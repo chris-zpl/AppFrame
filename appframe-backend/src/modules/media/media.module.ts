@@ -9,10 +9,13 @@ import { DownloadService } from './services/download.service';
 import { FFmpegService } from './services/ffmpeg.service';
 import { DownloadProcessor } from './processors/download.processor';
 import { RenderProcessor } from './processors/render.processor';
+import { StorageCleanupProcessor } from './processors/storage-cleanup.processor';
+import { StorageCleanupService } from './services/storage-cleanup.service';
 import { WatermarksModule } from '../watermarks/watermarks.module';
 import {
   MEDIA_DOWNLOAD_QUEUE,
   MEDIA_RENDER_QUEUE,
+  STORAGE_CLEANUP_QUEUE,
 } from '../../core/queue/queue.constants';
 
 @Module({
@@ -21,6 +24,7 @@ import {
     BullModule.registerQueue(
       { name: MEDIA_DOWNLOAD_QUEUE },
       { name: MEDIA_RENDER_QUEUE },
+      { name: STORAGE_CLEANUP_QUEUE },
     ),
     WatermarksModule,
   ],
@@ -29,9 +33,11 @@ import {
     MediaService,
     DownloadService,
     FFmpegService,
+    StorageCleanupService,
     DownloadProcessor,
     RenderProcessor,
+    StorageCleanupProcessor,
   ],
-  exports: [MediaService, DownloadService, FFmpegService, TypeOrmModule],
+  exports: [MediaService, DownloadService, FFmpegService, StorageCleanupService, TypeOrmModule],
 })
 export class MediaModule {}

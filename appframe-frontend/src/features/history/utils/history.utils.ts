@@ -7,6 +7,7 @@ export function filterHistoryJobs(jobs: VideoJobItem[], filter: HistoryFilterTyp
       return st === 'RENDERING' || st === 'DOWNLOADING' || st === 'PENDING';
     }
     if (filter === 'completed') return st === 'COMPLETED';
+    if (filter === 'expired') return st === 'EXPIRED';
     if (filter === 'failed') return st === 'FAILED';
     return true;
   });

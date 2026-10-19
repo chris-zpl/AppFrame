@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
   MEDIA_DOWNLOAD_QUEUE,
   MEDIA_RENDER_QUEUE,
+  STORAGE_CLEANUP_QUEUE,
 } from './queue.constants';
 
 @Global()
@@ -42,6 +43,9 @@ import {
       },
       {
         name: MEDIA_RENDER_QUEUE,
+      },
+      {
+        name: STORAGE_CLEANUP_QUEUE,
       },
     ),
   ],

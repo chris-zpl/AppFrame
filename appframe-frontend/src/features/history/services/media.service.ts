@@ -5,7 +5,8 @@ export type VideoJobStatus =
   | 'DOWNLOADING'
   | 'RENDERING'
   | 'COMPLETED'
-  | 'FAILED';
+  | 'FAILED'
+  | 'EXPIRED';
 
 export interface SubtitleLineData {
   text: string;

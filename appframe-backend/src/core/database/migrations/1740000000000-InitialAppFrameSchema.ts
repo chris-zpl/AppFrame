@@ -26,7 +26,7 @@ export class InitialAppFrameSchema1740000000000 implements MigrationInterface {
 
     await queryRunner.query(`
       DO $$ BEGIN
-        CREATE TYPE "video_job_status_enum" AS ENUM ('pending', 'downloading', 'rendering', 'completed', 'failed');
+        CREATE TYPE "video_job_status_enum" AS ENUM ('pending', 'downloading', 'rendering', 'completed', 'failed', 'expired');
       EXCEPTION
         WHEN duplicate_object THEN null;
       END $$;

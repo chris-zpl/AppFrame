@@ -5,4 +5,5 @@ export * from './HistoryHeader';
 export * from './HistoryJobNotification';
 export * from './HistoryJobList';
 export * from './HistoryDeleteModal';
+export * from './HistoryRetentionBanner';
 export * from './HistoryModals';

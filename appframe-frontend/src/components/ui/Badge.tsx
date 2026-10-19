@@ -11,6 +11,7 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
     | 'status-processing'
     | 'status-completed'
     | 'status-failed'
+    | 'status-expired'
     | 'count'
     | 'neutral';
   pulseDot?: boolean;
@@ -40,6 +41,8 @@ export const Badge: React.FC<BadgeProps> = ({
       'truncate items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-label-sm font-label-sm text-emerald-700 dark:text-emerald-400 border border-emerald-500/30',
     'status-failed':
       'truncate items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/15 text-label-sm font-label-sm text-rose-700 dark:text-rose-400 border border-rose-500/30',
+    'status-expired':
+      'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-neutral-500/15 text-label-sm font-label-sm text-neutral-600 dark:text-neutral-400 border border-neutral-400/30',
     count:
       'px-1.5 py-0.5 rounded-full bg-amber-500/15 dark:bg-primary/20 text-label-sm font-label-sm text-amber-800 dark:text-primary font-semibold',
     neutral:

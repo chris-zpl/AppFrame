@@ -5,6 +5,7 @@ import {
   HistoryProvider,
   HistoryHeader,
   HistoryJobNotification,
+  HistoryRetentionBanner,
   HistoryFilterTabs,
   HistoryJobList,
   HistoryModals,
@@ -29,6 +30,8 @@ export const HistoryPage: React.FC = () => {
             jobCreated={Boolean(params.jobCreated)}
             jobId={params.jobId}
           />
+
+          <HistoryRetentionBanner />
 
           <HistoryFilterTabs />
 

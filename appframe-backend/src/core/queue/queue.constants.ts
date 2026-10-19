@@ -2,6 +2,7 @@ import { SubtitleConfig } from '../../modules/media/interfaces/subtitle-config.i
 
 export const MEDIA_DOWNLOAD_QUEUE = 'media-download';
 export const MEDIA_RENDER_QUEUE = 'media-render';
+export const STORAGE_CLEANUP_QUEUE = 'storage-cleanup';
 
 export interface DownloadJobPayload {
   jobId: string;

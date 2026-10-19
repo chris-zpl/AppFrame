@@ -11,6 +11,7 @@ import { InitialAppFrameSchema1740000000000 } from './migrations/1740000000000-I
 import { AddUserRoleAndStatus1740000000001 } from './migrations/1740000000001-AddUserRoleAndStatus';
 import { AddGoogleEmailAndEmailChangedAt1740000000002 } from './migrations/1740000000002-AddGoogleEmailAndEmailChangedAt';
 import { CreateSecurityAuditLogsTable1740000000003 } from './migrations/1740000000003-CreateSecurityAuditLogsTable';
+import { AddExpiredStatusToVideoJob1740000000004 } from './migrations/1740000000004-AddExpiredStatusToVideoJob';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CreateSecurityAuditLogsTable1740000000003 } from './migrations/17400000
           AddUserRoleAndStatus1740000000001,
           AddGoogleEmailAndEmailChangedAt1740000000002,
           CreateSecurityAuditLogsTable1740000000003,
+          AddExpiredStatusToVideoJob1740000000004,
         ],
         logging: configService.get<string>('NODE_ENV') !== 'production',
         ssl:

@@ -4,4 +4,5 @@ export enum VideoJobStatus {
   RENDERING = 'rendering',
   COMPLETED = 'completed',
   FAILED = 'failed',
+  EXPIRED = 'expired',
 }

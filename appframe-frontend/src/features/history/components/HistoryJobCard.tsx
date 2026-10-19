@@ -26,6 +26,7 @@ export const HistoryJobCard: React.FC<HistoryJobCardProps> = ({
   const isDownloading = st === 'DOWNLOADING';
   const isPending = st === 'PENDING';
   const isCompleted = st === 'COMPLETED';
+  const isExpired = st === 'EXPIRED';
   const isFailed = st === 'FAILED';
 
   const title = job.original_title || job.source_url || `Job ${job.id.substring(0, 8)}`;
@@ -39,6 +40,7 @@ export const HistoryJobCard: React.FC<HistoryJobCardProps> = ({
         'p-4 sm:p-5 bg-white dark:bg-surface-container-low border transition-all duration-200 shadow-sm dark:shadow-md flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4',
         isRendering && 'border-primary/40 shadow-[0_0_15px_rgba(212,163,70,0.1)]',
         isCompleted && 'border-neutral-200 dark:border-surface-container-high hover:border-primary/30',
+        isExpired && 'border-neutral-300/60 dark:border-neutral-700/60 opacity-85',
         isFailed && 'border-red-400/40 bg-red-500/5'
       )}
     >
@@ -49,7 +51,7 @@ export const HistoryJobCard: React.FC<HistoryJobCardProps> = ({
             <img
               src={thumbUrl}
               alt={title}
-              className="w-full h-full object-cover"
+              className={cn("w-full h-full object-cover", isExpired && "grayscale opacity-75")}
               loading="lazy"
               onError={(e) => {
                 (e.currentTarget as HTMLElement).style.display = 'none';
@@ -62,6 +64,7 @@ export const HistoryJobCard: React.FC<HistoryJobCardProps> = ({
                 isCompleted && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
                 (isRendering || isDownloading) && 'bg-amber-500/15 dark:bg-primary/15 text-amber-700 dark:text-primary',
                 isPending && 'bg-neutral-100 dark:bg-surface-container-highest text-neutral-500',
+                isExpired && 'bg-neutral-500/15 text-neutral-500',
                 isFailed && 'bg-red-500/20 text-red-600 dark:text-red-400'
               )}
             >
@@ -70,6 +73,7 @@ export const HistoryJobCard: React.FC<HistoryJobCardProps> = ({
                 {isRendering && 'movie_filter'}
                 {isDownloading && 'cloud_download'}
                 {isPending && 'hourglass_empty'}
+                {isExpired && 'history_toggle_off'}
                 {isFailed && 'error'}
               </span>
             </div>
@@ -159,6 +163,12 @@ export const HistoryJobCard: React.FC<HistoryJobCardProps> = ({
           </Badge>
         )}
 
+        {isExpired && (
+          <Badge variant="status-expired">
+            Expirado
+          </Badge>
+        )}
+
         {isFailed && (
           <Badge variant="status-failed">
             Falha
@@ -180,6 +190,16 @@ export const HistoryJobCard: React.FC<HistoryJobCardProps> = ({
             >
               Baixar Vídeo
             </Button>
+          )}
+
+          {isExpired && (
+            <span
+              className="text-body-sm text-[11px] sm:text-[12px] text-neutral-500 dark:text-neutral-400 italic px-1 flex items-center gap-1"
+              title="Arquivo expurgado após 24h. O download não está mais disponível."
+            >
+              <span className="material-symbols-outlined text-[14px]">timer_off</span>
+              <span>Expirado (24h)</span>
+            </span>
           )}
 
           {isFailed && job.error_log && (

@@ -25,6 +25,7 @@ export const HistoryFilterTabs: React.FC<HistoryFilterTabsProps> = (props) => {
   }).length;
 
   const completedCount = jobs.filter((j) => String(j.status || '').toUpperCase() === 'COMPLETED').length;
+  const expiredCount = jobs.filter((j) => String(j.status || '').toUpperCase() === 'EXPIRED').length;
   const failedCount = jobs.filter((j) => String(j.status || '').toUpperCase() === 'FAILED').length;
 
   return (
@@ -75,6 +76,22 @@ export const HistoryFilterTabs: React.FC<HistoryFilterTabsProps> = (props) => {
           <span>Concluídos</span>
           <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 text-label-sm font-label-sm">
             {completedCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onFilterChange('expired')}
+          className={cn(
+            'flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer',
+            filter === 'expired'
+              ? 'bg-amber-400/20 text-[#0F1115] dark:text-primary border border-primary/40 shadow-sm font-bold'
+              : 'bg-neutral-100 dark:bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-neutral-200 dark:hover:bg-surface-container-high border border-transparent'
+          )}
+        >
+          <span>Expirados</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-neutral-500/20 text-neutral-600 dark:text-neutral-400 text-label-sm font-label-sm">
+            {expiredCount}
           </span>
         </button>
 
