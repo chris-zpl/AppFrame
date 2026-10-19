@@ -11,7 +11,7 @@ export interface IStorageService {
 @Injectable()
 export class StorageService implements IStorageService {
   private readonly logger = new Logger(StorageService.name);
-  private readonly uploadRoot = path.resolve(process.cwd(), 'uploads');
+  private readonly uploadRoot = path.resolve(process.cwd(), 'storage');
 
   async saveFile(
     subDirectory: string,
@@ -33,6 +33,26 @@ export class StorageService implements IStorageService {
       await fs.unlink(fullPath);
       return true;
     } catch (err) {
+      // Fallback para caso o arquivo esteja na pasta legada uploads/
+      if (filePath.startsWith('uploads/')) {
+        try {
+          const altPath = path.resolve(
+            process.cwd(),
+            filePath.replace(/^uploads\//, 'storage/'),
+          );
+          await fs.unlink(altPath);
+          return true;
+        } catch {}
+      } else if (filePath.startsWith('storage/')) {
+        try {
+          const altPath = path.resolve(
+            process.cwd(),
+            filePath.replace(/^storage\//, 'uploads/'),
+          );
+          await fs.unlink(altPath);
+          return true;
+        } catch {}
+      }
       this.logger.warn(`Falha ao remover arquivo: ${filePath}`);
       return false;
     }
@@ -46,6 +66,26 @@ export class StorageService implements IStorageService {
       await fs.access(fullPath);
       return true;
     } catch {
+      // Fallback para uploads/ <-> storage/
+      if (filePath.startsWith('uploads/')) {
+        try {
+          const altPath = path.resolve(
+            process.cwd(),
+            filePath.replace(/^uploads\//, 'storage/'),
+          );
+          await fs.access(altPath);
+          return true;
+        } catch {}
+      } else if (filePath.startsWith('storage/')) {
+        try {
+          const altPath = path.resolve(
+            process.cwd(),
+            filePath.replace(/^storage\//, 'uploads/'),
+          );
+          await fs.access(altPath);
+          return true;
+        } catch {}
+      }
       return false;
     }
   }

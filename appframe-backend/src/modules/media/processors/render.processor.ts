@@ -55,12 +55,7 @@ export class RenderProcessor extends WorkerHost {
       let watermarkPath: string | null = null;
       if (watermarkId) {
         try {
-          const watermark = await this.watermarksService.findById(watermarkId, userId);
-          if (watermark && watermark.storage_path) {
-            watermarkPath = path.isAbsolute(watermark.storage_path)
-              ? watermark.storage_path
-              : path.resolve(process.cwd(), watermark.storage_path);
-          }
+          watermarkPath = await this.watermarksService.getFilePath(watermarkId, userId);
         } catch (wmError: any) {
           this.logger.warn(
             `[Job ${jobId}] Marca d'água ${watermarkId} não encontrada. Prosseguindo sem ela: ${wmError.message}`,

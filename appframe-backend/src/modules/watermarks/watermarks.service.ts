@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as path from 'path';
+import * as fs from 'fs';
 import { Watermark } from './entities/watermark.entity';
 import { WatermarkResponseDto } from './dto/response/watermark-response.dto';
 import { StorageService } from '../../shared/storage/storage.service';
@@ -70,9 +71,30 @@ export class WatermarksService {
     if (!watermark) {
       throw new NotFoundException('Marca d’água não encontrada.');
     }
-    return path.isAbsolute(watermark.storage_path)
+    const resolvedPath = path.isAbsolute(watermark.storage_path)
       ? watermark.storage_path
       : path.resolve(process.cwd(), watermark.storage_path);
+
+    if (fs.existsSync(resolvedPath)) {
+      return resolvedPath;
+    }
+
+    // Fallback de retrocompatibilidade para uploads/ <-> storage/
+    if (watermark.storage_path.startsWith('uploads/')) {
+      const alt = path.resolve(
+        process.cwd(),
+        watermark.storage_path.replace(/^uploads\//, 'storage/'),
+      );
+      if (fs.existsSync(alt)) return alt;
+    } else if (watermark.storage_path.startsWith('storage/')) {
+      const alt = path.resolve(
+        process.cwd(),
+        watermark.storage_path.replace(/^storage\//, 'uploads/'),
+      );
+      if (fs.existsSync(alt)) return alt;
+    }
+
+    return resolvedPath;
   }
 
   async delete(id: string, userId: string): Promise<boolean> {
