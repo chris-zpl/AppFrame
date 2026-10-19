@@ -18,6 +18,15 @@ import { AuthService } from '../src/modules/auth/auth.service';
 import { UserResponseDto } from '../src/modules/users/dto/response/user-response.dto';
 import { getWelcomeEmailHtml } from '../src/shared/mail/templates/welcome-email.template';
 import { getResetPasswordEmailHtml } from '../src/shared/mail/templates/reset-password-email.template';
+import {
+  getPasswordChangedEmailHtml,
+  getTwoFactorEnabledEmailHtml,
+  getTwoFactorDisabledEmailHtml,
+  getGoogleLinkedEmailHtml,
+  getGoogleUnlinkedEmailHtml,
+  getAccountDeletedEmailHtml,
+  getSessionsRevokedEmailHtml,
+} from '../src/shared/mail/templates/security-emails.template';
 import { SecurityAuditService } from '../src/core/security/security-audit.service';
 import { RedisService } from '../src/core/redis/redis.service';
 import { SecurityAuditEvent } from '../src/core/security/entities/security-audit-log.entity';
@@ -422,6 +431,13 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       const mockMail = {
         sendWelcomeEmail: jest.fn().mockResolvedValue(true),
         sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
+        sendPasswordChangedEmail: jest.fn().mockResolvedValue(true),
+        sendTwoFactorEnabledEmail: jest.fn().mockResolvedValue(true),
+        sendTwoFactorDisabledEmail: jest.fn().mockResolvedValue(true),
+        sendGoogleLinkedEmail: jest.fn().mockResolvedValue(true),
+        sendGoogleUnlinkedEmail: jest.fn().mockResolvedValue(true),
+        sendAccountDeletedEmail: jest.fn().mockResolvedValue(true),
+        sendSessionsRevokedEmail: jest.fn().mockResolvedValue(true),
       };
       const mockRedis = {
         get: jest.fn().mockResolvedValue(null),
@@ -666,6 +682,13 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       mockMail = {
         sendWelcomeEmail: jest.fn().mockResolvedValue(true),
         sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
+        sendPasswordChangedEmail: jest.fn().mockResolvedValue(true),
+        sendTwoFactorEnabledEmail: jest.fn().mockResolvedValue(true),
+        sendTwoFactorDisabledEmail: jest.fn().mockResolvedValue(true),
+        sendGoogleLinkedEmail: jest.fn().mockResolvedValue(true),
+        sendGoogleUnlinkedEmail: jest.fn().mockResolvedValue(true),
+        sendAccountDeletedEmail: jest.fn().mockResolvedValue(true),
+        sendSessionsRevokedEmail: jest.fn().mockResolvedValue(true),
       };
       mockRedis = {
         get: jest.fn().mockResolvedValue(null),
@@ -740,6 +763,84 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       // 7. Parágrafo de segurança
       expect(html).toContain('Se você não solicitou esta alteração, pode ignorar este e-mail com segurança');
       expect(html).toContain('Sua senha não será alterada até que você crie uma nova senha.');
+    });
+
+    it('deve renderizar os 7 templates de e-mail de segurança com layout, cabeçalho e rodapé padronizados', () => {
+      // 1. Senha Alterada
+      const pwdChangedHtml = getPasswordChangedEmailHtml({
+        name: 'Christian Zimpel',
+        appUrl: 'http://localhost:5173',
+        deviceName: 'Chrome em macOS',
+        ipAddress: '192.168.1.100',
+      });
+      expect(pwdChangedHtml).toContain('AppFrame');
+      expect(pwdChangedHtml).toContain('Olá, Christian Zimpel!');
+      expect(pwdChangedHtml).toContain('A senha da sua conta no AppFrame foi alterada recentemente.');
+      expect(pwdChangedHtml).toContain('Senha Atualizada');
+      expect(pwdChangedHtml).toContain('Chrome em macOS');
+      expect(pwdChangedHtml).toContain('192.168.1.100');
+      expect(pwdChangedHtml).toContain('Acessar Minha Conta');
+
+      // 2. 2FA Ativado
+      const twoFaEnabledHtml = getTwoFactorEnabledEmailHtml({
+        name: 'Christian Zimpel',
+        appUrl: 'http://localhost:5173',
+        deviceName: 'MacBook Pro',
+      });
+      expect(twoFaEnabledHtml).toContain('Olá, Christian Zimpel!');
+      expect(twoFaEnabledHtml).toContain('A autenticação em duas etapas (2FA) foi ativada com sucesso');
+      expect(twoFaEnabledHtml).toContain('Proteção 2FA Ativada');
+      expect(twoFaEnabledHtml).toContain('Aplicativo Autenticador (TOTP)');
+      expect(twoFaEnabledHtml).toContain('Ver Configurações de Segurança');
+
+      // 3. 2FA Desativado
+      const twoFaDisabledHtml = getTwoFactorDisabledEmailHtml({
+        name: 'Christian Zimpel',
+        appUrl: 'http://localhost:5173',
+      });
+      expect(twoFaDisabledHtml).toContain('Olá, Christian Zimpel!');
+      expect(twoFaDisabledHtml).toContain('A autenticação em duas etapas (2FA) foi desativada');
+      expect(twoFaDisabledHtml).toContain('Aviso de Segurança: 2FA Desativado');
+      expect(twoFaDisabledHtml).toContain('Reativar 2FA Agora');
+
+      // 4. Google Vinculado
+      const googleLinkedHtml = getGoogleLinkedEmailHtml({
+        name: 'Christian Zimpel',
+        googleEmail: 'christian.zimpel@gmail.com',
+      });
+      expect(googleLinkedHtml).toContain('Olá, Christian Zimpel!');
+      expect(googleLinkedHtml).toContain('Sua conta do Google foi vinculada');
+      expect(googleLinkedHtml).toContain('Google Conectado');
+      expect(googleLinkedHtml).toContain('christian.zimpel@gmail.com');
+
+      // 5. Google Desvinculado
+      const googleUnlinkedHtml = getGoogleUnlinkedEmailHtml({
+        name: 'Christian Zimpel',
+      });
+      expect(googleUnlinkedHtml).toContain('Olá, Christian Zimpel!');
+      expect(googleUnlinkedHtml).toContain('A sua conta Google foi desvinculada');
+      expect(googleUnlinkedHtml).toContain('Google Desvinculado');
+
+      // 6. Conta Excluída
+      const accountDeletedHtml = getAccountDeletedEmailHtml({
+        name: 'Christian Zimpel',
+      });
+      expect(accountDeletedHtml).toContain('Olá, Christian Zimpel!');
+      expect(accountDeletedHtml).toContain('Confirmamos que a sua conta no AppFrame foi excluída permanentemente');
+      expect(accountDeletedHtml).toContain('Conta Encerrada');
+      expect(accountDeletedHtml).toContain('LGPD');
+
+      // 7. Desconectar Outros Dispositivos
+      const sessionsRevokedHtml = getSessionsRevokedEmailHtml({
+        name: 'Christian Zimpel',
+        revokedCount: 3,
+        deviceName: 'Safari no iPad',
+      });
+      expect(sessionsRevokedHtml).toContain('Olá, Christian Zimpel!');
+      expect(sessionsRevokedHtml).toContain('Todos os outros dispositivos conectados à sua conta AppFrame foram desconectados');
+      expect(sessionsRevokedHtml).toContain('Sessões Revogadas');
+      expect(sessionsRevokedHtml).toContain('3 outro(s) dispositivo(s)');
+      expect(sessionsRevokedHtml).toContain('Ver Sessões Ativas');
     });
 
     it('deve gerar token no Redis com expiração estrita de 1 hora (3600 segundos) e registrar evento no log de auditoria', async () => {

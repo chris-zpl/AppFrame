@@ -479,6 +479,12 @@ export class AuthService {
       userAgent: meta?.userAgent,
     });
 
+    this.mailService
+      .sendTwoFactorEnabledEmail(user.email, user.name, meta)
+      .catch((err) =>
+        this.logger.warn(`Falha no envio de e-mail 2FA ativado: ${err.message}`),
+      );
+
     return { success: true };
   }
 
@@ -506,6 +512,12 @@ export class AuthService {
       ipAddress: meta?.ip,
       userAgent: meta?.userAgent,
     });
+
+    this.mailService
+      .sendTwoFactorDisabledEmail(user.email, user.name, meta)
+      .catch((err) =>
+        this.logger.warn(`Falha no envio de e-mail 2FA desativado: ${err.message}`),
+      );
 
     return { success: true };
   }
@@ -621,6 +633,15 @@ export class AuthService {
       metadata: { currentSessionId, revokedCount },
     });
 
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (user) {
+      this.mailService
+        .sendSessionsRevokedEmail(user.email, user.name, revokedCount, meta)
+        .catch((err) =>
+          this.logger.warn(`Falha no envio de e-mail de sessões revogadas: ${err.message}`),
+        );
+    }
+
     return { revokedCount };
   }
 
@@ -726,6 +747,12 @@ export class AuthService {
       metadata: { currentSessionId, reason: 'change_password' },
     });
 
+    this.mailService
+      .sendPasswordChangedEmail(user.email, user.name, meta)
+      .catch((err) =>
+        this.logger.warn(`Falha no envio de e-mail de senha alterada: ${err.message}`),
+      );
+
     return { success: true };
   }
 
@@ -772,9 +799,18 @@ export class AuthService {
       this.logger.warn(`Falha na limpeza de arquivos no storage: ${storageErr.message}`);
     }
 
+    const userEmail = user.email;
+    const userName = user.name;
+
     // 2. Exclusão em cascata do usuário no banco (remove sessões, watermarks e video_jobs)
     await this.userRepository.remove(user);
     this.logger.log(`Conta do usuário ${userId} excluída permanentemente com sucesso.`);
+
+    this.mailService
+      .sendAccountDeletedEmail(userEmail, userName)
+      .catch((err) =>
+        this.logger.warn(`Falha no envio de e-mail de conta excluída: ${err.message}`),
+      );
 
     return { deleted: true };
   }
@@ -891,6 +927,12 @@ export class AuthService {
       userAgent: meta?.userAgent,
     });
 
+    this.mailService
+      .sendGoogleUnlinkedEmail(user.email, user.name, meta)
+      .catch((err) =>
+        this.logger.warn(`Falha no envio de e-mail Google desvinculado: ${err.message}`),
+      );
+
     return UserResponseDto.fromEntity(saved)!;
   }
 
@@ -989,6 +1031,12 @@ export class AuthService {
       userAgent: meta?.userAgent,
       metadata: { googleEmail: emailNormalized },
     });
+
+    this.mailService
+      .sendGoogleLinkedEmail(user.email, user.name, emailNormalized, meta)
+      .catch((err) =>
+        this.logger.warn(`Falha no envio de e-mail Google vinculado: ${err.message}`),
+      );
 
     return { success: true, user: saved };
   }
@@ -1139,6 +1187,12 @@ export class AuthService {
       userAgent: meta?.userAgent,
       metadata: { reason: 'password_reset' },
     });
+
+    this.mailService
+      .sendPasswordChangedEmail(user.email, user.name, meta)
+      .catch((err) =>
+        this.logger.warn(`Falha no envio de e-mail de senha alterada (reset): ${err.message}`),
+      );
 
     return {
       success: true,

@@ -7,6 +7,16 @@ import { SystemSetting } from '../../modules/admin/entities/system-setting.entit
 import { EncryptionService } from '../../core/security/encryption.service';
 import { getWelcomeEmailHtml } from './templates/welcome-email.template';
 import { getResetPasswordEmailHtml } from './templates/reset-password-email.template';
+import {
+  getPasswordChangedEmailHtml,
+  getTwoFactorEnabledEmailHtml,
+  getTwoFactorDisabledEmailHtml,
+  getGoogleLinkedEmailHtml,
+  getGoogleUnlinkedEmailHtml,
+  getAccountDeletedEmailHtml,
+  getSessionsRevokedEmailHtml,
+  SecurityEmailOptions,
+} from './templates/security-emails.template';
 
 export interface SmtpConnectionConfig {
   host: string;
@@ -16,6 +26,12 @@ export interface SmtpConnectionConfig {
   fromName: string;
   fromEmail: string;
   secure: boolean;
+}
+
+export interface ClientSecurityMeta {
+  ip?: string;
+  userAgent?: string;
+  deviceName?: string;
 }
 
 @Injectable()
@@ -83,13 +99,18 @@ export class MailService {
   }
 
   /**
-   * Dispara o e-mail oficial de boas-vindas para o usuário recém-cadastrado.
-   * Não lança exceção em caso de indisponibilidade de SMTP para não travar o fluxo de cadastro.
+   * Helper unificado e robusto para envio de mensagens via SMTP.
+   * Não lança exceção para não interromper fluxos críticos de autenticação se o SMTP falhar.
    */
-  async sendWelcomeEmail(toEmail: string, userName?: string): Promise<boolean> {
+  private async sendMailMessage(
+    toEmail: string,
+    subject: string,
+    html: string,
+    contextName: string,
+  ): Promise<boolean> {
     const cleanTo = (toEmail || '').trim().toLowerCase();
     if (!cleanTo || !cleanTo.includes('@')) {
-      this.logger.warn(`E-mail de destino inválido: "${toEmail}". Envio abortado.`);
+      this.logger.warn(`E-mail de destino inválido: "${toEmail}". Envio de "${contextName}" abortado.`);
       return false;
     }
 
@@ -97,7 +118,7 @@ export class MailService {
       const config = await this.getSmtpConfig();
       if (!config || !config.host) {
         this.logger.log(
-          `Servidor SMTP não configurado. E-mail de boas-vindas não enviado para ${cleanTo}.`,
+          `Servidor SMTP não configurado. Mensagem "${contextName}" não enviada para ${cleanTo}.`,
         );
         return false;
       }
@@ -117,31 +138,45 @@ export class MailService {
         },
       });
 
-      const frontendUrl =
-        this.configService.get<string>('FRONTEND_URL') ||
-        'http://localhost:5173';
-
-      const html = getWelcomeEmailHtml({
-        name: userName,
-        appUrl: frontendUrl,
-      });
-
       await transporter.sendMail({
         from: `"${config.fromName}" <${config.fromEmail || config.user}>`,
         to: cleanTo,
-        subject: 'Bem-vindo ao AppFrame • Sua conta está pronta!',
+        subject,
         html,
       });
 
-      this.logger.log(`E-mail de boas-vindas enviado com sucesso para ${cleanTo}`);
+      this.logger.log(`E-mail "${contextName}" enviado com sucesso para ${cleanTo}`);
       return true;
     } catch (err: any) {
       this.logger.error(
-        `Falha ao enviar e-mail de boas-vindas para ${cleanTo}: ${err.message}`,
+        `Falha ao enviar e-mail "${contextName}" para ${cleanTo}: ${err.message}`,
         err.stack,
       );
       return false;
     }
+  }
+
+  private getFrontendUrl(): string {
+    return (
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173'
+    );
+  }
+
+  /**
+   * Dispara o e-mail oficial de boas-vindas para o usuário recém-cadastrado.
+   */
+  async sendWelcomeEmail(toEmail: string, userName?: string): Promise<boolean> {
+    const frontendUrl = this.getFrontendUrl();
+    const html = getWelcomeEmailHtml({
+      name: userName,
+      appUrl: frontendUrl,
+    });
+    return this.sendMailMessage(
+      toEmail,
+      'Bem-vindo ao AppFrame • Sua conta está pronta!',
+      html,
+      'Boas-vindas',
+    );
   }
 
   /**
@@ -152,61 +187,192 @@ export class MailService {
     resetToken: string,
     userName?: string,
   ): Promise<boolean> {
-    const cleanTo = (toEmail || '').trim().toLowerCase();
-    if (!cleanTo || !cleanTo.includes('@')) {
-      this.logger.warn(`E-mail de destino inválido: "${toEmail}". Envio abortado.`);
-      return false;
-    }
+    const frontendUrl = this.getFrontendUrl();
+    const html = getResetPasswordEmailHtml({
+      name: userName,
+      appUrl: frontendUrl,
+      resetToken,
+    });
+    return this.sendMailMessage(
+      toEmail,
+      'Redefinição de senha • AppFrame',
+      html,
+      'Solicitação de Redefinição de Senha',
+    );
+  }
 
-    try {
-      const config = await this.getSmtpConfig();
-      if (!config || !config.host) {
-        this.logger.log(
-          `Servidor SMTP não configurado. E-mail de redefinição de senha não enviado para ${cleanTo}.`,
-        );
-        return false;
-      }
+  /**
+   * Notificação de segurança: Senha alterada com sucesso.
+   */
+  async sendPasswordChangedEmail(
+    toEmail: string,
+    userName?: string,
+    meta?: ClientSecurityMeta,
+  ): Promise<boolean> {
+    const frontendUrl = this.getFrontendUrl();
+    const html = getPasswordChangedEmailHtml({
+      name: userName,
+      appUrl: frontendUrl,
+      date: new Date(),
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      deviceName: meta?.deviceName,
+    });
+    return this.sendMailMessage(
+      toEmail,
+      'Sua senha foi alterada com sucesso • AppFrame',
+      html,
+      'Senha Alterada',
+    );
+  }
 
-      const transporter = nodemailer.createTransport({
-        host: config.host,
-        port: config.port,
-        secure: config.secure,
-        auth: config.user
-          ? {
-              user: config.user,
-              pass: config.pass,
-            }
-          : undefined,
-        tls: {
-          rejectUnauthorized: false,
-        },
-      });
+  /**
+   * Notificação de segurança: Segundo Fator (2FA) Ativado.
+   */
+  async sendTwoFactorEnabledEmail(
+    toEmail: string,
+    userName?: string,
+    meta?: ClientSecurityMeta,
+  ): Promise<boolean> {
+    const frontendUrl = this.getFrontendUrl();
+    const html = getTwoFactorEnabledEmailHtml({
+      name: userName,
+      appUrl: frontendUrl,
+      date: new Date(),
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      deviceName: meta?.deviceName,
+    });
+    return this.sendMailMessage(
+      toEmail,
+      'Autenticação em duas etapas (2FA) ativada • AppFrame',
+      html,
+      '2FA Ativado',
+    );
+  }
 
-      const frontendUrl =
-        this.configService.get<string>('FRONTEND_URL') ||
-        'http://localhost:5173';
+  /**
+   * Notificação de segurança: Segundo Fator (2FA) Desativado.
+   */
+  async sendTwoFactorDisabledEmail(
+    toEmail: string,
+    userName?: string,
+    meta?: ClientSecurityMeta,
+  ): Promise<boolean> {
+    const frontendUrl = this.getFrontendUrl();
+    const html = getTwoFactorDisabledEmailHtml({
+      name: userName,
+      appUrl: frontendUrl,
+      date: new Date(),
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      deviceName: meta?.deviceName,
+    });
+    return this.sendMailMessage(
+      toEmail,
+      'Aviso de Segurança: Autenticação em duas etapas (2FA) desativada • AppFrame',
+      html,
+      '2FA Desativado',
+    );
+  }
 
-      const html = getResetPasswordEmailHtml({
-        name: userName,
-        appUrl: frontendUrl,
-        resetToken,
-      });
+  /**
+   * Notificação de segurança: Conta Google Vinculada.
+   */
+  async sendGoogleLinkedEmail(
+    toEmail: string,
+    userName?: string,
+    googleEmail?: string,
+    meta?: ClientSecurityMeta,
+  ): Promise<boolean> {
+    const frontendUrl = this.getFrontendUrl();
+    const html = getGoogleLinkedEmailHtml({
+      name: userName,
+      appUrl: frontendUrl,
+      date: new Date(),
+      googleEmail,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      deviceName: meta?.deviceName,
+    });
+    return this.sendMailMessage(
+      toEmail,
+      'Conta Google vinculada com sucesso • AppFrame',
+      html,
+      'Google Vinculado',
+    );
+  }
 
-      await transporter.sendMail({
-        from: `"${config.fromName}" <${config.fromEmail || config.user}>`,
-        to: cleanTo,
-        subject: 'Redefinição de senha • AppFrame',
-        html,
-      });
+  /**
+   * Notificação de segurança: Conta Google Desvinculada.
+   */
+  async sendGoogleUnlinkedEmail(
+    toEmail: string,
+    userName?: string,
+    meta?: ClientSecurityMeta,
+  ): Promise<boolean> {
+    const frontendUrl = this.getFrontendUrl();
+    const html = getGoogleUnlinkedEmailHtml({
+      name: userName,
+      appUrl: frontendUrl,
+      date: new Date(),
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      deviceName: meta?.deviceName,
+    });
+    return this.sendMailMessage(
+      toEmail,
+      'Conta Google desvinculada • AppFrame',
+      html,
+      'Google Desvinculado',
+    );
+  }
 
-      this.logger.log(`E-mail de redefinição de senha enviado com sucesso para ${cleanTo}`);
-      return true;
-    } catch (err: any) {
-      this.logger.error(
-        `Falha ao enviar e-mail de redefinição de senha para ${cleanTo}: ${err.message}`,
-        err.stack,
-      );
-      return false;
-    }
+  /**
+   * Notificação de encerramento: Conta Excluída Permanentemente.
+   */
+  async sendAccountDeletedEmail(
+    toEmail: string,
+    userName?: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.getFrontendUrl();
+    const html = getAccountDeletedEmailHtml({
+      name: userName,
+      appUrl: frontendUrl,
+      date: new Date(),
+    });
+    return this.sendMailMessage(
+      toEmail,
+      'Confirmação de exclusão da sua conta • AppFrame',
+      html,
+      'Conta Excluída',
+    );
+  }
+
+  /**
+   * Notificação de segurança: Todas as outras sessões foram desconectadas.
+   */
+  async sendSessionsRevokedEmail(
+    toEmail: string,
+    userName?: string,
+    revokedCount?: number,
+    meta?: ClientSecurityMeta,
+  ): Promise<boolean> {
+    const frontendUrl = this.getFrontendUrl();
+    const html = getSessionsRevokedEmailHtml({
+      name: userName,
+      appUrl: frontendUrl,
+      date: new Date(),
+      revokedCount,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+      deviceName: meta?.deviceName,
+    });
+    return this.sendMailMessage(
+      toEmail,
+      'Aviso de Segurança: Outros dispositivos desconectados • AppFrame',
+      html,
+      'Outras Sessões Revogadas',
+    );
   }
 }
