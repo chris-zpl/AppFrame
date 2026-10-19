@@ -36,17 +36,17 @@ export const HistoryErrorModal: React.FC<HistoryErrorModalProps> = ({ job, onClo
             onClick={onClose}
             aria-label="Fechar"
             title="Fechar"
-            className="text-neutral-400 hover:text-on-surface cursor-pointer p-1 rounded transition-colors shrink-0"
+            className="text-neutral-400 hover:text-neutral-900 dark:hover:text-on-surface cursor-pointer p-1 rounded transition-colors shrink-0"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="text-body-sm text-on-surface-variant">
+          <span className="text-body-sm text-neutral-700 dark:text-on-surface-variant">
             <strong>ID:</strong> {job.id}
           </span>
-          <span className="text-body-sm text-on-surface-variant">
+          <span className="text-body-sm text-neutral-700 dark:text-on-surface-variant">
             <strong>Vídeo:</strong> {job.original_title || job.source_url}
           </span>
           <div className="mt-2 p-3 rounded-xl bg-neutral-100 dark:bg-surface-container-lowest font-mono text-[12px] text-red-600 dark:text-red-400 overflow-x-auto whitespace-pre-wrap">

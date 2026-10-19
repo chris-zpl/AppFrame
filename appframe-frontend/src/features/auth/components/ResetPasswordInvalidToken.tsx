@@ -16,10 +16,10 @@ export const ResetPasswordInvalidToken: React.FC<ResetPasswordInvalidTokenProps>
         </span>
       </div>
       <div>
-        <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface mb-2">
+        <h2 className="font-headline-sm text-headline-sm font-bold text-neutral-900 dark:text-on-surface mb-2">
           Link Inválido
         </h2>
-        <p className="font-body-md text-body-md text-on-surface-variant max-w-sm">
+        <p className="font-body-md text-body-md text-neutral-600 dark:text-on-surface-variant max-w-sm">
           Nenhum código de redefinição foi identificado na URL. Solicite uma nova recuperação na tela de login.
         </p>
       </div>

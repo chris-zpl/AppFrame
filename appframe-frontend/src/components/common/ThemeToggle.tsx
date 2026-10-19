@@ -48,7 +48,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
           className,
         )}
       >
-        <span className="material-symbols-outlined text-[18px] text-primary">
+        <span className="material-symbols-outlined text-[18px] text-amber-600 dark:text-primary">
           {isDark ? 'light_mode' : 'dark_mode'}
         </span>
         {showLabel && (

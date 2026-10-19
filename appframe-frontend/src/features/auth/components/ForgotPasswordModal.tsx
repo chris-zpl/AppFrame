@@ -71,14 +71,14 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         aria-modal="true"
         aria-labelledby="forgot-password-modal-title"
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md bg-surface-container rounded-2xl p-6 shadow-2xl border border-surface-container-high"
+        className="relative w-full max-w-md bg-white dark:bg-surface-container rounded-2xl p-6 shadow-2xl border border-neutral-200 dark:border-surface-container-high"
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2 text-primary min-w-0">
             <span className="material-symbols-outlined text-[24px] shrink-0">
               lock_reset
             </span>
-            <h3 id="forgot-password-modal-title" className="font-title-md text-title-md font-bold text-on-surface truncate">
+            <h3 id="forgot-password-modal-title" className="font-title-md text-title-md font-bold text-neutral-900 dark:text-on-surface truncate">
               Recuperar Senha
             </h3>
           </div>
@@ -87,7 +87,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
             onClick={handleClose}
             aria-label="Fechar"
             title="Fechar"
-            className="text-outline hover:text-on-surface p-1 rounded-lg cursor-pointer shrink-0"
+            className="text-neutral-500 hover:text-neutral-900 dark:text-outline dark:hover:text-on-surface p-1 rounded-lg cursor-pointer shrink-0 transition-colors"
           >
             <span className="material-symbols-outlined text-[20px]">
               close
@@ -97,15 +97,15 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
         {forgotSubmitted ? (
           <div className="flex flex-col items-center text-center gap-3 py-4">
-            <div className="w-12 h-12 rounded-full bg-primary/20 text-primary flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-amber-500/20 dark:bg-primary/20 text-amber-900 dark:text-primary flex items-center justify-center">
               <span className="material-symbols-outlined text-[28px]">
                 mark_email_read
               </span>
             </div>
-            <p className="font-body-md text-body-md text-on-surface">
+            <p className="font-body-md text-body-md text-neutral-900 dark:text-on-surface">
               Se o e-mail estiver cadastrado, enviamos as instruções de recuperação para <strong>{forgotEmail}</strong>.
             </p>
-            <p className="font-body-sm text-body-sm text-on-surface-variant">
+            <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
               O link expira em 1 hora. Verifique sua caixa de entrada e a pasta de spam.
             </p>
             <Button
@@ -118,7 +118,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <p className="font-body-sm text-body-sm text-on-surface-variant">
+            <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
               Digite seu e-mail cadastrado para receber um link seguro de redefinição de senha (válido por 1 hora).
             </p>
             {forgotError && (

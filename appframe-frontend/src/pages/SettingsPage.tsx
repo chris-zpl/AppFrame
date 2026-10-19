@@ -18,7 +18,7 @@ const SettingsPageContent: React.FC = () => {
   const { activeSection } = useSettingsContext();
 
   return (
-    <div className="flex flex-col w-full text-on-surface pb-16">
+    <div className="flex flex-col w-full text-neutral-900 dark:text-on-surface pb-16">
       {/* ================= HEADER ================= */}
       <SettingsHeader />
 

@@ -85,17 +85,17 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
   };
   return (
     <div className="flex flex-col gap-6 max-w-4xl">
-      <Card className="p-6 border-surface-container-highest bg-surface-container-lowest flex flex-col gap-5">
+      <Card className="p-6 border-neutral-200 dark:border-surface-container-highest bg-white dark:bg-surface-container shadow-sm flex flex-col gap-5">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[22px] text-primary">
+            <span className="material-symbols-outlined text-[22px] text-amber-700 dark:text-primary">
               outgoing_mail
             </span>
-            <h3 className="text-title-md font-bold text-on-surface">
+            <h3 className="text-title-md font-bold text-neutral-900 dark:text-on-surface">
               Configurações do Servidor SMTP
             </h3>
           </div>
-          <p className="text-body-sm text-on-surface-variant">
+          <p className="text-body-sm text-neutral-600 dark:text-on-surface-variant">
             Configure o servidor de envio de e-mails para notificações, recuperação de senhas e alertas do sistema.
           </p>
         </div>
@@ -104,7 +104,7 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
           <Input
             size="sm"
             label="Servidor SMTP (Host)"
-            labelClassName="font-bold text-outline text-label-sm"
+            labelClassName="font-bold text-neutral-500 dark:text-outline text-label-sm"
             type="text"
             value={smtpForm.host}
             onChange={(e) => setSmtpForm({ ...smtpForm, host: e.target.value })}
@@ -115,7 +115,7 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
           <Input
             size="sm"
             label="Porta"
-            labelClassName="font-bold text-outline text-label-sm"
+            labelClassName="font-bold text-neutral-500 dark:text-outline text-label-sm"
             type="number"
             value={smtpForm.port}
             onChange={(e) => setSmtpForm({ ...smtpForm, port: Number(e.target.value) })}
@@ -126,7 +126,7 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
           <Input
             size="sm"
             label="Usuário SMTP"
-            labelClassName="font-bold text-outline text-label-sm"
+            labelClassName="font-bold text-neutral-500 dark:text-outline text-label-sm"
             type="text"
             value={smtpForm.user}
             onChange={(e) => setSmtpForm({ ...smtpForm, user: e.target.value })}
@@ -136,7 +136,7 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
           <Input
             size="sm"
             label="Senha SMTP"
-            labelClassName="font-bold text-outline text-label-sm"
+            labelClassName="font-bold text-neutral-500 dark:text-outline text-label-sm"
             type={showSmtpPassword ? 'text' : 'password'}
             value={smtpForm.password}
             onChange={(e) => setSmtpForm({ ...smtpForm, password: e.target.value })}
@@ -152,7 +152,7 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
           <Input
             size="sm"
             label="Nome do Remetente"
-            labelClassName="font-bold text-outline text-label-sm"
+            labelClassName="font-bold text-neutral-500 dark:text-outline text-label-sm"
             type="text"
             value={smtpForm.fromName}
             onChange={(e) => setSmtpForm({ ...smtpForm, fromName: e.target.value })}
@@ -162,7 +162,7 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
           <Input
             size="sm"
             label="E-mail do Remetente (From)"
-            labelClassName="font-bold text-outline text-label-sm"
+            labelClassName="font-bold text-neutral-500 dark:text-outline text-label-sm"
             type="email"
             value={smtpForm.fromEmail}
             onChange={(e) => setSmtpForm({ ...smtpForm, fromEmail: e.target.value })}
@@ -180,7 +180,7 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
             />
             <label
               htmlFor="secure-toggle"
-              className="text-body-sm text-on-surface cursor-pointer"
+              className="text-body-sm text-neutral-800 dark:text-on-surface cursor-pointer"
             >
               Usar conexão SSL/TLS direta (Porta 465)
             </label>
@@ -200,12 +200,12 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
       </Card>
 
       {/* Teste de Disparo de E-mail */}
-      <Card className="p-6 border-surface-container-highest bg-surface-container-lowest flex flex-col gap-4">
+      <Card className="p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h3 className="text-title-md font-bold text-on-surface">
+          <h3 className="text-title-md font-bold text-neutral-900 dark:text-on-surface">
             Enviar E-mail de Teste
           </h3>
-          <p className="text-body-sm text-on-surface-variant">
+          <p className="text-body-sm text-neutral-600 dark:text-on-surface-variant">
             Envie uma mensagem de teste real utilizando o servidor SMTP configurado acima para validar a autenticação e entrega.
           </p>
         </div>

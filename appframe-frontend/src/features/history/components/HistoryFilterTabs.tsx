@@ -56,8 +56,8 @@ export const HistoryFilterTabs: React.FC<HistoryFilterTabsProps> = (props) => {
               : 'bg-neutral-100 dark:bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-neutral-200 dark:hover:bg-surface-container-high border border-transparent'
           )}
         >
-          <span>Em Andamento</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-primary/20 text-primary text-label-sm font-label-sm">
+          <span>Andamento</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 dark:bg-primary/20 text-amber-900 dark:text-primary text-label-sm font-label-sm">
             {processingCount}
           </span>
         </button>

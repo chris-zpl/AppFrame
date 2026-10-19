@@ -43,7 +43,7 @@ export const RegisterPage: React.FC = () => {
   } = useRegisterForm();
 
   return (
-    <div className="min-h-screen w-full bg-surface text-on-surface flex flex-col justify-between p-4 sm:p-6 relative overflow-x-hidden antialiased selection:bg-primary/20 selection:text-primary">
+    <div className="min-h-screen w-full bg-[#f8f9fd] dark:bg-surface text-neutral-900 dark:text-on-surface flex flex-col justify-between p-4 sm:p-6 relative overflow-x-hidden antialiased selection:bg-primary/20 selection:text-primary">
       {/* Botão Fixo de Alternância de Tema */}
       <ThemeToggle variant="auth" className="fixed top-6 right-6 z-50" />
 

@@ -51,7 +51,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       buttonIcon: 'warning',
     },
     primary: {
-      iconColor: 'text-primary',
+      iconColor: 'text-amber-700 dark:text-primary',
       buttonBg: 'bg-primary hover:bg-primary/90 text-on-primary font-bold',
       buttonIcon: 'check_circle',
     },
@@ -73,13 +73,13 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <div className="flex items-center justify-between border-b border-neutral-200 dark:border-surface-container-highest pb-3">
           <div className={cn('flex items-center gap-2 font-bold min-w-0', variantStyles.iconColor)}>
             <span className="material-symbols-outlined text-[24px] shrink-0">{icon}</span>
-            <span id="confirm-modal-title" className="font-title-sm text-title-sm text-on-surface truncate">{title}</span>
+            <span id="confirm-modal-title" className="font-title-sm text-title-sm text-neutral-900 dark:text-on-surface truncate">{title}</span>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="text-neutral-400 hover:text-on-surface cursor-pointer p-1 rounded transition-colors disabled:opacity-40 shrink-0"
+            className="text-neutral-400 hover:text-neutral-900 dark:hover:text-on-surface cursor-pointer p-1 rounded transition-colors disabled:opacity-40 shrink-0"
             title="Fechar"
             aria-label="Fechar confirmação"
           >
@@ -90,7 +90,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         {/* Corpo do Modal */}
         <div className="flex flex-col gap-2.5">
           {typeof message === 'string' ? (
-            <p className="text-body-sm text-on-surface">{message}</p>
+            <p className="text-body-sm text-neutral-800 dark:text-on-surface">{message}</p>
           ) : (
             message
           )}
@@ -98,12 +98,12 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           {(itemTitle || itemSubtitle) && (
             <div className="p-3 rounded-xl bg-neutral-100 dark:bg-surface-container-lowest flex flex-col gap-1 border border-neutral-200 dark:border-surface-container-high min-w-0">
               {itemTitle && (
-                <span className="font-semibold text-body-sm text-on-surface line-clamp-2 break-words">
+                <span className="font-semibold text-body-sm text-neutral-900 dark:text-on-surface line-clamp-2 break-words">
                   {itemTitle}
                 </span>
               )}
               {itemSubtitle && (
-                <span className="text-label-sm font-mono text-outline line-clamp-1 break-all">
+                <span className="text-label-sm font-mono text-neutral-500 dark:text-outline line-clamp-1 break-all">
                   {itemSubtitle}
                 </span>
               )}
@@ -111,7 +111,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           )}
 
           {warningText && (
-            <p className="text-[12px] text-on-surface-variant leading-relaxed">
+            <p className="text-[12px] text-neutral-600 dark:text-on-surface-variant leading-relaxed">
               {warningText}
             </p>
           )}

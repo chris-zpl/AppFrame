@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { marked } from 'marked';
-import { Card, Badge, Button, Input } from '../../../components/ui';
+import { Card, Badge, Button, Input, Textarea } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import type { SaveLegalSettingsDto, LegalDocumentsResponse } from '../types';
 
@@ -88,19 +88,19 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       {/* Header da Aba Legal */}
-      <Card className="p-6 border-surface-container-highest bg-surface-container-lowest flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <Card className="p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary flex-shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-amber-500/15 dark:bg-primary/10 border border-amber-600/30 dark:border-primary/20 flex items-center justify-center text-amber-700 dark:text-primary flex-shrink-0">
             <span className="material-symbols-outlined text-[28px]">gavel</span>
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-title-lg font-bold text-on-surface">
+              <h2 className="text-title-lg font-bold text-neutral-900 dark:text-on-surface">
                 Termos de Serviço & Política de Privacidade
               </h2>
               <Badge variant="primary">LGPD • Marco Civil</Badge>
             </div>
-            <p className="text-body-sm text-on-surface-variant max-w-2xl">
+            <p className="text-body-sm text-neutral-600 dark:text-on-surface-variant max-w-2xl">
               Gerencie dinamicamente os textos dos Termos e da Política em Markdown. As alterações são refletidas instantaneamente nas páginas públicas, modais de cadastro e rodapé.
             </p>
           </div>
@@ -108,15 +108,15 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
       </Card>
 
       {/* Parâmetros Globais Dinâmicos */}
-      <Card className="p-6 border-surface-container-highest bg-surface-container-lowest flex flex-col gap-5">
-        <div className="flex items-center justify-between pb-3 border-b border-surface-container-highest">
+      <Card className="p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest flex flex-col gap-5">
+        <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-surface-container-highest">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[20px] text-primary">tune</span>
-            <h3 className="text-title-md font-bold text-on-surface">
+            <span className="material-symbols-outlined text-[20px] text-amber-700 dark:text-primary">tune</span>
+            <h3 className="text-title-md font-bold text-neutral-900 dark:text-on-surface">
               Variáveis Institucionais & Contrato
             </h3>
           </div>
-          <span className="text-label-sm text-on-surface-variant">
+          <span className="text-label-sm text-neutral-600 dark:text-on-surface-variant">
             Substituídas automaticamente nos textos entre colchetes
           </span>
         </div>
@@ -202,11 +202,11 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
       </Card>
 
       {/* Card com Editor Markdown e Preview dos Documentos */}
-      <Card className="p-6 border-surface-container-highest bg-surface-container-lowest flex flex-col gap-4">
+      <Card className="p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest flex flex-col gap-4">
         {/* Barra de Seleção de Documento e Modo de Exibição */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-surface-container-highest">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-neutral-200 dark:border-surface-container-highest">
           {/* Switcher Termos vs Privacidade */}
-          <div className="flex items-center p-1 bg-surface-container rounded-xl border border-surface-container-highest">
+          <div className="flex items-center p-1 bg-neutral-100 dark:bg-surface-container rounded-xl border border-neutral-200 dark:border-surface-container-highest">
             <button
               type="button"
               onClick={() => setActiveLegalDoc('terms')}
@@ -214,7 +214,7 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
                 'px-4 py-2 rounded-lg text-label-md font-semibold transition-all cursor-pointer flex items-center gap-2',
                 activeLegalDoc === 'terms'
                   ? 'bg-primary text-on-primary shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface'
+                  : 'text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
               )}
             >
               <span className="material-symbols-outlined text-[18px]">gavel</span>
@@ -227,7 +227,7 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
                 'px-4 py-2 rounded-lg text-label-md font-semibold transition-all cursor-pointer flex items-center gap-2',
                 activeLegalDoc === 'privacy'
                   ? 'bg-primary text-on-primary shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface'
+                  : 'text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
               )}
             >
               <span className="material-symbols-outlined text-[18px]">verified_user</span>
@@ -236,7 +236,7 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
           </div>
 
           {/* Switcher Editor vs Preview */}
-          <div className="flex items-center p-1 bg-surface-container rounded-xl border border-surface-container-highest">
+          <div className="flex items-center p-1 bg-neutral-100 dark:bg-surface-container rounded-xl border border-neutral-200 dark:border-surface-container-highest">
             <button
               type="button"
               onClick={() => {
@@ -246,8 +246,8 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
               className={cn(
                 'px-3.5 py-1.5 rounded-lg text-label-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5',
                 (activeLegalDoc === 'terms' ? activeTermsMode : activePrivacyMode) === 'edit'
-                  ? 'bg-surface-container-highest text-on-surface shadow-xs'
-                  : 'text-on-surface-variant hover:text-on-surface'
+                  ? 'bg-white dark:bg-surface-container-highest text-neutral-900 dark:text-on-surface shadow-xs'
+                  : 'text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
               )}
             >
               <span className="material-symbols-outlined text-[16px]">edit_note</span>
@@ -262,8 +262,8 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
               className={cn(
                 'px-3.5 py-1.5 rounded-lg text-label-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5',
                 (activeLegalDoc === 'terms' ? activeTermsMode : activePrivacyMode) === 'preview'
-                  ? 'bg-surface-container-highest text-on-surface shadow-xs'
-                  : 'text-on-surface-variant hover:text-on-surface'
+                  ? 'bg-white dark:bg-surface-container-highest text-neutral-900 dark:text-on-surface shadow-xs'
+                  : 'text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
               )}
             >
               <span className="material-symbols-outlined text-[16px]">visibility</span>
@@ -276,22 +276,22 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
         {activeLegalDoc === 'terms' ? (
           activeTermsMode === 'edit' ? (
             <div className="flex flex-col gap-2">
-              <textarea
+              <Textarea
                 value={legalForm.termsOfService || ''}
                 onChange={(e) => setLegalForm((prev) => ({ ...prev, termsOfService: e.target.value }))}
                 rows={24}
                 placeholder="Insira o texto completo dos Termos de Serviço em Markdown..."
-                className="w-full p-4 rounded-xl bg-surface-container border border-surface-container-highest text-on-surface font-mono text-body-sm leading-relaxed focus:outline-none focus:border-primary transition-colors resize-y"
+                className="font-mono text-body-sm leading-relaxed resize-y"
               />
-              <div className="flex items-center justify-between text-label-sm text-on-surface-variant px-1">
+              <div className="flex items-center justify-between text-label-sm text-neutral-600 dark:text-on-surface-variant px-1">
                 <span>Suporta sintaxe Markdown completa (# títulos, listas, tabelas e links).</span>
                 <span>{legalForm.termsOfService?.length || 0} caracteres</span>
               </div>
             </div>
           ) : (
-            <div className="p-6 sm:p-8 rounded-xl bg-surface-container border border-surface-container-highest max-h-[700px] overflow-y-auto">
+            <div className="p-6 sm:p-8 rounded-xl bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest max-h-[700px] overflow-y-auto">
               <div
-                className="prose prose-invert max-w-none text-body-md text-on-surface-variant leading-relaxed [&_h1]:text-title-lg [&_h1]:font-bold dark:[&_h1]:text-on-surface [&_h1]:text-surface-bright [&_h1]:mb-3 [&_h2]:text-title-md [&_h2]:font-bold [&_h2]:text-on-surface [&_h3]:text-title-sm [&_h3]:font-bold dark:[&_h3]:text-on-surface [&_h3]:text-surface-bright [&_h4]:text-label-lg [&_h4]:font-bold [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_table]:w-full [&_table]:border-collapse [&_th]:bg-surface-container-high [&_th]:p-3 [&_th]:border [&_th]:border-surface-container-highest [&_td]:p-3 [&_td]:border [&_td]:border-surface-container-highest"
+                className="prose dark:prose-invert max-w-none text-body-md text-neutral-700 dark:text-on-surface-variant leading-relaxed [&_h1]:text-title-lg [&_h1]:font-bold [&_h1]:text-neutral-900 dark:[&_h1]:text-on-surface [&_h1]:mb-3 [&_h2]:text-title-md [&_h2]:font-bold [&_h2]:text-neutral-900 dark:[&_h2]:text-on-surface [&_h3]:text-title-sm [&_h3]:font-bold [&_h3]:text-neutral-900 dark:[&_h3]:text-on-surface [&_h4]:text-label-lg [&_h4]:font-bold [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_table]:w-full [&_table]:border-collapse [&_th]:bg-neutral-100 dark:[&_th]:bg-surface-container-high [&_th]:text-neutral-900 dark:[&_th]:text-on-surface [&_th]:p-3 [&_th]:border [&_th]:border-neutral-200 dark:[&_th]:border-surface-container-highest [&_td]:p-3 [&_td]:border [&_td]:border-neutral-200 dark:[&_td]:border-surface-container-highest"
                 dangerouslySetInnerHTML={{
                   __html: marked.parse(legalForm.termsOfService || '') as string,
                 }}
@@ -300,22 +300,22 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
           )
         ) : activePrivacyMode === 'edit' ? (
           <div className="flex flex-col gap-2">
-            <textarea
+            <Textarea
               value={legalForm.privacyPolicy || ''}
               onChange={(e) => setLegalForm((prev) => ({ ...prev, privacyPolicy: e.target.value }))}
               rows={24}
               placeholder="Insira o texto completo da Política de Privacidade em Markdown..."
-              className="w-full p-4 rounded-xl bg-surface-container border border-surface-container-highest text-on-surface font-mono text-body-sm leading-relaxed focus:outline-none focus:border-primary transition-colors resize-y"
+              className="font-mono text-body-sm leading-relaxed resize-y"
             />
-            <div className="flex items-center justify-between text-label-sm text-on-surface-variant px-1">
+            <div className="flex items-center justify-between text-label-sm text-neutral-600 dark:text-on-surface-variant px-1">
               <span>Suporta sintaxe Markdown completa (# títulos, listas, tabelas e links).</span>
               <span>{legalForm.privacyPolicy?.length || 0} caracteres</span>
             </div>
           </div>
         ) : (
-          <div className="p-6 sm:p-8 rounded-xl bg-surface-container border border-surface-container-highest max-h-[700px] overflow-y-auto">
+          <div className="p-6 sm:p-8 rounded-xl bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest max-h-[700px] overflow-y-auto">
             <div
-              className="prose prose-invert max-w-none text-body-md text-on-surface-variant leading-relaxed [&_h1]:text-title-lg [&_h1]:font-bold dark:[&_h1]:text-on-surface [&_h1]:text-surface-bright [&_h1]:mb-3 [&_h2]:text-title-md [&_h2]:font-bold [&_h2]:text-on-surface [&_h3]:text-title-sm [&_h3]:font-bold dark:[&_h3]:text-on-surface [&_h3]:text-surface-bright [&_h4]:text-label-lg [&_h4]:font-bold [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_table]:w-full [&_table]:border-collapse [&_th]:bg-surface-container-high [&_th]:text-neutral-200 [&_th]:p-3 [&_th]:border [&_th]:border-surface-container-highest [&_td]:p-3 [&_td]:border [&_td]:border-surface-container-highest"
+              className="prose dark:prose-invert max-w-none text-body-md text-neutral-700 dark:text-on-surface-variant leading-relaxed [&_h1]:text-title-lg [&_h1]:font-bold [&_h1]:text-neutral-900 dark:[&_h1]:text-on-surface [&_h1]:mb-3 [&_h2]:text-title-md [&_h2]:font-bold [&_h2]:text-neutral-900 dark:[&_h2]:text-on-surface [&_h3]:text-title-sm [&_h3]:font-bold [&_h3]:text-neutral-900 dark:[&_h3]:text-on-surface [&_h4]:text-label-lg [&_h4]:font-bold [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_table]:w-full [&_table]:border-collapse [&_th]:bg-neutral-100 dark:[&_th]:bg-surface-container-high [&_th]:text-neutral-900 dark:[&_th]:text-on-surface [&_th]:p-3 [&_th]:border [&_th]:border-neutral-200 dark:[&_th]:border-surface-container-highest [&_td]:p-3 [&_td]:border [&_td]:border-neutral-200 dark:[&_td]:border-surface-container-highest"
               dangerouslySetInnerHTML={{
                 __html: marked.parse(legalForm.privacyPolicy || '') as string,
               }}
@@ -324,7 +324,7 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
         )}
 
         {/* Botões Finais de Salvar */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-surface-container-highest">
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-neutral-200 dark:border-surface-container-highest">
           <Button
             type="submit"
             variant="primary"

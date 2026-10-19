@@ -1,9 +1,9 @@
-import React from 'react';
-import { Card } from '../../../components/ui';
-import { cn } from '../../../lib/utils';
-import { formatStudioTime as formatTime } from '../utils';
+import React from "react";
+import { Card } from "../../../components/ui";
+import { cn } from "../../../lib/utils";
+import { formatStudioTime as formatTime } from "../utils";
 
-import { useStudioContext } from '../context';
+import { useStudioContext } from "../context";
 
 export interface StudioTimelineProps {
   trimIn?: number;
@@ -15,7 +15,10 @@ export interface StudioTimelineProps {
   previewError?: string | null;
   timelineRef?: React.RefObject<HTMLDivElement | null>;
   handleTimelineClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
-  handleTimelineMouseDown?: (e: React.MouseEvent<HTMLDivElement>, type: 'in' | 'out' | 'playhead') => void;
+  handleTimelineMouseDown?: (
+    e: React.MouseEvent<HTMLDivElement>,
+    type: "in" | "out" | "playhead",
+  ) => void;
   setTrimIn?: React.Dispatch<React.SetStateAction<number>>;
   setTrimOut?: React.Dispatch<React.SetStateAction<number>>;
 }
@@ -28,37 +31,45 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
   const currentTime = props.currentTime ?? studio.currentTime;
   const totalDuration = props.totalDuration ?? studio.totalDuration;
   const waveformPeaks = props.waveformPeaks ?? studio.waveformPeaks;
-  const isPreparingPreview = props.isPreparingPreview ?? studio.isPreparingPreview;
+  const isPreparingPreview =
+    props.isPreparingPreview ?? studio.isPreparingPreview;
   const previewError = props.previewError ?? studio.previewError;
   const timelineRef = props.timelineRef ?? studio.timelineRef;
-  const handleTimelineClick = props.handleTimelineClick ?? studio.handleTimelineClick;
-  const handleTimelineMouseDown = props.handleTimelineMouseDown ?? studio.handleTimelineMouseDown;
+  const handleTimelineClick =
+    props.handleTimelineClick ?? studio.handleTimelineClick;
+  const handleTimelineMouseDown =
+    props.handleTimelineMouseDown ?? studio.handleTimelineMouseDown;
   const setTrimIn = props.setTrimIn ?? studio.setTrimIn;
   const setTrimOut = props.setTrimOut ?? studio.setTrimOut;
   return (
-    <Card className="bg-surface-container-low border border-surface-container-high/90 p-4 flex flex-col gap-3 shadow-lg">
-      <div className="flex items-center justify-between">
+    <Card className="bg-white dark:bg-surface-container-low border border-neutral-200 dark:border-surface-container-high/90 p-4 flex flex-col gap-3 shadow-sm dark:shadow-lg">
+      <div className="flex flex-col sm:flex-row gap-1.5 items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[20px] text-primary">
             graphic_eq
           </span>
-          <span className="font-title-sm text-title-sm font-bold text-on-surface">
+          <span className="font-title-sm text-title-sm font-bold text-neutral-900 dark:text-on-surface">
             Timeline de Precisão (Audio Waveform & Trim)
           </span>
         </div>
 
         {/* Tooltips dos Marcadores de Corte */}
         <div className="flex items-center gap-3 font-mono text-label-sm font-label-sm tabular-nums">
-          <span className="text-on-surface-variant">
-            In: <strong className="text-primary">{formatTime(trimIn, true)}</strong>
+          <span className="text-neutral-600 dark:text-on-surface-variant">
+            In:{" "}
+            <strong className="text-amber-800 dark:text-primary">{formatTime(trimIn, true)}</strong>
           </span>
-          <span className="text-outline">•</span>
-          <span className="text-on-surface-variant">
-            Out: <strong className="text-primary">{formatTime(trimOut, true)}</strong>
+          <span className="text-neutral-500 dark:text-outline">•</span>
+          <span className="text-neutral-600 dark:text-on-surface-variant">
+            Out:{" "}
+            <strong className="text-amber-800 dark:text-primary">
+              {formatTime(trimOut, true)}
+            </strong>
           </span>
-          <span className="text-outline">•</span>
-          <span className="text-tertiary">
-            Duração: <strong>{Math.max(0, trimOut - trimIn).toFixed(2)}s</strong>
+          <span className="text-neutral-500 dark:text-outline">•</span>
+          <span className="text-neutral-800 dark:text-tertiary">
+            Duração:{" "}
+            <strong>{Math.max(0, trimOut - trimIn).toFixed(2)}s</strong>
           </span>
         </div>
       </div>
@@ -66,7 +77,7 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
       {/* Contêiner Interativo da Timeline */}
       <div className="relative flex flex-col select-none pt-4 pb-2">
         {/* Régua de Tempo Dinâmica conforme a duração real do vídeo */}
-        <div className="w-full flex justify-between text-[10px] text-outline font-mono mb-1.5 px-1">
+        <div className="w-full flex justify-between text-[10px] text-neutral-500 dark:text-outline font-mono mb-1.5 px-1">
           {[0, 0.166, 0.333, 0.5, 0.666, 0.833, 1].map((ratio, idx) => (
             <span key={idx}>{formatTime(totalDuration * ratio)}</span>
           ))}
@@ -77,28 +88,30 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
           ref={timelineRef}
           onClick={totalDuration > 0 ? handleTimelineClick : undefined}
           className={cn(
-            'relative w-full h-20 rounded-xl bg-surface-container-lowest border border-surface-container-highest/80 overflow-hidden flex items-center px-1',
-            totalDuration > 0 ? 'cursor-pointer' : 'cursor-default'
+            "relative w-full h-20 rounded-xl bg-neutral-100 dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest/80 overflow-hidden flex items-center px-1",
+            totalDuration > 0 ? "cursor-pointer" : "cursor-default",
           )}
         >
           {waveformPeaks.length === 0 || totalDuration <= 0 ? (
-            <div className="w-full h-full flex items-center justify-center gap-2 text-label-sm text-on-surface-variant">
+            <div className="w-full h-full flex items-center justify-center gap-2 text-label-sm text-neutral-600 dark:text-on-surface-variant">
               {isPreparingPreview ? (
                 <>
                   <span className="material-symbols-outlined text-[18px] text-primary animate-spin">
                     progress_activity
                   </span>
-                  <span>Extraindo onda sonora real (Audio Waveform) do vídeo...</span>
+                  <span>
+                    Extraindo onda sonora real (Audio Waveform) do vídeo...
+                  </span>
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-[18px] text-outline">
+                  <span className="material-symbols-outlined text-[18px] text-neutral-500 dark:text-outline">
                     graphic_eq
                   </span>
                   <span>
                     {previewError
-                      ? 'Não foi possível extrair o áudio do vídeo.'
-                      : 'Aguardando carregamento do vídeo para exibir a onda sonora real.'}
+                      ? "Não foi possível extrair o áudio do vídeo."
+                      : "Aguardando carregamento do vídeo para exibir a onda sonora real."}
                   </span>
                 </>
               )}
@@ -115,10 +128,10 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
                     <div
                       key={idx}
                       className={cn(
-                        'flex-1 rounded-full transition-colors',
+                        "flex-1 rounded-full transition-colors",
                         isInsideCut
-                          ? 'bg-primary shadow-[0_0_6px_rgba(242,190,94,0.3)]'
-                          : 'bg-surface-container-highest/60 opacity-30'
+                          ? "bg-primary shadow-[0_0_6px_rgba(242,190,94,0.3)]"
+                          : "bg-neutral-300 dark:bg-surface-container-highest/60 opacity-50 dark:opacity-30",
                       )}
                       style={{
                         height: `${peak * 85}%`,
@@ -151,7 +164,7 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
 
               {/* Marcador Início (In) - Arrastável */}
               <div
-                onMouseDown={(e) => handleTimelineMouseDown(e, 'in')}
+                onMouseDown={(e) => handleTimelineMouseDown(e, "in")}
                 className="absolute top-0 bottom-0 z-30 flex flex-col items-center cursor-ew-resize group"
                 style={{ left: `${(trimIn / totalDuration) * 100}%` }}
               >
@@ -166,7 +179,7 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
 
               {/* Marcador Fim (Out) - Arrastável */}
               <div
-                onMouseDown={(e) => handleTimelineMouseDown(e, 'out')}
+                onMouseDown={(e) => handleTimelineMouseDown(e, "out")}
                 className="absolute top-0 bottom-0 z-30 flex flex-col items-center cursor-ew-resize group"
                 style={{ left: `${(trimOut / totalDuration) * 100}%` }}
               >
@@ -181,7 +194,7 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
 
               {/* Agulha de Reprodução (Playhead) */}
               <div
-                onMouseDown={(e) => handleTimelineMouseDown(e, 'playhead')}
+                onMouseDown={(e) => handleTimelineMouseDown(e, "playhead")}
                 className="absolute top-0 bottom-0 z-40 flex flex-col items-center cursor-ew-resize"
                 style={{ left: `${(currentTime / totalDuration) * 100}%` }}
               >
@@ -194,53 +207,127 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
         </div>
 
         {/* Botões de Micro-ajuste de 0.1s */}
-        <div className="flex items-center justify-between mt-2 text-label-sm font-label-sm text-outline">
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setTrimIn((v) => Math.max(0, v - 0.1))}
-              className="px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface cursor-pointer"
-            >
-              In -0.1s
-            </button>
-            <button
-              type="button"
-              onClick={() => setTrimIn((v) => Math.min(trimOut - 0.5, v + 0.1))}
-              className="px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface cursor-pointer"
-            >
-              In +0.1s
-            </button>
-            <button
-              type="button"
-              onClick={() => setTrimIn(currentTime)}
-              className="px-2 py-0.5 rounded bg-primary/20 text-primary font-semibold hover:bg-primary/30 cursor-pointer"
-            >
-              Definir In Aqui
-            </button>
+        <div className="w-full mt-2 text-label-sm font-label-sm text-outline">
+          {/* ========================================================= */}
+          {/* 1. VERSÃO MOBILE (< sm): Em coluna geral, internamente em linha */}
+          {/* ========================================================= */}
+          <div className="flex flex-col items-center gap-2 sm:hidden w-full">
+            {/* Linha Superior: Definir In e Definir Out juntos */}
+            <div className="flex flex-row items-center justify-center gap-2 w-full">
+              <button
+                type="button"
+                onClick={() => setTrimIn(currentTime)}
+                className="px-2.5 py-1 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer shrink-0"
+              >
+                Definir In Aqui
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrimOut(currentTime)}
+                className="px-2.5 py-1 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer shrink-0"
+              >
+                Definir Out Aqui
+              </button>
+            </div>
+
+            {/* Linha Inferior: Botões de ajuste fino juntos em linha */}
+            <div className="flex flex-row flex-nowrap items-center justify-center gap-1.5 w-full">
+              <button
+                type="button"
+                onClick={() => setTrimIn((v) => Math.max(0, v - 0.1))}
+                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer shrink-0 border border-neutral-200 dark:border-transparent"
+              >
+                In -0.1s
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setTrimIn((v) => Math.min(trimOut - 0.5, v + 0.1))
+                }
+                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer shrink-0 border border-neutral-200 dark:border-transparent"
+              >
+                In +0.1s
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setTrimOut((v) => Math.max(trimIn + 0.5, v - 0.1))
+                }
+                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer shrink-0 border border-neutral-200 dark:border-transparent"
+              >
+                Out -0.1s
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setTrimOut((v) => Math.min(totalDuration, v + 0.1))
+                }
+                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer shrink-0 border border-neutral-200 dark:border-transparent"
+              >
+                Out +0.1s
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setTrimOut(currentTime)}
-              className="px-2 py-0.5 rounded bg-primary/20 text-primary font-semibold hover:bg-primary/30 cursor-pointer"
-            >
-              Definir Out Aqui
-            </button>
-            <button
-              type="button"
-              onClick={() => setTrimOut((v) => Math.max(trimIn + 0.5, v - 0.1))}
-              className="px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface cursor-pointer"
-            >
-              Out -0.1s
-            </button>
-            <button
-              type="button"
-              onClick={() => setTrimOut((v) => Math.min(totalDuration, v + 0.1))}
-              className="px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface cursor-pointer"
-            >
-              Out +0.1s
-            </button>
+          {/* ========================================================= */}
+          {/* 2. VERSÃO DESKTOP (>= sm): Exatamente o layout original */}
+          {/* ========================================================= */}
+          <div className="hidden sm:flex items-center justify-between w-full">
+            {/* Lado Esquerdo: Bloco do In */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setTrimIn((v) => Math.max(0, v - 0.1))}
+                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer border border-neutral-200 dark:border-transparent"
+              >
+                In -0.1s
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setTrimIn((v) => Math.min(trimOut - 0.5, v + 0.1))
+                }
+                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer border border-neutral-200 dark:border-transparent"
+              >
+                In +0.1s
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrimIn(currentTime)}
+                className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer"
+              >
+                Definir In Aqui
+              </button>
+            </div>
+
+            {/* Lado Direito: Bloco do Out */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setTrimOut(currentTime)}
+                className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer"
+              >
+                Definir Out Aqui
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setTrimOut((v) => Math.max(trimIn + 0.5, v - 0.1))
+                }
+                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer border border-neutral-200 dark:border-transparent"
+              >
+                Out -0.1s
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setTrimOut((v) => Math.min(totalDuration, v + 0.1))
+                }
+                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer border border-neutral-200 dark:border-transparent"
+              >
+                Out +0.1s
+              </button>
+            </div>
           </div>
         </div>
       </div>

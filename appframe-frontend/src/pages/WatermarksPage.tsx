@@ -19,7 +19,7 @@ export const WatermarksPage: React.FC = () => {
         onNavigate={(path) => navigate(path)}
         onUserAvatarClick={() => navigate('settings')}
       >
-        <div className="flex flex-col w-full text-on-surface pb-12">
+        <div className="flex flex-col w-full text-neutral-900 dark:text-on-surface pb-12">
           {/* ================= HEADER ================= */}
           <WatermarkHeader />
 

@@ -17,7 +17,7 @@ export const AuthCardHeader: React.FC<AuthCardHeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-1 font-headline-md text-headline-md tracking-tight mb-space-xs">
-        <span className="text-on-surface font-bold">App</span>
+        <span className="text-neutral-900 dark:text-on-surface font-bold">App</span>
         <span className="text-primary font-bold">Frame</span>
       </div>
 

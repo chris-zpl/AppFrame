@@ -52,7 +52,7 @@ export const WatermarkUploadDropzone: React.FC<WatermarkUploadDropzoneProps> = (
             : 'border-primary/60 hover:border-primary hover:bg-neutral-50 dark:hover:bg-surface-container-low shadow-sm dark:shadow-[0_8px_24px_rgba(0,0,0,0.3)]'
         )}
       >
-        <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-surface-container-highest flex items-center justify-center text-primary mb-3 shadow-[0_0_20px_rgba(212,163,70,0.2)]">
+        <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-surface-container-highest flex items-center justify-center text-amber-700 dark:text-primary mb-3 shadow-[0_0_20px_rgba(212,163,70,0.2)]">
           <span
             className={cn(
               'material-symbols-outlined text-[34px]',
@@ -63,18 +63,18 @@ export const WatermarkUploadDropzone: React.FC<WatermarkUploadDropzoneProps> = (
           </span>
         </div>
 
-        <h3 className="font-title-md text-title-md font-bold text-on-surface mb-1">
+        <h3 className="font-title-md text-title-md font-bold text-neutral-900 dark:text-on-surface mb-1">
           {isPending
             ? 'Processando e salvando imagem PNG...'
             : 'Arraste seu arquivo PNG transparente aqui'}
         </h3>
-        <p className="font-body-sm text-body-sm text-on-surface-variant max-w-md mb-3">
+        <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant max-w-md mb-3">
           Suporta formato nativo PNG com fundo transparente para sobreposição exata nas bordas do vídeo.
         </p>
 
-        <div className="flex items-center gap-3 text-label-sm font-label-sm text-outline">
+        <div className="flex items-center gap-3 text-label-sm font-label-sm text-neutral-500 dark:text-outline">
           <span className="flex items-center gap-1">
-            <span className="material-symbols-outlined text-[14px] text-primary">check_circle</span>
+            <span className="material-symbols-outlined text-[14px] text-amber-700 dark:text-primary">check_circle</span>
             Transparência nativa (Alpha channel)
           </span>
           <span>•</span>

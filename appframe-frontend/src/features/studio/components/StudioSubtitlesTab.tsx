@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '../../../components/ui';
+import { Button, Textarea } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import { toast } from 'sonner';
 import type { FontFamily, SubtitleMode } from '../types';
@@ -104,10 +104,10 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
             {isGeminiConnected ? 'auto_awesome' : 'info'}
           </span>
           <div className="flex flex-col min-w-0">
-            <span className="text-[12px] font-bold text-on-surface truncate">
+            <span className="text-[12px] font-bold text-neutral-900 dark:text-on-surface truncate">
               {isGeminiConnected ? 'IA Gemini Habilitada' : 'IA Gemini Indisponível'}
             </span>
-            <span className="text-[11px] text-on-surface-variant truncate">
+            <span className="text-[11px] text-neutral-600 dark:text-on-surface-variant truncate">
               {isGeminiConnected
                 ? 'Transcrições e legendas dinâmicas ativas'
                 : 'Contate o administrador para configurar a chave global'}
@@ -118,7 +118,7 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
 
       {/* Alternador entre Legenda Fixa e Legenda Dinâmica Gemini */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-label-sm font-label-sm text-outline font-semibold uppercase tracking-wider">
+        <label className="text-label-sm font-label-sm text-neutral-500 dark:text-outline font-semibold uppercase tracking-wider">
           Modo de Legenda
         </label>
         <div className="grid grid-cols-2 gap-2">
@@ -128,8 +128,8 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
             className={cn(
               'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-label-md font-label-md transition-all cursor-pointer',
               subtitleMode === 'static'
-                ? 'bg-primary/15 border-primary text-primary font-bold shadow-[0_0_10px_rgba(212,163,70,0.15)]'
-                : 'bg-surface-container border-surface-container-highest text-on-surface-variant hover:text-on-surface'
+                ? 'bg-amber-500/15 dark:bg-primary/15 border-amber-600/40 dark:border-primary text-amber-800 dark:text-primary font-bold shadow-sm'
+                : 'bg-neutral-50 dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
             )}
           >
             <span className="material-symbols-outlined text-[18px]">title</span>
@@ -149,10 +149,10 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
             className={cn(
               'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-label-md font-label-md transition-all cursor-pointer',
               subtitleMode === 'dynamic' && isGeminiConnected
-                ? 'bg-primary/15 border-primary text-primary font-bold shadow-[0_0_10px_rgba(212,163,70,0.15)]'
+                ? 'bg-amber-500/15 dark:bg-primary/15 border-amber-600/40 dark:border-primary text-amber-800 dark:text-primary font-bold shadow-sm'
                 : !isGeminiConnected
-                  ? 'bg-surface-container-lowest border-surface-container-highest text-outline opacity-75 hover:border-primary/40'
-                  : 'bg-surface-container border-surface-container-highest text-on-surface-variant hover:text-on-surface'
+                  ? 'bg-neutral-50 dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest text-outline opacity-75 hover:border-primary/40'
+                  : 'bg-neutral-50 dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
             )}
           >
             <span className="material-symbols-outlined text-[18px]">
@@ -165,33 +165,29 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
 
       {/* Campo de Texto Estático ou Gerador Dinâmico Gemini */}
       {subtitleMode === 'static' ? (
-        <div className="flex flex-col gap-1.5">
-          <label className="text-label-sm font-label-sm text-outline font-semibold">
-            Texto da Legenda Estática
-          </label>
-          <textarea
-            value={staticText}
-            onChange={(e) => setStaticText(e.target.value)}
-            rows={3}
-            placeholder="Digite o texto que será renderizado no vídeo..."
-            className="w-full bg-surface-container-lowest border border-surface-container-highest rounded-xl p-3 text-body-md text-on-surface outline-none focus:border-primary/80 transition-all resize-none"
-          />
-        </div>
+        <Textarea
+          label="Texto da Legenda Estática"
+          value={staticText}
+          onChange={(e) => setStaticText(e.target.value)}
+          rows={3}
+          placeholder="Digite o texto que será renderizado no vídeo..."
+          className="resize-none"
+        />
       ) : (
         <div className="flex flex-col gap-3">
           {/* Card Principal de Destaque: Transcrever Áudio do Vídeo (Reconhecimento de Fala Real) */}
-          <div className="p-3.5 rounded-xl bg-surface-container-lowest border border-primary/40 flex flex-col gap-2.5 shadow-[0_0_15px_rgba(212,163,70,0.08)]">
+          <div className="p-3.5 rounded-xl bg-neutral-50 dark:bg-surface-container-lowest border border-amber-500/30 dark:border-primary/40 flex flex-col gap-2.5 shadow-sm">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-primary/15 text-primary shrink-0">
+              <div className="p-2 rounded-xl bg-amber-500/15 dark:bg-primary/15 text-amber-700 dark:text-primary shrink-0">
                 <span className="material-symbols-outlined text-[20px] block">
                   record_voice_over
                 </span>
               </div>
               <div className="flex flex-col">
-                <span className="text-label-md font-bold text-on-surface">
+                <span className="text-label-md font-bold text-neutral-900 dark:text-on-surface">
                   Transcrever Áudio do Vídeo
                 </span>
-                <span className="text-[11px] text-outline leading-tight">
+                <span className="text-[11px] text-neutral-500 dark:text-outline leading-tight">
                   Ouve a fala real do vídeo e sincroniza cada bloco com precisão
                 </span>
               </div>
@@ -223,28 +219,28 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
             </Button>
 
             {trimIn > 0 || (trimOut > 0 && trimOut < totalDuration) ? (
-              <span className="text-[10px] text-primary/80 flex items-center gap-1 font-medium">
+              <span className="text-[10px] text-amber-700 dark:text-primary/80 flex items-center gap-1 font-medium">
                 <span className="material-symbols-outlined text-[12px]">content_cut</span>
                 Transcrevendo trecho ativo da timeline ({trimIn.toFixed(1)}s a {trimOut.toFixed(1)}s)
               </span>
             ) : null}
 
             {!isGeminiConnected && (
-              <p className="text-[11px] text-outline text-center">
+              <p className="text-[11px] text-neutral-500 dark:text-outline text-center">
                 IA Gemini não configurada no servidor. Contate o administrador.
               </p>
             )}
           </div>
 
           {/* Opções Alternativas: Roteiro por IA ou Upload de Arquivo Próprio */}
-          <div className="rounded-xl border border-surface-container-highest bg-surface-container-lowest overflow-hidden">
+          <div className="rounded-xl border border-neutral-200 dark:border-surface-container-highest bg-neutral-50 dark:bg-surface-container-lowest overflow-hidden">
             <button
               type="button"
               onClick={() => setShowAdvancedGeminiOptions((v) => !v)}
-              className="w-full flex items-center justify-between p-2.5 text-[12px] font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors cursor-pointer"
+              className="w-full flex items-center justify-between p-2.5 text-[12px] font-semibold text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-low transition-colors cursor-pointer"
             >
               <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px] text-outline">tune</span>
+                <span className="material-symbols-outlined text-[16px] text-neutral-500 dark:text-outline">tune</span>
                 <span>Outras opções: Gerar por roteiro de IA ou arquivo externo</span>
               </span>
               <span
@@ -258,23 +254,19 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
             </button>
 
             {showAdvancedGeminiOptions && (
-              <div className="p-3 border-t border-surface-container-highest flex flex-col gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-label-sm font-label-sm text-outline font-semibold">
-                    Roteiro / Contexto para o Gemini
-                  </label>
-                  <textarea
-                    value={geminiPrompt}
-                    onChange={(e) => setGeminiPrompt(e.target.value)}
-                    rows={3}
-                    disabled={!isGeminiConnected}
-                    placeholder="Informe o tema/roteiro do vídeo caso queira que a IA invente legendas dinâmicas a partir de um texto..."
-                    className="w-full bg-surface-container-lowest border border-surface-container-highest rounded-xl p-3 text-body-md text-on-surface outline-none focus:border-primary/80 transition-all resize-none disabled:opacity-50"
-                  />
-                </div>
+              <div className="p-3 border-t border-neutral-200 dark:border-surface-container-highest flex flex-col gap-3">
+                <Textarea
+                  label="Roteiro / Contexto para o Gemini"
+                  value={geminiPrompt}
+                  onChange={(e) => setGeminiPrompt(e.target.value)}
+                  rows={3}
+                  disabled={!isGeminiConnected}
+                  placeholder="Informe o tema/roteiro do vídeo caso queira que a IA invente legendas dinâmicas a partir de um texto..."
+                  className="resize-none"
+                />
 
                 {/* Upload opcional de arquivo externo */}
-                <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-container border border-surface-container-highest">
+                <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-neutral-100 dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest">
                   <input
                     ref={mediaFileInputRef}
                     type="file"
@@ -286,10 +278,10 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
                     }}
                   />
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="material-symbols-outlined text-[18px] text-primary shrink-0">
+                    <span className="material-symbols-outlined text-[18px] text-amber-700 dark:text-primary shrink-0">
                       audio_file
                     </span>
-                    <span className="text-body-xs text-on-surface-variant truncate">
+                    <span className="text-body-xs text-neutral-600 dark:text-on-surface-variant truncate">
                       {selectedMediaFile
                         ? selectedMediaFile.name
                         : 'Arquivo avulso (opcional)'}
@@ -305,7 +297,7 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
                             mediaFileInputRef.current.value = '';
                           }
                         }}
-                        className="p-1 rounded-lg text-outline hover:text-error cursor-pointer"
+                        className="p-1 rounded-lg text-neutral-500 dark:text-outline hover:text-error cursor-pointer"
                         title="Remover arquivo"
                         aria-label="Remover arquivo selecionado"
                       >
@@ -316,7 +308,7 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
                       type="button"
                       disabled={!isGeminiConnected}
                       onClick={() => mediaFileInputRef.current?.click()}
-                      className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-[11px] font-semibold text-on-surface transition-colors cursor-pointer disabled:opacity-50"
+                      className="px-2.5 py-1 rounded-lg bg-neutral-200 dark:bg-surface-container-high hover:bg-neutral-300 dark:hover:bg-surface-container-highest text-[11px] font-semibold text-neutral-800 dark:text-on-surface transition-colors cursor-pointer disabled:opacity-50"
                     >
                       Escolher Arquivo
                     </button>
@@ -346,8 +338,8 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
 
       {/* Lista Real de Segmentos Gerados pelo Gemini */}
       {dynamicSegments.length > 0 && (
-        <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-surface-container-lowest border border-surface-container-highest max-h-40 overflow-y-auto">
-          <div className="flex items-center justify-between text-[11px] text-outline font-semibold mb-1">
+        <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-neutral-50 dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest max-h-40 overflow-y-auto">
+          <div className="flex items-center justify-between text-[11px] text-neutral-500 dark:text-outline font-semibold mb-1">
             <span>Legendas Sincronizadas ({dynamicSegments.length})</span>
             <span>Clique para pré-visualizar</span>
           </div>
@@ -364,12 +356,12 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
                 className={cn(
                   'flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-left text-body-xs transition-colors cursor-pointer',
                   isActive
-                    ? 'bg-primary/20 text-primary font-bold border border-primary/40'
-                    : 'hover:bg-surface-container text-on-surface'
+                    ? 'bg-amber-500/20 dark:bg-primary/20 text-amber-800 dark:text-primary font-bold border border-amber-600/40 dark:border-primary/40'
+                    : 'hover:bg-neutral-100 dark:hover:bg-surface-container text-neutral-800 dark:text-on-surface'
                 )}
               >
                 <span className="truncate">{seg.text}</span>
-                <span className="font-mono text-[10px] text-outline shrink-0">
+                <span className="font-mono text-[10px] text-neutral-500 dark:text-outline shrink-0">
                   {seg.start.toFixed(1)}s - {seg.end.toFixed(1)}s
                 </span>
               </button>
@@ -380,13 +372,13 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
 
       {/* Seleção Tipográfica */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-label-sm font-label-sm text-outline font-semibold">
+        <label className="text-label-sm font-label-sm text-neutral-500 dark:text-outline font-semibold">
           Família Tipográfica
         </label>
         <select
           value={fontFamily}
           onChange={(e) => setFontFamily(e.target.value as FontFamily)}
-          className="w-full bg-surface-container-lowest border border-surface-container-highest rounded-xl px-3 py-2.5 text-body-md text-on-surface outline-none focus:border-primary/80 transition-all cursor-pointer"
+          className="w-full bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest rounded-xl px-3 py-2.5 text-body-md text-neutral-900 dark:text-on-surface outline-none focus:border-primary/80 transition-all cursor-pointer shadow-2xs"
         >
           <option value="Plus Jakarta Sans">Plus Jakarta Sans (Padrão)</option>
           <option value="Montserrat">Montserrat (Impactante)</option>
@@ -398,10 +390,10 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
       {/* Seletores Nativos de Cor Hexadecimal */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         <div className="flex flex-col gap-1">
-          <label className="text-[11px] font-label-sm text-outline font-semibold">
+          <label className="text-[11px] font-label-sm text-neutral-500 dark:text-outline font-semibold">
             Cor do Texto
           </label>
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-lowest border border-surface-container-highest">
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest">
             <input
               type="color"
               value={textColor}
@@ -412,16 +404,16 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
               type="text"
               value={textColor}
               onChange={(e) => setTextColor(e.target.value)}
-              className="w-full bg-transparent text-[11px] font-mono outline-none text-on-surface uppercase"
+              className="w-full bg-transparent text-[11px] font-mono outline-none text-neutral-900 dark:text-on-surface uppercase"
             />
           </div>
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-[11px] font-label-sm text-outline font-semibold">
+          <label className="text-[11px] font-label-sm text-neutral-500 dark:text-outline font-semibold">
             Contorno
           </label>
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-lowest border border-surface-container-highest">
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest">
             <input
               type="color"
               value={strokeColor}
@@ -432,16 +424,16 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
               type="text"
               value={strokeColor}
               onChange={(e) => setStrokeColor(e.target.value)}
-              className="w-full bg-transparent text-[11px] font-mono outline-none text-on-surface uppercase"
+              className="w-full bg-transparent text-[11px] font-mono outline-none text-neutral-900 dark:text-on-surface uppercase"
             />
           </div>
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-[11px] font-label-sm text-outline font-semibold">
+          <label className="text-[11px] font-label-sm text-neutral-500 dark:text-outline font-semibold">
             Cor do Fundo
           </label>
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-lowest border border-surface-container-highest">
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest">
             <input
               type="color"
               value={bgColor}
@@ -452,7 +444,7 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
               type="text"
               value={bgColor}
               onChange={(e) => setBgColor(e.target.value)}
-              className="w-full bg-transparent text-[11px] font-mono outline-none text-on-surface uppercase"
+              className="w-full bg-transparent text-[11px] font-mono outline-none text-neutral-900 dark:text-on-surface uppercase"
             />
           </div>
         </div>
@@ -461,8 +453,8 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
       {/* Slider de Tamanho da Fonte com Trilho Âmbar */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-label-sm font-label-sm">
-          <span className="text-outline font-semibold">Tamanho da Fonte</span>
-          <span className="text-primary font-bold font-mono">{fontSize}px</span>
+          <span className="text-neutral-500 dark:text-outline font-semibold">Tamanho da Fonte</span>
+          <span className="text-amber-800 dark:text-primary font-bold font-mono">{fontSize}px</span>
         </div>
         <input
           type="range"
@@ -470,13 +462,13 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
           max={48}
           value={fontSize}
           onChange={(e) => setFontSize(Number(e.target.value))}
-          className="w-full accent-amber-400 h-2 bg-surface-container-highest rounded-lg cursor-pointer"
+          className="w-full accent-amber-400 h-2 bg-neutral-200 dark:bg-surface-container-highest rounded-lg cursor-pointer"
         />
       </div>
 
       {/* Toggle Caixa de Fundo vs Contorno */}
-      <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-container border border-surface-container-highest">
-        <span className="text-body-sm font-body-sm text-on-surface">
+      <div className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-50 dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest">
+        <span className="text-body-sm font-body-sm text-neutral-800 dark:text-on-surface">
           Caixa de fundo arredondada
         </span>
         <input
@@ -488,7 +480,7 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
       </div>
 
       {/* Selo fix_bounds */}
-      <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/30 flex items-center gap-2 text-label-sm font-label-sm text-primary">
+      <div className="p-2.5 rounded-xl bg-amber-500/10 dark:bg-primary/10 border border-amber-600/30 dark:border-primary/30 flex items-center gap-2 text-label-sm font-label-sm text-amber-800 dark:text-primary">
         <span className="material-symbols-outlined text-[18px]">verified</span>
         <span>Cálculo determinístico fix_bounds ativado (sem estouro de bordas)</span>
       </div>

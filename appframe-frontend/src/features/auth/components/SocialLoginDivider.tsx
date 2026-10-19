@@ -26,7 +26,7 @@ export const SocialLoginDivider: React.FC<SocialLoginDividerProps> = ({
       </Button>
 
       <div className="relative flex items-center justify-center my-1">
-        <div className="w-full h-px bg-surface-container-highest" />
+        <div className="w-full h-px bg-neutral-200 dark:bg-surface-container-highest" />
         <span className="absolute bg-white dark:bg-surface-container-low px-3 font-label-sm text-label-sm tracking-widest uppercase text-neutral-500 dark:text-[#949DAF] font-medium">
           {dividerText}
         </span>

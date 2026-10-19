@@ -44,13 +44,13 @@ export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => 
       {/* Seletor de Logos Cadastrados na Conta */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
-          <label className="text-label-sm font-label-sm text-outline font-semibold uppercase tracking-wider">
+          <label className="text-label-sm font-label-sm text-neutral-500 dark:text-outline font-semibold uppercase tracking-wider">
             Logo Cadastrado
           </label>
           <button
             type="button"
             onClick={onNavigateToWatermarks}
-            className="text-[11px] text-primary hover:underline flex items-center gap-1 cursor-pointer"
+            className="text-[11px] text-amber-700 dark:text-primary hover:underline flex items-center gap-1 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[14px]">tune</span>
             Gerenciar
@@ -64,20 +64,20 @@ export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => 
             className={cn(
               'flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer',
               selectedWatermarkId === 'none'
-                ? 'bg-primary/15 border-primary shadow-[0_0_10px_rgba(212,163,70,0.15)]'
-                : 'bg-surface-container border-surface-container-highest hover:bg-surface-container-high'
+                ? 'bg-amber-500/15 dark:bg-primary/15 border-amber-600/40 dark:border-primary shadow-sm'
+                : 'bg-neutral-50 dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest hover:bg-neutral-100 dark:hover:bg-surface-container-high'
             )}
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-surface-container-lowest flex items-center justify-center p-1 border border-outline/10 text-on-surface-variant">
+              <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-surface-container-lowest flex items-center justify-center p-1 border border-neutral-200 dark:border-outline/10 text-on-surface-variant">
                 <span className="material-symbols-outlined text-[18px]">block</span>
               </div>
-              <span className="text-title-sm font-semibold text-on-surface">
+              <span className="text-title-sm font-semibold text-neutral-900 dark:text-on-surface">
                 Sem Marca d'Água
               </span>
             </div>
             {selectedWatermarkId === 'none' && (
-              <span className="material-symbols-outlined text-[18px] text-primary">
+              <span className="material-symbols-outlined text-[18px] text-amber-700 dark:text-primary">
                 check_circle
               </span>
             )}
@@ -85,17 +85,17 @@ export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => 
 
           {/* Lista Real de Marcas do Usuário */}
           {isLoadingWatermarks && (
-            <div className="p-3 text-center text-body-sm text-outline">
+            <div className="p-3 text-center text-body-sm text-neutral-500 dark:text-outline">
               Carregando marcas d'água...
             </div>
           )}
 
           {!isLoadingWatermarks && userWatermarks.length === 0 && (
-            <div className="p-3 rounded-xl bg-surface-container-lowest border border-dashed border-outline/30 text-center flex flex-col items-center gap-2">
-              <span className="material-symbols-outlined text-[24px] text-outline">
+            <div className="p-3 rounded-xl bg-neutral-50 dark:bg-surface-container-lowest border border-dashed border-neutral-200 dark:border-outline/30 text-center flex flex-col items-center gap-2">
+              <span className="material-symbols-outlined text-[24px] text-neutral-500 dark:text-outline">
                 branding_watermark
               </span>
-              <p className="text-body-xs text-outline">
+              <p className="text-body-xs text-neutral-500 dark:text-outline">
                 Nenhuma marca d'água salva na sua conta.
               </p>
               <Button
@@ -119,7 +119,7 @@ export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => 
                 'flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer',
                 selectedWatermarkId === logo.id
                   ? 'bg-primary/15 border-primary shadow-[0_0_10px_rgba(212,163,70,0.15)]'
-                  : 'bg-surface-container border-surface-container-highest hover:bg-surface-container-high'
+                  : 'bg-neutral-50 dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest hover:bg-neutral-100 dark:hover:bg-surface-container-high'
               )}
             >
               <div className="flex items-center gap-2.5 min-w-0">
@@ -130,12 +130,12 @@ export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => 
                     className="max-h-full max-w-full object-contain"
                   />
                 </div>
-                <span className="text-title-sm font-semibold text-on-surface truncate">
+                <span className="text-title-sm font-semibold text-neutral-900 dark:text-on-surface truncate">
                   {logo.original_name}
                 </span>
               </div>
               {selectedWatermarkId === logo.id && (
-                <span className="material-symbols-outlined text-[18px] text-primary shrink-0">
+                <span className="material-symbols-outlined text-[18px] text-amber-700 dark:text-primary shrink-0">
                   check_circle
                 </span>
               )}
@@ -147,15 +147,15 @@ export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => 
       {/* Matriz 3x3 de Posicionamento na Tela */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
-          <label className="text-label-sm font-label-sm text-outline font-semibold uppercase tracking-wider">
+          <label className="text-label-sm font-label-sm text-neutral-500 dark:text-outline font-semibold uppercase tracking-wider">
             Posição na Tela (Matriz 3x3)
           </label>
-          <span className="text-[10px] font-mono text-primary uppercase">
+          <span className="text-[10px] font-mono text-amber-800 dark:text-primary uppercase">
             {watermarkPosition}
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 p-2 rounded-2xl bg-surface-container-lowest border border-surface-container-highest">
+        <div className="grid grid-cols-3 gap-2 p-2 rounded-2xl bg-neutral-50 dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest">
           {MATRIX_POSITIONS.map((pos) => {
             const isSelected = watermarkPosition === pos.key;
             return (
@@ -168,7 +168,7 @@ export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => 
                   'h-12 rounded-xl flex items-center justify-center transition-all cursor-pointer border',
                   isSelected
                     ? 'bg-primary text-on-primary border-primary shadow-[0_0_12px_rgba(242,190,94,0.4)] font-bold scale-105'
-                    : 'bg-surface-container border-surface-container-highest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                    : 'bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high'
                 )}
               >
                 <span className="material-symbols-outlined text-[20px]">
@@ -183,8 +183,8 @@ export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => 
       {/* Slider de Opacidade (0% a 100%) */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-label-sm font-label-sm">
-          <span className="text-outline font-semibold">Opacidade da Marca</span>
-          <span className="text-primary font-bold font-mono">{watermarkOpacity}%</span>
+          <span className="text-neutral-500 dark:text-outline font-semibold">Opacidade da Marca</span>
+          <span className="text-amber-800 dark:text-primary font-bold font-mono">{watermarkOpacity}%</span>
         </div>
         <input
           type="range"
@@ -192,15 +192,15 @@ export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => 
           max={100}
           value={watermarkOpacity}
           onChange={(e) => setWatermarkOpacity(Number(e.target.value))}
-          className="w-full accent-amber-400 h-2 bg-surface-container-highest rounded-lg cursor-pointer"
+          className="w-full accent-amber-400 h-2 bg-neutral-200 dark:bg-surface-container-highest rounded-lg cursor-pointer"
         />
       </div>
 
       {/* Slider de Escala da Marca */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-label-sm font-label-sm">
-          <span className="text-outline font-semibold">Tamanho / Escala</span>
-          <span className="text-primary font-bold font-mono">{watermarkScale}%</span>
+          <span className="text-neutral-500 dark:text-outline font-semibold">Tamanho / Escala</span>
+          <span className="text-amber-800 dark:text-primary font-bold font-mono">{watermarkScale}%</span>
         </div>
         <input
           type="range"
@@ -208,7 +208,7 @@ export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => 
           max={150}
           value={watermarkScale}
           onChange={(e) => setWatermarkScale(Number(e.target.value))}
-          className="w-full accent-amber-400 h-2 bg-surface-container-highest rounded-lg cursor-pointer"
+          className="w-full accent-amber-400 h-2 bg-neutral-200 dark:bg-surface-container-highest rounded-lg cursor-pointer"
         />
       </div>
     </div>

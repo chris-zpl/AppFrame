@@ -17,9 +17,9 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
 
   if (isLoading) {
     return (
-      <div className="min-h-screen w-full bg-surface flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen w-full bg-[#f8f9fd] dark:bg-surface flex flex-col items-center justify-center gap-4">
         <div className="w-10 h-10 border-3 border-primary/20 border-t-primary rounded-full animate-spin" />
-        <p className="text-on-surface-variant text-sm font-medium">Validando sessão...</p>
+        <p className="text-neutral-600 dark:text-on-surface-variant text-sm font-medium">Validando sessão...</p>
       </div>
     );
   }

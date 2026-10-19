@@ -16,7 +16,7 @@ const ScraperPageContent: React.FC = () => {
   const { handleDownloadSelected, handleOpenStudio } = useScannerContext();
 
   return (
-    <div className="flex flex-col w-full text-on-surface">
+    <div className="flex flex-col w-full text-neutral-900 dark:text-on-surface">
       {/* CONTROLES SUPERIORES & HERO */}
       <section className="flex flex-col gap-space-md mb-space-lg">
         <ScannerHeader />

@@ -74,7 +74,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               'placeholder:text-neutral-400 dark:placeholder:text-outline border border-neutral-300 dark:border-transparent',
               'outline-none focus:outline-none focus-visible:outline-none',
               'transition-colors duration-150',
-              'focus:bg-white dark:focus:bg-surface-container-low focus:border-primary/80 dark:focus:border-primary/50 focus:ring-1 focus:ring-primary/40 focus:ring-offset-0 focus:ring-offset-transparent',
+              'focus:bg-white dark:focus:bg-surface-container-low focus:border-primary/80 dark:focus:border-primary focus:ring-1 focus:ring-primary/40 dark:focus:ring-primary/40 focus:ring-offset-0 focus:ring-offset-transparent',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               effectiveSize === 'sm' && 'h-9 text-body-sm rounded-lg',
               effectiveSize === 'md' && 'h-11 text-body-md rounded-lg',
@@ -89,7 +89,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 : effectiveSize === 'lg'
                 ? rightElement ? 'pr-11' : 'pr-4'
                 : rightElement ? 'pr-10' : 'pr-3.5',
-              error && 'border-error focus:border-error focus:ring-error/40',
+              error && 'border-error dark:border-error focus:border-error dark:focus:border-error focus:ring-error/40 dark:focus:ring-error/40',
               className,
             )}
             {...props}

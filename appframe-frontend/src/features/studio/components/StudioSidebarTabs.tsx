@@ -9,9 +9,9 @@ export const StudioSidebarTabs: React.FC = () => {
   const { activeTab, setActiveTab } = useStudioContext();
 
   return (
-    <Card className="bg-surface-container-low border border-surface-container-high/90 p-4 shadow-xl flex flex-col gap-4">
+    <Card className="bg-white dark:bg-surface-container-low border border-neutral-200 dark:border-surface-container-high/90 p-4 shadow-sm dark:shadow-xl flex flex-col gap-4">
       {/* Abas Superiores do Painel Lateral */}
-      <div className="flex items-center p-1 rounded-xl bg-surface-container border border-surface-container-highest">
+      <div className="flex items-center p-1 rounded-xl bg-neutral-100 dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest">
         <button
           type="button"
           onClick={() => setActiveTab('legendas')}
@@ -19,7 +19,7 @@ export const StudioSidebarTabs: React.FC = () => {
             'flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-title-sm text-title-sm transition-all cursor-pointer',
             activeTab === 'legendas'
               ? 'bg-primary text-on-primary font-bold shadow-sm'
-              : 'text-on-surface-variant hover:text-on-surface'
+              : 'text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
           )}
         >
           <span className="material-symbols-outlined text-[18px]">subtitles</span>
@@ -32,7 +32,7 @@ export const StudioSidebarTabs: React.FC = () => {
             'flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-title-sm text-title-sm transition-all cursor-pointer',
             activeTab === 'marca-dagua'
               ? 'bg-primary text-on-primary font-bold shadow-sm'
-              : 'text-on-surface-variant hover:text-on-surface'
+              : 'text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
           )}
         >
           <span className="material-symbols-outlined text-[18px]">branding_watermark</span>

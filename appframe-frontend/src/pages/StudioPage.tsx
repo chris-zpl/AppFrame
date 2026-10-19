@@ -30,7 +30,7 @@ export const StudioPage: React.FC = () => {
         userName={user?.name || ''}
         onUserAvatarClick={() => navigate('configuracoes')}
       >
-        <div className="flex flex-col w-full text-on-surface pb-8">
+        <div className="flex flex-col w-full text-neutral-900 dark:text-on-surface pb-8">
           {/* BARRA SUPERIOR DE CONTROLE DO STUDIO */}
           <StudioHeader />
 

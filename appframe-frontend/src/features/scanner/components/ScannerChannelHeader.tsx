@@ -24,7 +24,7 @@ export const ScannerChannelHeader: React.FC<ScannerChannelHeaderProps> = ({
                 className="w-14 h-14 md:w-16 md:h-16 rounded-2xl object-cover shadow-[0_0_16px_rgba(212,163,70,0.25)] ring-1 ring-primary/40"
               />
             ) : (
-              <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-surface-container-highest flex items-center justify-center text-primary ring-1 ring-primary/40">
+              <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-neutral-100 dark:bg-surface-container-highest flex items-center justify-center text-primary ring-1 ring-primary/40">
                 <span className="material-symbols-outlined text-[28px]">
                   smart_display
                 </span>
@@ -44,7 +44,7 @@ export const ScannerChannelHeader: React.FC<ScannerChannelHeaderProps> = ({
                 {channelMeta.name}
               </span>
               <span
-                className="material-symbols-outlined text-primary text-[18px]"
+                className="material-symbols-outlined text-amber-600 dark:text-primary text-[18px]"
                 title="Canal Verificado"
               >
                 verified
@@ -55,8 +55,8 @@ export const ScannerChannelHeader: React.FC<ScannerChannelHeaderProps> = ({
               <span className="text-outline">•</span>
               <span>{channelMeta.totalIndexed} mídias extraídas</span>
               <span className="text-outline">•</span>
-              <span className="text-primary flex items-center gap-1 font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+              <span className="text-amber-700 dark:text-primary flex items-center gap-1 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-primary" />
                 Indexação em tempo real
               </span>
             </div>
@@ -65,21 +65,21 @@ export const ScannerChannelHeader: React.FC<ScannerChannelHeaderProps> = ({
 
         {/* Contadores e Métricas */}
         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-          <div className="bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-outline/10">
+          <div className="bg-neutral-50 dark:bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-neutral-200 dark:border-outline/10">
             <span className="text-label-sm font-label-sm text-outline">Total</span>
             <span className="text-title-md font-title-md font-bold text-on-surface">
               {totalVideos}
             </span>
           </div>
-          <div className="bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-outline/10">
+          <div className="bg-neutral-50 dark:bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-neutral-200 dark:border-outline/10">
             <span className="text-label-sm font-label-sm text-outline">Vídeos</span>
             <span className="text-title-md font-title-md font-bold text-on-surface">
               {channelMeta.longCount}
             </span>
           </div>
-          <div className="bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-outline/10">
+          <div className="bg-neutral-50 dark:bg-surface-container px-3.5 py-2 rounded-xl flex flex-col items-center min-w-[90px] border border-neutral-200 dark:border-outline/10">
             <span className="text-label-sm font-label-sm text-outline">Shorts</span>
-            <span className="text-title-md font-title-md font-bold text-primary">
+            <span className="text-title-md font-title-md font-bold text-amber-700 dark:text-primary">
               {channelMeta.shortsCount}
             </span>
           </div>

@@ -28,7 +28,7 @@ export const HistoryJobNotification: React.FC<HistoryJobNotificationProps> = ({
           </span>
         </div>
       </div>
-      <span className="text-label-sm font-label-sm font-bold text-primary uppercase tracking-wider hidden sm:inline">
+      <span className="text-label-sm font-label-sm font-bold text-amber-800 dark:text-primary uppercase tracking-wider hidden sm:inline">
         Fila: media-render
       </span>
     </div>

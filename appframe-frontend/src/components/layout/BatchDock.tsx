@@ -35,28 +35,28 @@ export const BatchDock: React.FC<BatchDockProps> = ({
         className,
       )}
     >
-      <div className="w-full backdrop-blur-xl bg-surface-container-high/95 border border-primary/35 rounded-2xl p-3 md:px-space-md md:py-3 shadow-[0_20px_50px_rgba(0,0,0,0.65),0_0_20px_rgba(212,163,70,0.12)] flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="w-full backdrop-blur-xl bg-white/95 dark:bg-surface-container-high/95 border border-neutral-200 dark:border-primary/35 rounded-2xl p-3 md:px-space-md md:py-3 shadow-[0_12px_36px_rgba(0,0,0,0.12),0_0_20px_rgba(212,163,70,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.65),0_0_20px_rgba(212,163,70,0.12)] flex flex-col sm:flex-row items-center justify-between gap-3">
         {/* Sumário de seleção */}
         <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center shadow-inner shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/15 dark:bg-primary/20 text-amber-700 dark:text-primary flex items-center justify-center shadow-inner shrink-0">
               <span className="material-symbols-outlined text-[18px]">
                 playlist_add_check
               </span>
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
-                <span className="font-title-sm text-title-sm font-bold text-on-surface">
+                <span className="font-title-sm text-title-sm font-bold text-neutral-900 dark:text-on-surface">
                   {selectedCount} {selectedCount === 1 ? 'vídeo selecionado' : 'vídeos selecionados'}
                 </span>
-                <span className="text-outline text-body-sm font-body-sm hidden xs:inline">
+                <span className="text-neutral-500 dark:text-outline text-body-sm font-body-sm hidden xs:inline">
                   no AppFrame
                 </span>
               </div>
               {totalDurationFormatted && (
-                <div className="flex items-center gap-1 text-label-sm font-label-sm text-on-surface-variant">
+                <div className="flex items-center gap-1 text-label-sm font-label-sm text-neutral-600 dark:text-on-surface-variant">
                   <span>Duração acumulada:</span>
-                  <span className="font-mono text-primary font-semibold">
+                  <span className="font-mono text-amber-700 dark:text-primary font-semibold">
                     {totalDurationFormatted}
                   </span>
                 </div>
@@ -67,7 +67,7 @@ export const BatchDock: React.FC<BatchDockProps> = ({
           <button
             type="button"
             onClick={onClearSelection}
-            className="sm:hidden text-label-sm font-label-sm text-outline hover:text-on-surface underline shrink-0 cursor-pointer"
+            className="sm:hidden text-label-sm font-label-sm text-neutral-500 hover:text-neutral-900 dark:text-outline dark:hover:text-on-surface underline shrink-0 cursor-pointer"
           >
             Desmarcar
           </button>
@@ -78,7 +78,7 @@ export const BatchDock: React.FC<BatchDockProps> = ({
           <button
             type="button"
             onClick={onClearSelection}
-            className="hidden sm:inline-flex px-3.5 py-2 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container text-title-sm font-title-sm transition-colors cursor-pointer"
+            className="hidden sm:inline-flex px-3.5 py-2 rounded-xl text-neutral-600 hover:text-neutral-950 hover:bg-neutral-100 dark:text-on-surface-variant dark:hover:text-on-surface dark:hover:bg-surface-container text-title-sm font-title-sm transition-colors cursor-pointer"
           >
             Desmarcar todos
           </button>

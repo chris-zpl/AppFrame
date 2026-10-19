@@ -15,7 +15,7 @@ export const AuthCallbackProgress: React.FC<AuthCallbackProgressProps> = ({
       <div className="relative w-20 h-20 flex items-center justify-center my-2">
         <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
         <div className="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shadow-[0_0_15px_rgba(242,190,94,0.3)] animate-pulse">
+        <div className="w-10 h-10 rounded-full bg-amber-500/15 dark:bg-primary/10 flex items-center justify-center text-amber-700 dark:text-primary shadow-[0_0_15px_rgba(242,190,94,0.3)] animate-pulse">
           <span className="material-symbols-outlined text-[24px]">lock_open</span>
         </div>
       </div>
@@ -30,7 +30,7 @@ export const AuthCallbackProgress: React.FC<AuthCallbackProgressProps> = ({
       </div>
 
       {/* Barra de Progresso Âmbar */}
-      <div className="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden mt-3">
+      <div className="w-full bg-neutral-200 dark:bg-surface-container-highest h-1.5 rounded-full overflow-hidden mt-3">
         <div
           className="h-full bg-gradient-to-r from-primary to-primary-container transition-all duration-500 rounded-full"
           style={{ width: `${progress}%` }}

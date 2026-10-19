@@ -29,15 +29,15 @@ export const RevokeAllSessionsModal: React.FC<RevokeAllSessionsModalProps> = ({
         aria-modal="true"
         aria-labelledby="revoke-all-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm p-6 bg-surface-container border border-surface-container-high shadow-2xl flex flex-col items-center text-center gap-3"
+        className="w-full max-w-sm p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-high shadow-2xl flex flex-col items-center text-center gap-3"
       >
         <div className="w-12 h-12 rounded-full bg-error-container/40 text-error flex items-center justify-center shrink-0">
           <span className="material-symbols-outlined text-[26px]">logout</span>
         </div>
-        <h3 id="revoke-all-title" className="font-title-md text-title-md font-bold text-on-surface">
+        <h3 id="revoke-all-title" className="font-title-md text-title-md font-bold text-neutral-900 dark:text-on-surface">
           Desconectar Outras Sessões?
         </h3>
-        <p className="font-body-sm text-body-sm text-on-surface-variant">
+        <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
           Todos os outros dispositivos conectados perderão o acesso imediatamente, exceto este navegador.
         </p>
         <div className="flex items-center gap-2 w-full mt-2">

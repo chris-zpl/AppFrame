@@ -21,10 +21,10 @@ export const WatermarkGrid: React.FC<WatermarkGridProps> = ({
   return (
     <section className="flex flex-col gap-space-md">
       <div className="flex items-center justify-between">
-        <span className="font-title-sm text-title-sm font-bold text-on-surface">
+        <span className="font-title-sm text-title-sm font-bold text-neutral-900 dark:text-on-surface">
           Marcas Cadastradas ({watermarks.length})
         </span>
-        <span className="text-label-sm font-label-sm text-on-surface-variant">
+        <span className="text-label-sm font-label-sm text-neutral-600 dark:text-on-surface-variant">
           O fundo xadrez valida o canal de transparência
         </span>
       </div>
@@ -74,7 +74,7 @@ export const WatermarkGrid: React.FC<WatermarkGridProps> = ({
               <div className="p-4 flex flex-col flex-1 justify-between gap-3 bg-white dark:bg-surface-container">
                 <div>
                   <h4
-                    className="font-title-sm text-title-sm font-bold text-on-surface truncate"
+                    className="font-title-sm text-title-sm font-bold text-neutral-900 dark:text-on-surface truncate"
                     title={wm.original_name}
                   >
                     {wm.original_name}
@@ -83,14 +83,14 @@ export const WatermarkGrid: React.FC<WatermarkGridProps> = ({
                   {/* Metadados Tabulares */}
                   <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-neutral-200 dark:border-surface-container-highest/60 text-center font-mono tabular-nums">
                     <div className="flex flex-col">
-                      <span className="text-[10px] text-outline uppercase font-sans">Tamanho</span>
-                      <span className="text-label-md font-bold text-primary">
+                      <span className="text-[10px] text-neutral-500 dark:text-outline uppercase font-sans">Tamanho</span>
+                      <span className="text-label-md font-bold text-amber-800 dark:text-primary">
                         {formatFileSize(wm.file_size)}
                       </span>
                     </div>
                     <div className="flex flex-col border-l border-neutral-200 dark:border-surface-container-highest/60">
-                      <span className="text-[10px] text-outline uppercase font-sans">Data</span>
-                      <span className="text-label-md font-bold text-on-surface-variant">
+                      <span className="text-[10px] text-neutral-500 dark:text-outline uppercase font-sans">Data</span>
+                      <span className="text-label-md font-bold text-neutral-700 dark:text-on-surface-variant">
                         {new Date(wm.created_at).toLocaleDateString('pt-BR')}
                       </span>
                     </div>
@@ -103,12 +103,12 @@ export const WatermarkGrid: React.FC<WatermarkGridProps> = ({
                     <button
                       type="button"
                       onClick={() => onSetDefault(wm.id)}
-                      className="text-label-sm font-label-sm text-primary hover:underline font-semibold cursor-pointer"
+                      className="text-label-sm font-label-sm text-amber-800 dark:text-primary hover:underline font-semibold cursor-pointer"
                     >
                       Tornar Padrão
                     </button>
                   ) : (
-                    <span className="text-label-sm font-label-sm text-primary font-medium">
+                    <span className="text-label-sm font-label-sm text-amber-800 dark:text-primary font-medium">
                       Logo Ativo
                     </span>
                   )}

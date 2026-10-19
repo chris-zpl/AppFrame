@@ -15,7 +15,7 @@ export const LegalTabSwitcher: React.FC<LegalTabSwitcherProps> = ({
   return (
     <div
       className={cn(
-        'flex items-center p-1 bg-surface-container-lowest rounded-xl border border-surface-container-highest',
+        'flex items-center p-1 bg-white dark:bg-surface-container-lowest rounded-xl border border-neutral-200 dark:border-surface-container-highest',
         className
       )}
     >
@@ -26,7 +26,7 @@ export const LegalTabSwitcher: React.FC<LegalTabSwitcherProps> = ({
           'px-3 py-1.5 rounded-lg text-label-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5',
           activeDoc === 'terms'
             ? 'bg-primary text-on-primary shadow-xs'
-            : 'text-on-surface-variant hover:text-on-surface'
+            : 'text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
         )}
       >
         <span className="material-symbols-outlined text-[16px]">gavel</span>
@@ -39,7 +39,7 @@ export const LegalTabSwitcher: React.FC<LegalTabSwitcherProps> = ({
           'px-3 py-1.5 rounded-lg text-label-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5',
           activeDoc === 'privacy'
             ? 'bg-primary text-on-primary shadow-xs'
-            : 'text-on-surface-variant hover:text-on-surface'
+            : 'text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
         )}
       >
         <span className="material-symbols-outlined text-[16px]">verified_user</span>

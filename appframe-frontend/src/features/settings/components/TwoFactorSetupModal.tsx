@@ -44,12 +44,12 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
         aria-modal="true"
         aria-labelledby="two-factor-setup-modal-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md p-6 bg-surface-container border border-surface-container-high shadow-2xl flex flex-col gap-4"
+        className="w-full max-w-md p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-high shadow-2xl flex flex-col gap-4"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-primary min-w-0">
             <span className="material-symbols-outlined text-[24px] shrink-0">shield_locked</span>
-            <h3 id="two-factor-setup-modal-title" className="font-title-md text-title-md font-bold text-on-surface truncate">
+            <h3 id="two-factor-setup-modal-title" className="font-title-md text-title-md font-bold text-neutral-900 dark:text-on-surface truncate">
               Ativação do Segundo Fator (2FA)
             </h3>
           </div>
@@ -58,7 +58,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
             onClick={onClose}
             aria-label="Fechar"
             title="Fechar"
-            className="text-outline hover:text-on-surface p-1 rounded-lg cursor-pointer shrink-0"
+            className="text-neutral-500 hover:text-neutral-900 dark:text-outline dark:hover:text-on-surface p-1 rounded-lg cursor-pointer shrink-0 transition-colors"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
@@ -66,7 +66,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
 
         {step === 1 ? (
           <form onSubmit={onConfirm} className="flex flex-col gap-4">
-            <p className="font-body-sm text-body-sm text-on-surface-variant">
+            <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
               1. Escaneie o QR Code abaixo com seu aplicativo autenticador (Google Authenticator, Authy, 1Password):
             </p>
 
@@ -87,10 +87,10 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
 
             {/* Chave Alfanumérica Manual Real */}
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-label-sm text-outline">
+              <span className="text-[11px] font-label-sm text-neutral-500 dark:text-outline">
                 Ou insira a chave secreta manualmente:
               </span>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-surface-container-lowest border border-surface-container-highest font-mono text-label-md text-primary font-bold">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-neutral-100 dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest font-mono text-label-md text-primary font-bold">
                 <span className="break-all">{secret}</span>
                 <button
                   type="button"
@@ -101,7 +101,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
                     toast.info('Copiado para a área de transferência!');
                     setTimeout(() => setCopiedKey(false), 2000);
                   }}
-                  className="text-on-surface-variant hover:text-primary transition-colors p-1 cursor-pointer shrink-0"
+                  className="text-neutral-500 hover:text-primary dark:text-on-surface-variant dark:hover:text-primary transition-colors p-1 cursor-pointer shrink-0"
                   title="Copiar chave secreta"
                   aria-label="Copiar chave secreta"
                 >
@@ -115,7 +115,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
             {/* 2. Confirmação com 6 Dígitos */}
             <Input
               label="2. Digite o código de 6 dígitos gerado no app:"
-              labelClassName="text-label-sm font-label-sm text-on-surface font-semibold"
+              labelClassName="text-label-sm font-label-sm text-neutral-900 dark:text-on-surface font-semibold"
               type="text"
               maxLength={6}
               value={code}
@@ -153,13 +153,13 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
               <span>2FA ativado com sucesso! Guarde seus códigos de recuperação.</span>
             </div>
 
-            <p className="font-body-sm text-body-sm text-on-surface-variant">
+            <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
               Se você perder o acesso ao seu dispositivo autenticador, poderá usar estes códigos de recuperação de uso único:
             </p>
 
-            <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-surface-container-lowest border border-surface-container-highest font-mono text-center text-label-md text-primary font-bold">
+            <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-neutral-100 dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest font-mono text-center text-label-md text-primary font-bold">
               {recoveryCodes.map((c, idx) => (
-                <span key={idx} className="p-1 rounded bg-surface-container">
+                <span key={idx} className="p-1 rounded bg-white dark:bg-surface-container">
                   {c}
                 </span>
               ))}

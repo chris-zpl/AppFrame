@@ -93,7 +93,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   };
 
   return (
-    <div className="min-h-screen min-w-[375px] bg-surface text-on-surface flex flex-col antialiased selection:bg-primary/20 selection:text-primary">
+    <div className="min-h-screen min-w-[375px] bg-[#f8f9fd] dark:bg-surface text-neutral-900 dark:text-on-surface flex flex-col antialiased selection:bg-primary/20 selection:text-primary">
       {/* ================= HEADER FIXO 64px COM ALTO CONTRASTE ================= */}
       <header className="fixed top-0 w-full z-40 bg-white/95 dark:bg-[#10131a]/90 backdrop-blur-xl border-b border-neutral-200 dark:border-surface-container-high/60 shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-colors">
         <div className="h-16 max-w-7xl mx-auto px-4 md:px-margin flex items-center justify-between gap-space-md">
@@ -115,13 +115,13 @@ export const AppShell: React.FC<AppShellProps> = ({
                   className={cn(
                     'px-space-md py-space-xs font-title-sm text-title-sm rounded-lg transition-colors cursor-pointer relative',
                     isActive
-                      ? 'text-primary font-semibold bg-primary/15 dark:bg-primary/20 border border-primary/40 shadow-sm shadow-primary/10'
+                      ? 'text-amber-800 dark:text-primary font-semibold bg-amber-500/15 dark:bg-primary/20 border border-amber-600/30 dark:border-primary/40 shadow-sm'
                       : 'text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100 dark:text-on-surface-variant dark:hover:text-on-surface dark:hover:bg-surface-container-high border border-transparent',
                   )}
                 >
                   {item.label}
                   {isActive && (
-                    <span className="absolute bottom-[-1px] left-2 right-2 h-[2px] bg-primary rounded-full" />
+                    <span className="absolute bottom-[-1px] left-2 right-2 h-[2px] bg-amber-600 dark:bg-primary rounded-full" />
                   )}
                 </button>
               );
@@ -136,7 +136,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               onClick={handleAvatarClick}
               title={`Perfil: ${effectiveUserName}`}
               className={cn(
-                'relative flex items-center justify-center p-[2px] rounded-full shadow-[0_0_12px_rgba(212,163,70,0.25)] bg-surface-container cursor-pointer transition-transform hover:scale-105',
+                'relative flex items-center justify-center p-[2px] rounded-full shadow-[0_0_12px_rgba(212,163,70,0.25)] bg-neutral-100 dark:bg-surface-container cursor-pointer transition-transform hover:scale-105',
               )}
             >
               {userAvatarUrl ? (
@@ -166,14 +166,14 @@ export const AppShell: React.FC<AppShellProps> = ({
       </header>
 
       {/* ================= CONTAINER PRINCIPAL (MAIN) ================= */}
-      <main className="w-full pt-16 bg-surface flex-1 flex flex-col">
+      <main className="w-full pt-16 bg-[#f8f9fd] dark:bg-surface flex-1 flex flex-col">
         <div className="max-w-7xl mx-auto px-4 py-4 md:px-margin md:py-space-lg w-full flex-1 flex flex-col pb-24 md:pb-28">
           {children}
         </div>
       </main>
 
       {/* ================= BARRA DE NAVEGAÇÃO MÓVEL (BOTTOM BAR < 768px) ================= */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-surface/90 backdrop-blur-xl border-t border-neutral-200 dark:border-surface-container-high/80 px-2 py-1.5 flex items-center justify-around shadow-lg pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-colors">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#10131a]/95 backdrop-blur-xl border-t border-neutral-200 dark:border-surface-container-high/80 px-2 py-1.5 flex items-center justify-around shadow-lg pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-colors">
         {navItems.map((item) => {
           const isActive = (currentPath || activePath) === item.key;
           return (
@@ -184,14 +184,14 @@ export const AppShell: React.FC<AppShellProps> = ({
               className={cn(
                 'flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer',
                 isActive
-                  ? 'text-primary font-bold'
+                  ? 'text-amber-800 dark:text-primary font-bold'
                   : 'text-neutral-600 hover:text-neutral-900 dark:text-on-surface-variant dark:hover:text-on-surface',
               )}
             >
               <span
                 className={cn(
                   'material-symbols-outlined text-[22px]',
-                  isActive && 'text-primary font-bold',
+                  isActive && 'text-amber-800 dark:text-primary font-bold',
                 )}
               >
                 {item.icon}
@@ -216,14 +216,14 @@ export const AppShell: React.FC<AppShellProps> = ({
             <button
               type="button"
               onClick={handleOpenPrivacy}
-              className="hover:text-primary transition-colors cursor-pointer"
+              className="hover:text-amber-800 dark:hover:text-primary transition-colors cursor-pointer"
             >
               Privacidade
             </button>
             <button
               type="button"
               onClick={handleOpenTerms}
-              className="hover:text-primary transition-colors cursor-pointer"
+              className="hover:text-amber-800 dark:hover:text-primary transition-colors cursor-pointer"
             >
               Termos de Serviço
             </button>

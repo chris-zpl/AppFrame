@@ -75,15 +75,15 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary:
-        'bg-primary-container hover:bg-primary-container-high text-surface font-bold shadow-[0_4px_20px_-2px_rgba(212,163,70,0.35)] hover:shadow-[0_0_24px_rgba(212,163,70,0.45)] active:scale-[0.99]',
+        'bg-primary-container hover:bg-primary-container-high text-neutral-950 font-bold shadow-[0_4px_20px_-2px_rgba(212,163,70,0.35)] hover:shadow-[0_0_24px_rgba(212,163,70,0.45)] active:scale-[0.99]',
       secondary:
-        'bg-neutral-100 hover:bg-neutral-900 text-neutral-800 hover:text-white dark:bg-[#1E222D] dark:hover:bg-[#282D3C] dark:text-[#F8F9FA] dark:hover:text-white transition-colors font-semibold shadow-sm border border-neutral-200 dark:border-outline/10',
+        'bg-neutral-100 hover:bg-neutral-200 text-neutral-800 hover:text-neutral-900 dark:bg-[#1E222D] dark:hover:bg-[#282D3C] dark:text-[#F8F9FA] dark:hover:text-white transition-colors font-semibold shadow-sm border border-neutral-200 dark:border-outline/10',
       outline:
-        'bg-transparent border border-neutral-300 dark:border-outline/30 text-neutral-800 dark:text-[#F8F9FA] hover:bg-neutral-900 hover:text-white dark:hover:bg-[#282D3C] dark:hover:text-white transition-colors',
+        'bg-transparent border border-neutral-300 dark:border-outline/30 text-neutral-800 dark:text-[#F8F9FA] hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-[#282D3C] dark:hover:text-white transition-colors',
       ghost:
         'bg-transparent text-neutral-600 dark:text-[#949DAF] hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-surface-container dark:hover:text-white transition-colors',
       danger:
-        'bg-error-container hover:bg-error-container/80 text-on-error-container font-semibold shadow-sm',
+        'bg-red-600 hover:bg-red-700 text-white dark:bg-error-container dark:hover:bg-error-container/80 dark:text-on-error-container font-semibold shadow-sm',
     };
 
     return (

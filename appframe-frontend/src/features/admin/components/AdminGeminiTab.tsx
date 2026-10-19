@@ -54,7 +54,7 @@ export const AdminGeminiTab: React.FC<AdminGeminiTabProps> = ({
   return (
     <div className="flex flex-col gap-6 max-w-4xl">
       {/* Status Atual */}
-      <Card className="p-5 border-surface-container-highest bg-surface-container-lowest flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <Card className="p-5 border-neutral-200 dark:border-surface-container-highest bg-white dark:bg-surface-container shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="w-full flex items-center gap-3">
           <div
             className={cn(
@@ -70,7 +70,7 @@ export const AdminGeminiTab: React.FC<AdminGeminiTabProps> = ({
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <h3 className="text-title-md font-bold text-on-surface">
+              <h3 className="text-title-md font-bold text-neutral-900 dark:text-on-surface">
                 Chave Global do Google Gemini
               </h3>
               <Badge
@@ -83,7 +83,7 @@ export const AdminGeminiTab: React.FC<AdminGeminiTabProps> = ({
                   : "Não Configurada"}
               </Badge>
             </div>
-            <p className="text-body-sm text-on-surface-variant">
+            <p className="text-body-sm text-neutral-600 dark:text-on-surface-variant">
               {geminiStatus?.configured
                 ? `Chave ativa na plataforma: ${geminiStatus.maskedKey}. Todos os usuários usam este assistente transparente.`
                 : "Nenhuma chave configurada. Todos os recursos de legendas por IA estão suspensos."}
@@ -93,12 +93,12 @@ export const AdminGeminiTab: React.FC<AdminGeminiTabProps> = ({
       </Card>
 
       {/* Configuração de Nova Chave */}
-      <Card className="p-6 border-surface-container-highest bg-surface-container-lowest flex flex-col gap-4">
+      <Card className="p-6 border-neutral-200 dark:border-surface-container-highest bg-white dark:bg-surface-container shadow-sm flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h3 className="text-title-md font-bold text-on-surface">
+          <h3 className="text-title-md font-bold text-neutral-900 dark:text-on-surface">
             Definir Nova Chave do Google AI Studio
           </h3>
-          <p className="text-body-sm text-on-surface-variant">
+          <p className="text-body-sm text-neutral-600 dark:text-on-surface-variant">
             Insira a chave obtida no portal do Google AI Studio. A chave será
             validada na API oficial e criptografada com AES-256-GCM antes de ser
             persistida.
@@ -108,7 +108,7 @@ export const AdminGeminiTab: React.FC<AdminGeminiTabProps> = ({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
             label="Chave de API do Gemini (AIzaSy...)"
-            labelClassName="text-label-sm font-bold text-outline uppercase tracking-wider"
+            labelClassName="text-label-sm font-bold text-neutral-500 dark:text-outline uppercase tracking-wider"
             type={showGeminiKey ? "text" : "password"}
             value={geminiKeyInput}
             onChange={(e) => setGeminiKeyInput(e.target.value)}

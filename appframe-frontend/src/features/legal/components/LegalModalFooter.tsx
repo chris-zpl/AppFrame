@@ -7,9 +7,9 @@ export interface LegalModalFooterProps {
 
 export const LegalModalFooter: React.FC<LegalModalFooterProps> = ({ onClose }) => {
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-surface-container-high bg-surface-container-high/30">
-      <div className="flex items-center gap-2 text-label-sm text-on-surface-variant text-center sm:text-left">
-        <span className="material-symbols-outlined text-[16px] text-primary">security</span>
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-neutral-200 dark:border-surface-container-high bg-neutral-50 dark:bg-surface-container-high/30">
+      <div className="flex items-center gap-2 text-label-sm text-neutral-600 dark:text-on-surface-variant text-center sm:text-left">
+        <span className="material-symbols-outlined text-[16px] text-amber-700 dark:text-primary">security</span>
         <span>
           Documento oficial da plataforma SaaS <strong>AppFrame</strong>
         </span>

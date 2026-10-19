@@ -38,14 +38,14 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
         aria-modal="true"
         aria-labelledby="delete-account-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md p-6 bg-surface-container border-2 border-error/50 shadow-2xl flex flex-col gap-4"
+        className="w-full max-w-md p-6 bg-white dark:bg-surface-container border-2 border-error/50 shadow-2xl flex flex-col gap-4"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 text-error min-w-0">
             <div className="w-10 h-10 rounded-xl bg-error/20 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-[24px]">delete_forever</span>
             </div>
-            <h3 id="delete-account-title" className="font-title-md text-title-md font-bold text-on-surface truncate">
+            <h3 id="delete-account-title" className="font-title-md text-title-md font-bold text-neutral-900 dark:text-on-surface truncate">
               Confirmar Exclusão de Conta
             </h3>
           </div>
@@ -54,13 +54,13 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
             onClick={onClose}
             aria-label="Fechar"
             title="Fechar"
-            className="text-outline hover:text-on-surface p-1 rounded-lg cursor-pointer shrink-0"
+            className="text-neutral-500 hover:text-neutral-900 dark:text-outline dark:hover:text-on-surface p-1 rounded-lg cursor-pointer shrink-0 transition-colors"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
-        <p className="font-body-sm text-body-sm text-on-surface-variant">
+        <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
           Para confirmar a exclusão irreversível de todos os seus dados, informe sua senha (caso possua) e digite <strong className="text-error font-mono">EXCLUIR</strong> abaixo:
         </p>
 

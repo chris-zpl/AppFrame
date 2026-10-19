@@ -30,7 +30,7 @@ export const ResetPasswordPage: React.FC = () => {
   } = useResetPasswordForm({ token });
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-between bg-surface overflow-x-hidden selection:bg-primary/20 selection:text-primary">
+    <div className="relative min-h-screen w-full flex flex-col justify-between bg-[#f8f9fd] dark:bg-surface text-neutral-900 dark:text-on-surface overflow-x-hidden selection:bg-primary/20 selection:text-primary">
       {/* Background Decorativo */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />

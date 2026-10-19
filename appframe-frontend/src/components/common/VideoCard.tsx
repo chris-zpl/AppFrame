@@ -46,15 +46,15 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     <div
       onClick={handleClick}
       className={cn(
-        'group relative flex flex-col rounded-2xl bg-surface-container overflow-hidden',
-        'transition-all duration-300 hover:-translate-y-1 shadow-[0_8px_24px_rgba(0,0,0,0.25)]',
-        'hover:shadow-[0_12px_32px_rgba(0,0,0,0.45)] cursor-pointer border border-outline/10',
+        'group relative flex flex-col rounded-2xl bg-white dark:bg-surface-container overflow-hidden',
+        'transition-all duration-300 hover:-translate-y-1 shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.25)]',
+        'hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.45)] cursor-pointer border border-neutral-200 dark:border-outline/10',
         isSelected && 'ring-1 ring-primary/40 shadow-[0_8px_24px_rgba(212,163,70,0.15)]',
         className,
       )}
     >
       {/* Container de Thumbnail 16:9 */}
-      <div className="relative w-full aspect-video bg-surface-container-high overflow-hidden">
+      <div className="relative w-full aspect-video bg-neutral-100 dark:bg-surface-container-high overflow-hidden">
         <img
           src={video.thumbnailUrl}
           alt={video.title}
@@ -78,7 +78,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
         {/* Tag Shorts / Vídeo / Alvo no Topo Direito */}
         <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
           {video.isTargetVideo && (
-            <Badge variant="status-live" className="text-[11px] py-0.5 px-2 bg-surface-container-lowest/90 backdrop-blur-md border border-primary/50 text-primary">
+            <Badge variant="status-live" className="text-[11px] py-0.5 px-2 bg-black/70 backdrop-blur-md border border-primary/50 text-primary">
               Alvo
             </Badge>
           )}
@@ -97,16 +97,16 @@ export const VideoCard: React.FC<VideoCardProps> = ({
 
       {/* Conteúdo do Card */}
       <div className="p-space-md flex flex-col flex-1 justify-between gap-3">
-        <h3 className="font-title-sm text-title-sm font-bold text-on-surface line-clamp-2 group-hover:text-primary transition-colors">
+        <h3 className="font-title-sm text-title-sm font-bold text-neutral-900 dark:text-on-surface line-clamp-2 group-hover:text-amber-700 dark:group-hover:text-primary transition-colors">
           {video.title}
         </h3>
 
-        <div className="flex items-center justify-between text-body-sm font-body-sm text-on-surface-variant">
+        <div className="flex items-center justify-between text-body-sm font-body-sm text-neutral-600 dark:text-on-surface-variant">
           <span>
             {video.publishedText || 'Recente'}
             {video.viewsText && ` • ${video.viewsText}`}
           </span>
-          <span className="material-symbols-outlined text-[18px] text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="material-symbols-outlined text-[18px] text-amber-600 dark:text-primary opacity-0 group-hover:opacity-100 transition-opacity">
             auto_fix_high
           </span>
         </div>

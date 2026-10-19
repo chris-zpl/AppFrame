@@ -44,7 +44,7 @@ export const HistoryJobCard: React.FC<HistoryJobCardProps> = ({
     >
       {/* Informações Primárias do Vídeo com Thumbnail Real */}
       <div className="flex items-start sm:items-center gap-4 flex-1 w-full">
-        <div className="relative w-20 h-14 sm:w-24 sm:h-16 rounded-xl overflow-hidden bg-neutral-900 border border-neutral-200 dark:border-surface-container-highest shrink-0 flex items-center justify-center shadow-xs">
+        <div className="relative w-20 h-14 sm:w-24 sm:h-16 rounded-xl overflow-hidden bg-neutral-100 dark:bg-surface-container-high border border-neutral-200 dark:border-surface-container-highest shrink-0 flex items-center justify-center shadow-xs">
           {thumbUrl ? (
             <img
               src={thumbUrl}
@@ -60,7 +60,7 @@ export const HistoryJobCard: React.FC<HistoryJobCardProps> = ({
               className={cn(
                 'w-full h-full flex items-center justify-center',
                 isCompleted && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-                (isRendering || isDownloading) && 'bg-primary/15 text-primary',
+                (isRendering || isDownloading) && 'bg-amber-500/15 dark:bg-primary/15 text-amber-700 dark:text-primary',
                 isPending && 'bg-neutral-100 dark:bg-surface-container-highest text-neutral-500',
                 isFailed && 'bg-red-500/20 text-red-600 dark:text-red-400'
               )}
@@ -101,7 +101,7 @@ export const HistoryJobCard: React.FC<HistoryJobCardProps> = ({
           <div className="flex items-center gap-2 text-body-sm text-body-sm text-on-surface-variant flex-wrap font-mono tabular-nums">
             <span>Duração: <strong className="text-on-surface">{formatDuration(job)}</strong></span>
             <span className="text-outline">•</span>
-            <span className="text-primary font-semibold font-sans">{queueLabel}</span>
+            <span className="text-amber-800 dark:text-primary font-semibold font-sans">{queueLabel}</span>
             <span className="text-outline">•</span>
             <span>{new Date(job.created_at).toLocaleTimeString('pt-BR')}</span>
             <span className="text-outline">•</span>
@@ -113,11 +113,11 @@ export const HistoryJobCard: React.FC<HistoryJobCardProps> = ({
             <div className="flex items-center gap-3 w-full max-w-md mt-1">
               <div className="w-full bg-neutral-200 dark:bg-surface-container-highest h-2 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-primary to-amber-500 transition-all duration-300 rounded-full"
+                  className="h-full bg-gradient-to-r from-amber-500 to-amber-600 dark:from-primary dark:to-amber-500 transition-all duration-300 rounded-full"
                   style={{ width: `${Math.max(8, job.progress)}%` }}
                 />
               </div>
-              <span className="font-mono text-label-md font-bold text-primary tabular-nums shrink-0">
+              <span className="font-mono text-label-md font-bold text-amber-800 dark:text-primary tabular-nums shrink-0">
                 {job.progress}%
               </span>
             </div>

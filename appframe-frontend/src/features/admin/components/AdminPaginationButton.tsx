@@ -25,7 +25,7 @@ export const AdminPaginationButton: React.FC<AdminPaginationButtonProps> = ({
         type="button"
         disabled={disabled}
         className={cn(
-          'p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center justify-center cursor-pointer border border-surface-container-highest',
+          'p-1.5 rounded-lg bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center justify-center cursor-pointer border border-neutral-200 dark:border-surface-container-highest',
           className
         )}
         {...props}
@@ -42,7 +42,7 @@ export const AdminPaginationButton: React.FC<AdminPaginationButtonProps> = ({
         type="button"
         disabled={disabled}
         className={cn(
-          'p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center justify-center cursor-pointer border border-surface-container-highest',
+          'p-1.5 rounded-lg bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center justify-center cursor-pointer border border-neutral-200 dark:border-surface-container-highest',
           className
         )}
         {...props}
@@ -66,7 +66,7 @@ export const AdminPaginationButton: React.FC<AdminPaginationButtonProps> = ({
         'min-w-[32px] h-8 px-2 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-center font-medium',
         isActive
           ? 'bg-primary text-neutral-950 font-bold shadow-sm'
-          : 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-surface-container-highest',
+          : 'bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface border border-neutral-200 dark:border-surface-container-highest',
         className
       )}
       {...props}

@@ -40,7 +40,7 @@ export const TwoFactorCodeInputs: React.FC<TwoFactorCodeInputsProps> = ({
                 ? 'opacity-50 cursor-not-allowed border-neutral-300 dark:border-surface-container-highest'
                 : digit
                 ? 'border-primary text-[#B8851B] dark:text-primary shadow-[0_0_12px_rgba(242,190,94,0.25)]'
-                : 'border-neutral-300 dark:border-surface-container-highest text-neutral-900 dark:text-on-surface focus:border-primary/80 focus:ring-2 focus:ring-primary/20'
+                : 'border-neutral-300 dark:border-surface-container-highest text-neutral-900 dark:text-on-surface focus:border-primary/80 dark:focus:border-primary focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20'
             }`}
           />
         ))}

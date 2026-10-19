@@ -3,28 +3,64 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  :root,
+  html.light,
+  html:not(.dark) {
     color-scheme: light;
-    --app-surface: #f8f9fd;
-    --app-on-surface: #0f1115;
-    --app-on-surface-variant: #4b5563;
-    --app-container: #ffffff;
-    --app-container-low: #f3f4f8;
-    --app-container-high: #e5e7eb;
-    --app-container-highest: #d1d5db;
-    --app-border: #e5e7eb;
+    --surface-rgb: 248 249 253; /* #f8f9fd */
+    --surface-dim-rgb: 240 242 248;
+    --surface-bright-rgb: 255 255 255;
+    --surface-variant-rgb: 229 231 235;
+    --surface-container-lowest-rgb: 255 255 255; /* #ffffff */
+    --surface-container-low-rgb: 243 244 248; /* #f3f4f8 */
+    --surface-container-rgb: 255 255 255; /* #ffffff */
+    --surface-container-high-rgb: 229 231 235; /* #e5e7eb */
+    --surface-container-highest-rgb: 209 213 219; /* #d1d5db */
+
+    --on-surface-rgb: 15 17 21; /* #0f1115 - alto contraste em modo claro */
+    --on-surface-variant-rgb: 75 85 99; /* #4b5563 - slate-600 WCAG AAA */
+    --outline-rgb: 107 114 128; /* #6b7280 */
+    --outline-variant-rgb: 209 213 219; /* #d1d5db */
+
+    --background-rgb: 248 249 253;
+    --on-background-rgb: 15 17 21;
+
+    --error-rgb: 220 38 38; /* #dc2626 */
+    --error-container-rgb: 254 226 226; /* #fee2e2 */
+    --on-error-rgb: 255 255 255;
+    --on-error-container-rgb: 153 27 27; /* #991b1b */
+
+    --inverse-surface-rgb: 16 19 26;
+    --inverse-on-surface-rgb: 248 249 253;
   }
 
   html.dark {
     color-scheme: dark;
-    --app-surface: #10131a;
-    --app-on-surface: #e0e2ec;
-    --app-on-surface-variant: #d3c4b1;
-    --app-container: #1d2027;
-    --app-container-low: #191c23;
-    --app-container-high: #272a31;
-    --app-container-highest: #32353c;
-    --app-border: #272a31;
+    --surface-rgb: 16 19 26; /* #10131a */
+    --surface-dim-rgb: 16 19 26;
+    --surface-bright-rgb: 54 57 65; /* #363941 */
+    --surface-variant-rgb: 50 53 60; /* #32353c */
+    --surface-container-lowest-rgb: 11 14 21; /* #0b0e15 */
+    --surface-container-low-rgb: 25 28 35; /* #191c23 */
+    --surface-container-rgb: 29 32 39; /* #1d2027 */
+    --surface-container-high-rgb: 39 42 49; /* #272a31 */
+    --surface-container-highest-rgb: 50 53 60; /* #32353c */
+
+    --on-surface-rgb: 224 226 236; /* #e0e2ec */
+    --on-surface-variant-rgb: 211 196 177; /* #d3c4b1 */
+    --outline-rgb: 155 143 125; /* #9b8f7d */
+    --outline-variant-rgb: 79 69 55; /* #4f4537 */
+
+    --background-rgb: 16 19 26;
+    --on-background-rgb: 224 226 236;
+
+    --error-rgb: 255 180 171; /* #ffb4ab */
+    --error-container-rgb: 147 0 10; /* #93000a */
+    --on-error-rgb: 105 0 5;
+    --on-error-container-rgb: 255 218 214; /* #ffdad6 */
+
+    --inverse-surface-rgb: 224 226 236;
+    --inverse-on-surface-rgb: 45 48 56;
   }
 
   html,
@@ -37,8 +73,8 @@
   body {
     overscroll-behavior: none;
     font-variant-numeric: tabular-nums;
-    background-color: var(--app-surface);
-    color: var(--app-on-surface);
+    background-color: rgb(var(--surface-rgb));
+    color: rgb(var(--on-surface-rgb));
   }
 
   main > :first-child {
@@ -83,58 +119,5 @@
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
-/* ========================================================================= */
-/* Blindagem de Alto Contraste em Modo Claro (Light Mode)                    */
-/* ========================================================================= */
-html:not(.dark) {
-  background-color: #f8f9fd !important;
-  color: #0f1115 !important;
-}
 
-html:not(.dark) .bg-surface {
-  background-color: #f8f9fd !important;
-}
 
-html:not(.dark) .text-on-surface {
-  color: #0f1115 !important;
-}
-
-html:not(.dark) .text-on-surface-variant {
-  color: #4b5563 !important;
-}
-
-html:not(.dark) .bg-surface-container {
-  background-color: #ffffff !important;
-}
-
-html:not(.dark) .bg-surface-container-low {
-  background-color: #f3f4f8 !important;
-}
-
-html:not(.dark) .bg-surface-container-lowest {
-  background-color: #ffffff !important;
-}
-
-html:not(.dark) .bg-surface-container-high {
-  background-color: #e5e7eb !important;
-}
-
-html:not(.dark) .bg-surface-container-highest {
-  background-color: #d1d5db !important;
-}
-
-html:not(.dark) .border-surface-container-high {
-  border-color: #e5e7eb !important;
-}
-
-html:not(.dark) .border-surface-container-highest {
-  border-color: #d1d5db !important;
-}
-
-html:not(.dark) .border-surface-container {
-  border-color: #e5e7eb !important;
-}
-
-html:not(.dark) .text-outline {
-  color: #6b7280 !important;
-}

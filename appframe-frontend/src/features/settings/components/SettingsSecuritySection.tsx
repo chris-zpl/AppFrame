@@ -70,8 +70,8 @@ export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (
   return (
     <div className="flex flex-col gap-space-md animate-in fade-in duration-200">
       {/* Card 2FA (TOTP) */}
-      <Card className="p-6 bg-surface-container border border-surface-container-high shadow-lg flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-container-high/60 pb-4">
+      <Card className="p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-high shadow-sm dark:shadow-lg flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 dark:border-surface-container-high/60 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/30">
               <span className="material-symbols-outlined text-[28px]">
@@ -80,21 +80,21 @@ export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-title-md text-title-md font-bold text-on-surface">
+                <h3 className="font-title-md text-title-md font-bold text-neutral-900 dark:text-on-surface">
                   Autenticação em Dois Fatores (2FA)
                 </h3>
                 {is2faEnabled ? (
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-label-sm font-bold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-label-sm font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
                     Ativado
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 rounded-full bg-surface-container-highest text-outline text-label-sm font-bold">
+                  <span className="px-2.5 py-0.5 rounded-full bg-neutral-200 dark:bg-surface-container-highest text-neutral-600 dark:text-outline text-label-sm font-bold">
                     Desativado
                   </span>
                 )}
               </div>
-              <p className="font-body-sm text-body-sm text-on-surface-variant">
+              <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
                 Proteja sua conta contra acessos não autorizados via TOTP (Google Authenticator, Authy).
               </p>
             </div>
@@ -139,7 +139,7 @@ export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (
           </div>
         </div>
 
-        <div className="text-body-sm text-body-sm text-on-surface-variant flex items-center gap-2">
+        <div className="text-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant flex items-center gap-2">
           <span className="material-symbols-outlined text-[18px] text-primary">info</span>
           <span>
             Quando ativado, cada login exigirá um código temporário de 6 dígitos gerado no seu smartphone.
@@ -148,12 +148,12 @@ export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (
       </Card>
 
       {/* Card Alteração de Senha */}
-      <Card className="p-6 bg-surface-container border border-surface-container-high shadow-lg flex flex-col gap-4">
-        <div className="border-b border-surface-container-high/60 pb-3">
-          <h3 className="font-title-md text-title-md font-bold text-on-surface">
+      <Card className="p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-high shadow-sm dark:shadow-lg flex flex-col gap-4">
+        <div className="border-b border-neutral-200 dark:border-surface-container-high/60 pb-3">
+          <h3 className="font-title-md text-title-md font-bold text-neutral-900 dark:text-on-surface">
             Alteração de Senha
           </h3>
-          <p className="font-body-sm text-body-sm text-on-surface-variant">
+          <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
             Atualize sua senha de acesso ao AppFrame. Contas criadas via Google também podem cadastrar uma senha local.
           </p>
         </div>

@@ -6,7 +6,7 @@ export const AuthCallbackPage: React.FC = () => {
   const { statusText, error, progress, handleBackToLogin } = useAuthCallback();
 
   return (
-    <div className="min-h-screen w-full bg-surface text-on-surface flex flex-col justify-center items-center p-4 relative overflow-hidden">
+    <div className="min-h-screen w-full bg-[#f8f9fd] dark:bg-surface text-neutral-900 dark:text-on-surface flex flex-col justify-center items-center p-4 relative overflow-hidden">
       {/* Botão Fixo de Alternância de Tema */}
       <ThemeToggle variant="auth" className="fixed top-6 right-6 z-50" />
 

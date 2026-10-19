@@ -36,14 +36,14 @@ export const EmailChangeModal: React.FC<EmailChangeModalProps> = ({
         aria-modal="true"
         aria-labelledby="email-change-modal-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md p-6 bg-surface-container border-2 border-primary/40 shadow-2xl flex flex-col gap-4"
+        className="w-full max-w-md p-6 bg-white dark:bg-surface-container border-2 border-primary/40 shadow-2xl flex flex-col gap-4"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 text-primary min-w-0">
             <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-[24px]">mark_email_unread</span>
             </div>
-            <h3 id="email-change-modal-title" className="font-title-md text-title-md font-bold text-on-surface truncate">
+            <h3 id="email-change-modal-title" className="font-title-md text-title-md font-bold text-neutral-900 dark:text-on-surface truncate">
               Alteração de E-mail
             </h3>
           </div>
@@ -51,7 +51,7 @@ export const EmailChangeModal: React.FC<EmailChangeModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            className="text-neutral-400 hover:text-on-surface cursor-pointer p-1 rounded transition-colors disabled:opacity-40 shrink-0"
+            className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-on-surface cursor-pointer p-1 rounded transition-colors disabled:opacity-40 shrink-0"
             title="Fechar"
             aria-label="Fechar"
           >
@@ -67,18 +67,18 @@ export const EmailChangeModal: React.FC<EmailChangeModalProps> = ({
             </span>
           </div>
 
-          <div className="p-3 rounded-xl bg-surface-container-low border border-surface-container-high flex flex-col gap-2 text-body-sm min-w-0">
+          <div className="p-3 rounded-xl bg-neutral-100 dark:bg-surface-container-low border border-neutral-200 dark:border-surface-container-high flex flex-col gap-2 text-body-sm min-w-0">
             <div className="flex items-center justify-between gap-2 min-w-0">
-              <span className="text-on-surface-variant shrink-0">E-mail atual:</span>
-              <span className="font-mono text-on-surface truncate">{currentEmail}</span>
+              <span className="text-neutral-600 dark:text-on-surface-variant shrink-0">E-mail atual:</span>
+              <span className="font-mono text-neutral-900 dark:text-on-surface truncate">{currentEmail}</span>
             </div>
             <div className="flex items-center justify-between gap-2 min-w-0">
-              <span className="text-on-surface-variant font-semibold shrink-0">Novo e-mail:</span>
+              <span className="text-neutral-600 dark:text-on-surface-variant font-semibold shrink-0">Novo e-mail:</span>
               <span className="font-mono font-bold text-primary truncate">{newEmail.trim()}</span>
             </div>
           </div>
 
-          <p className="font-body-sm text-body-sm text-on-surface-variant">
+          <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
             Após confirmar esta mudança, sua próxima alteração de e-mail só estará liberada em <strong>{nextAllowedDateStr}</strong>. Deseja realmente prosseguir?
           </p>
         </div>

@@ -151,60 +151,60 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
     <div className="flex flex-col gap-6">
       {/* Cards de Métricas de Auditoria */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 flex flex-col gap-1 border-surface-container-highest bg-surface-container-lowest">
-          <span className="text-[12px] font-semibold text-outline uppercase tracking-wider">
+        <Card className="p-4 flex flex-col gap-1 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest">
+          <span className="text-[12px] font-semibold text-neutral-500 dark:text-outline uppercase tracking-wider">
             Total de Eventos
           </span>
-          <span className="text-display-sm font-bold text-on-surface">
+          <span className="text-display-sm font-bold text-neutral-900 dark:text-on-surface">
             {auditLogs.length}
           </span>
-          <span className="text-[11px] text-on-surface-variant flex items-center gap-1 truncate">
-            <span className="material-symbols-outlined text-[14px] text-primary">
+          <span className="text-[11px] text-neutral-600 dark:text-on-surface-variant flex items-center gap-1 truncate">
+            <span className="material-symbols-outlined text-[14px] text-amber-700 dark:text-primary">
               history
             </span>
             Histórico de segurança persistido
           </span>
         </Card>
 
-        <Card className="p-4 flex flex-col gap-1 border-surface-container-highest bg-surface-container-lowest">
-          <span className="text-[12px] font-semibold text-outline uppercase tracking-wider truncate">
+        <Card className="p-4 flex flex-col gap-1 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest">
+          <span className="text-[12px] font-semibold text-neutral-500 dark:text-outline uppercase tracking-wider truncate">
             Recuperação de Senha
           </span>
-          <span className="text-display-sm font-bold text-amber-400">
+          <span className="text-display-sm font-bold text-amber-600 dark:text-amber-400">
             {auditPasswordCount}
           </span>
-          <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
-            <span className="material-symbols-outlined text-[14px] text-amber-400">
+          <span className="text-[11px] text-neutral-600 dark:text-on-surface-variant flex items-center gap-1">
+            <span className="material-symbols-outlined text-[14px] text-amber-600 dark:text-amber-400">
               lock_reset
             </span>
             Solicitações e trocas
           </span>
         </Card>
 
-        <Card className="p-4 flex flex-col gap-1 border-surface-container-highest bg-surface-container-lowest">
-          <span className="text-[12px] font-semibold text-outline uppercase tracking-wider">
+        <Card className="p-4 flex flex-col gap-1 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest">
+          <span className="text-[12px] font-semibold text-neutral-500 dark:text-outline uppercase tracking-wider">
             Perfil & Contas
           </span>
-          <span className="text-display-sm font-bold text-purple-400">
+          <span className="text-display-sm font-bold text-purple-600 dark:text-purple-400">
             {auditProfileCount}
           </span>
-          <span className="text-[11px] text-on-surface-variant flex items-center gap-1 truncate">
-            <span className="material-symbols-outlined text-[14px] text-purple-400">
+          <span className="text-[11px] text-neutral-600 dark:text-on-surface-variant flex items-center gap-1 truncate">
+            <span className="material-symbols-outlined text-[14px] text-purple-600 dark:text-purple-400">
               manage_accounts
             </span>
             E-mails, nomes e Google OAuth
           </span>
         </Card>
 
-        <Card className="p-4 flex flex-col gap-1 border-surface-container-highest bg-surface-container-lowest">
-          <span className="text-[12px] font-semibold text-outline uppercase tracking-wider">
+        <Card className="p-4 flex flex-col gap-1 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest">
+          <span className="text-[12px] font-semibold text-neutral-500 dark:text-outline uppercase tracking-wider">
             Sessões & 2FA
           </span>
-          <span className="text-display-sm font-bold text-emerald-400">
+          <span className="text-display-sm font-bold text-emerald-600 dark:text-emerald-400">
             {auditSecurityCount}
           </span>
-          <span className="text-[11px] text-on-surface-variant flex items-center gap-1 truncate">
-            <span className="material-symbols-outlined text-[14px] text-emerald-400">
+          <span className="text-[11px] text-neutral-600 dark:text-on-surface-variant flex items-center gap-1 truncate">
+            <span className="material-symbols-outlined text-[14px] text-emerald-600 dark:text-emerald-400">
               security
             </span>
             Autenticações e revogações
@@ -213,18 +213,18 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
       </div>
 
       {/* Tabela de Logs de Auditoria */}
-      <Card className="p-6 border-surface-container-highest bg-surface-container-lowest flex flex-col gap-4">
+      <Card className="p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest flex flex-col gap-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[22px] text-primary">
+              <span className="material-symbols-outlined text-[22px] text-amber-700 dark:text-primary">
                 policy
               </span>
-              <h3 className="text-title-md font-bold text-on-surface">
+              <h3 className="text-title-md font-bold text-neutral-900 dark:text-on-surface">
                 Trilha de Auditoria e Eventos de Segurança
               </h3>
             </div>
-            <p className="text-body-sm text-on-surface-variant">
+            <p className="text-body-sm text-neutral-600 dark:text-on-surface-variant">
               Registro imutável de ações críticas: recuperação de senhas, trocas
               de credenciais, vinculações e encerramento de sessões.
             </p>
@@ -286,7 +286,7 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
             <select
               value={auditActionFilter}
               onChange={(e) => handleActionFilterChange(e.target.value)}
-              className="w-full bg-surface-container border border-surface-container-highest rounded-xl px-3 py-2 text-body-sm text-on-surface outline-none focus:border-primary cursor-pointer"
+              className="w-full bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest rounded-xl px-3 py-2 text-body-sm text-neutral-900 dark:text-on-surface outline-none focus:border-primary cursor-pointer shadow-2xs"
             >
               <option value="ALL">Todas as Ações</option>
               <option value="USER_ROLE_CHANGED">
@@ -329,10 +329,10 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
         </div>
 
         {/* Tabela de Registros */}
-        <div className="overflow-x-auto rounded-xl border border-surface-container-highest">
+        <div className="overflow-x-auto rounded-xl border border-neutral-200 dark:border-surface-container-highest">
           <table className="w-full text-left border-collapse text-body-sm">
             <thead>
-              <tr className="bg-surface-container border-b border-surface-container-highest text-outline text-[11px] uppercase tracking-wider">
+              <tr className="bg-neutral-50 dark:bg-surface-container border-b border-neutral-200 dark:border-surface-container-highest text-neutral-600 dark:text-outline text-[11px] uppercase tracking-wider">
                 <th className="p-3">Data / Hora</th>
                 <th className="p-3">Evento / Ação</th>
                 <th className="p-3">Usuário</th>
@@ -340,18 +340,18 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
                 <th className="p-3">Detalhes / Metadados</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-surface-container-highest">
+            <tbody className="divide-y divide-neutral-200 dark:divide-surface-container-highest">
               {filteredAuditLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-outline">
+                  <td colSpan={5} className="p-8 text-center text-neutral-500 dark:text-outline">
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <span className="material-symbols-outlined text-[36px] text-outline/50">
+                      <span className="material-symbols-outlined text-[36px] text-neutral-400 dark:text-outline/50">
                         manage_search
                       </span>
-                      <span className="text-body-md font-medium text-on-surface-variant">
+                      <span className="text-body-md font-medium text-neutral-800 dark:text-on-surface-variant">
                         Nenhum registro de auditoria encontrado
                       </span>
-                      <span className="text-body-sm text-outline">
+                      <span className="text-body-sm text-neutral-500 dark:text-outline">
                         {auditSearch || auditActionFilter !== "ALL"
                           ? "Experimente ajustar os filtros ou limpar o termo de pesquisa."
                           : "Os eventos de segurança aparecerão aqui conforme as ações forem executadas."}
@@ -370,17 +370,17 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
                   return (
                     <tr
                       key={log.id}
-                      className="dark:hover:bg-inverse-on-surface hover:bg-on-surface/50 transition-colors"
+                      className="hover:bg-neutral-50 dark:hover:bg-surface-container-high/60 transition-colors"
                     >
                       {/* Data / Hora */}
                       <td className="p-3 font-mono text-xs text-on-surface-variant whitespace-nowrap">
                         <div className="flex flex-col">
-                          <span className="text-on-surface font-semibold">
+                          <span className="text-neutral-900 dark:text-on-surface font-semibold">
                             {new Date(log.created_at).toLocaleDateString(
                               "pt-BR",
                             )}
                           </span>
-                          <span className="text-[11px] text-outline">
+                          <span className="text-[11px] text-neutral-500 dark:text-outline">
                             {new Date(log.created_at).toLocaleTimeString(
                               "pt-BR",
                             )}
@@ -407,38 +407,38 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
                       <td className="p-3">
                         {matchedUser ? (
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-[11px] shrink-0">
+                            <div className="w-6 h-6 rounded-full bg-amber-500/20 dark:bg-primary/20 text-amber-900 dark:text-primary font-bold flex items-center justify-center text-[11px] shrink-0">
                               {matchedUser.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex flex-col min-w-0">
-                              <span className="font-semibold text-on-surface truncate">
+                              <span className="font-semibold text-neutral-900 dark:text-on-surface truncate">
                                 {matchedUser.name}
                               </span>
-                              <span className="text-[11px] text-outline font-mono truncate">
+                              <span className="text-[11px] text-neutral-500 dark:text-outline font-mono truncate">
                                 {matchedUser.email}
                               </span>
                             </div>
                           </div>
                         ) : log.metadata?.email ? (
                           <div className="flex flex-col">
-                            <span className="font-semibold text-on-surface">
+                            <span className="font-semibold text-neutral-900 dark:text-on-surface">
                               {log.metadata.email}
                             </span>
-                            <span className="text-[10px] text-outline">
+                            <span className="text-[10px] text-neutral-500 dark:text-outline">
                               (Identificado por e-mail)
                             </span>
                           </div>
                         ) : log.metadata?.performedBy ? (
                           <div className="flex flex-col">
-                            <span className="font-semibold text-on-surface">
+                            <span className="font-semibold text-neutral-900 dark:text-on-surface">
                               {log.metadata.performedBy}
                             </span>
-                            <span className="text-[10px] text-primary">
+                            <span className="text-[10px] text-amber-800 dark:text-primary">
                               (Administrador)
                             </span>
                           </div>
                         ) : (
-                          <span className="text-outline text-xs italic">
+                          <span className="text-neutral-500 dark:text-outline text-xs italic">
                             Sistema / Anônimo
                           </span>
                         )}
@@ -447,11 +447,11 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
                       {/* Origem (IP & Dispositivo) */}
                       <td className="p-3">
                         <div className="flex flex-col text-xs">
-                          <span className="font-mono text-on-surface font-medium">
+                          <span className="font-mono text-neutral-900 dark:text-on-surface font-medium">
                             {log.ip_address || "127.0.0.1 (Local)"}
                           </span>
                           <span
-                            className="text-[11px] text-outline truncate max-w-[200px]"
+                            className="text-[11px] text-neutral-500 dark:text-outline truncate max-w-[200px]"
                             title={log.user_agent || undefined}
                           >
                             {deviceName}
@@ -473,15 +473,15 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
 
         {/* Barra de Paginação */}
         {filteredAuditLogs.length > 0 && (
-          <div className="flex flex-row items-center gap-4 pt-4 border-t border-surface-container-highest">
+          <div className="flex flex-row items-center gap-4 pt-4 border-t border-neutral-200 dark:border-surface-container-highest">
             {/* Informações de Registros e Seletor de Itens por Página */}
-            <div className="w-full flex justify-between items-center gap-4 shrink-0 text-body-sm text-outline">
+            <div className="w-full flex justify-between items-center gap-4 shrink-0 text-body-sm text-neutral-500 dark:text-outline">
               <span>
                 Mostrando{" "}
-                <strong className="text-on-surface">{auditStartRecord}</strong>{" "}
-                a <strong className="text-on-surface">{auditEndRecord}</strong>{" "}
+                <strong className="text-neutral-900 dark:text-on-surface">{auditStartRecord}</strong>{" "}
+                a <strong className="text-neutral-900 dark:text-on-surface">{auditEndRecord}</strong>{" "}
                 de{" "}
-                <strong className="text-on-surface">
+                <strong className="text-neutral-900 dark:text-on-surface">
                   {filteredAuditLogs.length}
                 </strong>{" "}
                 eventos
@@ -492,7 +492,7 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
                 <select
                   value={auditPageSize}
                   onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  className="bg-surface-container border border-surface-container-highest rounded-lg px-2.5 py-1 text-xs text-on-surface outline-none focus:border-primary cursor-pointer font-medium"
+                  className="bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest rounded-lg px-2.5 py-1 text-xs text-neutral-900 dark:text-on-surface outline-none focus:border-primary cursor-pointer font-medium shadow-2xs"
                 >
                   <option value={10}>10 por página</option>
                   <option value={25}>25 por página</option>

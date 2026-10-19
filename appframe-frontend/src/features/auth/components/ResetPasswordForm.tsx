@@ -37,15 +37,15 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
       <div className="text-center mb-2">
-        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
+        <div className="w-12 h-12 rounded-full bg-amber-500/15 dark:bg-primary/10 text-amber-700 dark:text-primary flex items-center justify-center mx-auto mb-3">
           <span className="material-symbols-outlined text-[26px]">
             lock_reset
           </span>
         </div>
-        <h1 className="font-headline-sm text-headline-sm font-bold text-on-surface tracking-tight">
+        <h1 className="font-headline-sm text-headline-sm font-bold text-neutral-900 dark:text-on-surface tracking-tight">
           Redefinir Senha
         </h1>
-        <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
+        <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant mt-1">
           Crie uma nova senha segura para acessar sua conta.
         </p>
       </div>

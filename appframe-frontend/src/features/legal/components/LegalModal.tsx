@@ -57,7 +57,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-surface-container rounded-2xl shadow-2xl border border-surface-container-high overflow-hidden animate-in zoom-in-95 duration-200"
+        className="relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-white dark:bg-surface-container rounded-2xl shadow-2xl border border-neutral-200 dark:border-surface-container-high overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

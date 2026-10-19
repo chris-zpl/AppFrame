@@ -1,5 +1,6 @@
 export * from './Button';
 export * from './Input';
+export * from './Textarea';
 export * from './Card';
 export * from './Checkbox';
 export * from './Badge';

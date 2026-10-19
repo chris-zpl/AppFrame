@@ -16,10 +16,10 @@ export const ResetPasswordSuccess: React.FC<ResetPasswordSuccessProps> = ({
         </span>
       </div>
       <div>
-        <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface mb-2">
+        <h2 className="font-headline-sm text-headline-sm font-bold text-neutral-900 dark:text-on-surface mb-2">
           Senha Alterada!
         </h2>
-        <p className="font-body-md text-body-md text-on-surface-variant max-w-sm">
+        <p className="font-body-md text-body-md text-neutral-600 dark:text-on-surface-variant max-w-sm">
           Sua senha foi redefinida com sucesso. Todas as sessões anteriores foram desconectadas por segurança.
         </p>
       </div>

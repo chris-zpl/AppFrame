@@ -1,16 +1,17 @@
-import React from 'react';
-import { Card, Button } from '../../../components/ui';
-import { cn } from '../../../lib/utils';
-import { toast } from 'sonner';
-import type { AspectRatio } from '../types';
-import { formatStudioTime as formatTime } from '../utils';
+import React from "react";
+import { Card, Button } from "../../../components/ui";
+import { cn } from "../../../lib/utils";
+import { toast } from "sonner";
+import type { AspectRatio } from "../types";
+import { formatStudioTime as formatTime } from "../utils";
 
-import type { StudioVideoQueueItem } from '../../history';
-import { useStudioContext } from '../context';
+import type { StudioVideoQueueItem } from "../../history";
+import { useStudioContext } from "../context";
 
 export interface StudioPlayerProps {
   currentVideo?: StudioVideoQueueItem | null;
   aspectRatio?: AspectRatio;
+  setAspectRatio?: (ratio: AspectRatio) => void;
   previewStreamUrl?: string | null;
   isPreparingPreview?: boolean;
   previewError?: string | null;
@@ -39,8 +40,10 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
 
   const currentVideo = props.currentVideo ?? studio.currentVideo;
   const aspectRatio = props.aspectRatio ?? studio.aspectRatio;
+  const setAspectRatio = props.setAspectRatio ?? studio.setAspectRatio;
   const previewStreamUrl = props.previewStreamUrl ?? studio.previewStreamUrl;
-  const isPreparingPreview = props.isPreparingPreview ?? studio.isPreparingPreview;
+  const isPreparingPreview =
+    props.isPreparingPreview ?? studio.isPreparingPreview;
   const previewError = props.previewError ?? studio.previewError;
   const isAuthError = props.isAuthError ?? studio.isAuthError;
   const videoRef = props.videoRef ?? studio.videoRef;
@@ -59,20 +62,21 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
   const handleTogglePlay = props.handleTogglePlay ?? studio.handleTogglePlay;
   const seekVideoTo = props.seekVideoTo ?? studio.seekVideoTo;
   const loadVideoPreview = props.loadVideoPreview ?? studio.loadVideoPreview;
-  const onNavigateToVarredura = props.onNavigateToVarredura ?? (() => studio.navigate('varredura'));
+  const onNavigateToVarredura =
+    props.onNavigateToVarredura ?? (() => studio.navigate("varredura"));
 
   const renderPlayerButtons = () => (
     <div className="flex items-center gap-1.5 shrink-0">
       <button
         type="button"
-        aria-label={isPlaying ? 'Pausar vídeo' : 'Reproduzir vídeo'}
-        title={isPlaying ? 'Pausar' : 'Reproduzir'}
+        aria-label={isPlaying ? "Pausar vídeo" : "Reproduzir vídeo"}
+        title={isPlaying ? "Pausar" : "Reproduzir"}
         disabled={!previewStreamUrl || isPreparingPreview}
         onClick={handleTogglePlay}
         className="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 cursor-pointer shadow-sm disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-[20px]">
-          {isPlaying ? 'pause' : 'play_arrow'}
+          {isPlaying ? "pause" : "play_arrow"}
         </span>
       </button>
 
@@ -82,7 +86,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
         disabled={!previewStreamUrl || isPreparingPreview}
         onClick={() => seekVideoTo(Math.max(trimIn, currentTime - 5))}
         title="Retroceder 5 segundos"
-        className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+        className="w-8 h-8 rounded-lg text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-[18px]">replay_5</span>
       </button>
@@ -93,14 +97,14 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
         disabled={!previewStreamUrl || isPreparingPreview}
         onClick={() => seekVideoTo(Math.min(trimOut, currentTime + 5))}
         title="Avançar 5 segundos"
-        className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+        className="w-8 h-8 rounded-lg text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-[18px]">forward_5</span>
       </button>
 
       <button
         type="button"
-        aria-label={isMuted ? 'Ativar som' : 'Silenciar áudio'}
+        aria-label={isMuted ? "Ativar som" : "Silenciar áudio"}
         disabled={!previewStreamUrl || isPreparingPreview}
         onClick={() => {
           const next = !isMuted;
@@ -109,11 +113,11 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
             videoRef.current.muted = next;
           }
         }}
-        title={isMuted ? 'Ativar som' : 'Silenciar áudio'}
-        className="w-8 h-8 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+        title={isMuted ? "Ativar som" : "Silenciar áudio"}
+        className="w-8 h-8 rounded-lg text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-[18px]">
-          {isMuted ? 'volume_off' : 'volume_up'}
+          {isMuted ? "volume_off" : "volume_up"}
         </span>
       </button>
     </div>
@@ -122,17 +126,22 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
   const renderTimerDisplay = (extraClasses?: string) => (
     <div
       className={cn(
-        'flex items-center gap-1.5 sm:gap-2 bg-surface-container-lowest px-2.5 sm:px-3 py-1.5 rounded-lg border border-outline/10 min-w-0',
-        extraClasses
+        "flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-outline/10 min-w-0 bg-slate-100 border-slate-200 text-slate-800 dark:bg-surface-container-lowest dark:border-outline/10 dark:text-on-surface",
+        extraClasses,
       )}
     >
-      <span className="material-symbols-outlined text-[16px] text-primary shrink-0">
-        schedule
-      </span>
-      <span className="font-mono text-title-sm text-title-sm font-bold text-on-surface tabular-nums truncate">
-        {formatTime(currentTime)} / {formatTime(totalDuration)}
-      </span>
-      <span className="text-[10px] text-outline px-1 py-0.5 rounded bg-surface-container font-mono shrink-0">
+      {/* Grupo 1: Ícone de relógio + Timer principal (ficam sempre juntos na mesma linha) */}
+      <div className="flex items-center gap-1.5 min-w-0 shrink-0">
+        <span className="material-symbols-outlined text-[16px] text-amber-700 dark:text-primary shrink-0">
+          schedule
+        </span>
+        <span className="font-mono text-title-sm font-bold text-neutral-900 dark:text-on-surface tabular-nums truncate">
+          {formatTime(currentTime)} / {formatTime(totalDuration)}
+        </span>
+      </div>
+
+      {/* Grupo 2: Timer de corte (fica embaixo no mobile e ao lado a partir de telas sm:) */}
+      <span className="text-[10px] text-neutral-600 dark:text-outline px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-surface-container font-mono shrink-0 whitespace-nowrap">
         Corte: {formatTime(Math.max(0, trimOut - trimIn))}
       </span>
     </div>
@@ -145,7 +154,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
       disabled={!previewStreamUrl || isPreparingPreview}
       onClick={() => seekVideoTo(trimIn)}
       title="Ir para Marcador In"
-      className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-surface-container hover:bg-surface-container-high text-primary font-bold cursor-pointer disabled:opacity-40 shrink-0"
+      className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-amber-800 dark:text-primary font-bold cursor-pointer disabled:opacity-40 shrink-0 border border-neutral-200 dark:border-transparent"
     >
       Ir ao In
     </button>
@@ -158,45 +167,91 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
       disabled={!previewStreamUrl || isPreparingPreview}
       onClick={() => seekVideoTo(trimOut)}
       title="Ir para Marcador Out"
-      className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-surface-container hover:bg-surface-container-high text-primary font-bold cursor-pointer disabled:opacity-40 shrink-0"
+      className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-amber-800 dark:text-primary font-bold cursor-pointer disabled:opacity-40 shrink-0 border border-neutral-200 dark:border-transparent"
     >
       Ir ao Out
     </button>
   );
 
   return (
-    <Card className="relative overflow-hidden bg-surface-container-lowest border border-surface-container-high/90 p-4 flex flex-col items-center justify-center min-h-[460px] shadow-2xl">
+    <Card className="relative overflow-hidden bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-high/90 p-4 flex flex-col items-center justify-center min-h-[460px] shadow-sm dark:shadow-2xl">
       {/* Halos Luminosos Sutis no Player */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
+      {/* Alternador de Aspecto entre 9:16 e 16:9 Centralizado no Topo do Player */}
+      <div className="flex items-center justify-center mb-4 z-20">
+        <div className="flex items-center p-1 rounded-xl bg-neutral-100 dark:bg-surface-container/90 backdrop-blur-md border border-neutral-200 dark:border-surface-container-highest shadow-sm">
+          <button
+            type="button"
+            aria-label="Formato Vertical 9:16 (Shorts/Reels/TikTok)"
+            aria-pressed={aspectRatio === "9:16"}
+            onClick={() => setAspectRatio("9:16")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label-md font-label-md transition-all cursor-pointer",
+              aspectRatio === "9:16"
+                ? "bg-primary text-on-primary font-bold shadow-sm"
+                : "text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface",
+            )}
+            title="Formato Vertical 9:16 (Shorts/Reels/TikTok)"
+          >
+            <span className="material-symbols-outlined text-[16px]">
+              stay_current_portrait
+            </span>
+            <span>9:16</span>
+          </button>
+          <button
+            type="button"
+            aria-label="Formato Horizontal 16:9 (YouTube Widescreen)"
+            aria-pressed={aspectRatio === "16:9"}
+            onClick={() => setAspectRatio("16:9")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label-md font-label-md transition-all cursor-pointer",
+              aspectRatio === "16:9"
+                ? "bg-primary text-on-primary font-bold shadow-sm"
+                : "text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface",
+            )}
+            title="Formato Horizontal 16:9 (YouTube Widescreen)"
+          >
+            <span className="material-symbols-outlined text-[16px]">
+              stay_current_landscape
+            </span>
+            <span>16:9</span>
+          </button>
+        </div>
+      </div>
+
       {/* Moldura do Vídeo com Aspect Ratio Dinâmico */}
       <div
-        onClick={previewStreamUrl && !isPreparingPreview ? handleTogglePlay : undefined}
+        onClick={
+          previewStreamUrl && !isPreparingPreview ? handleTogglePlay : undefined
+        }
         className={cn(
-          'relative overflow-hidden rounded-2xl bg-black border border-surface-container-highest transition-all duration-300 shadow-[0_12px_40px_rgba(0,0,0,0.8)] flex items-center justify-center',
-          previewStreamUrl && !isPreparingPreview ? 'cursor-pointer' : '',
-          aspectRatio === '9:16'
-            ? 'w-[290px] h-[515px] sm:w-[320px] sm:h-[568px]'
-            : 'w-full max-w-[620px] aspect-video'
+          "relative overflow-hidden rounded-2xl bg-black border border-surface-container-highest transition-all duration-300 shadow-[0_12px_40px_rgba(0,0,0,0.8)] flex items-center justify-center",
+          previewStreamUrl && !isPreparingPreview ? "cursor-pointer" : "",
+          aspectRatio === "9:16"
+            ? "w-[290px] h-[515px] sm:w-[320px] sm:h-[568px]"
+            : "w-full max-w-[620px] aspect-video",
         )}
       >
         {!currentVideo ? (
-          <div className="flex flex-col items-center justify-center text-center p-6 gap-3 z-30">
-            <span className="material-symbols-outlined text-[42px] text-primary/70">
+          <div className="flex flex-col items-center justify-center text-center p-2.5 sm:p-6 gap-1 sm:gap-3 z-30 max-h-full max-w-sm mx-auto overflow-hidden">
+            <span className="material-symbols-outlined text-[26px] sm:text-[42px] text-primary/70 shrink-0">
               video_library
             </span>
-            <p className="font-title-sm text-title-sm font-bold text-on-surface">
+            <p className="font-bold text-white dark:text-on-surface text-xs sm:text-title-sm leading-tight">
               Nenhum vídeo selecionado
             </p>
-            <p className="text-body-sm text-on-surface-variant max-w-xs">
-              Selecione um ou mais vídeos na tela de Varredura para carregá-los e editá-los em tempo real no Studio.
+            <p className="text-[11px] sm:text-body-sm text-neutral-300 dark:text-on-surface-variant max-w-[260px] sm:max-w-xs line-clamp-2 leading-tight">
+              Selecione vídeos na tela de Varredura para editá-los em tempo real
+              no Studio.
             </p>
             <Button
               variant="primary"
               size="sm"
               onClick={onNavigateToVarredura}
+              className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 py-0.5 mt-0.5 sm:mt-1 shrink-0"
               leftIcon={
-                <span className="material-symbols-outlined text-[16px]">
+                <span className="material-symbols-outlined text-[14px] sm:text-[16px]">
                   travel_explore
                 </span>
               }
@@ -205,39 +260,42 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
             </Button>
           </div>
         ) : isPreparingPreview ? (
-          <div className="flex flex-col items-center justify-center text-center p-6 gap-3 z-30">
-            <span className="material-symbols-outlined text-[40px] text-primary animate-spin">
+          <div className="flex flex-col items-center justify-center text-center p-2.5 sm:p-6 gap-1.5 sm:gap-3 z-30 max-h-full max-w-sm mx-auto overflow-hidden">
+            <span className="material-symbols-outlined text-[26px] sm:text-[40px] text-primary animate-spin shrink-0">
               progress_activity
             </span>
-            <p className="font-title-sm text-title-sm font-bold text-on-surface">
-              Baixando vídeo para visualização em tempo real...
+            <p className="font-bold text-white text-xs sm:text-title-sm leading-tight">
+              Baixando vídeo para visualização...
             </p>
-            <p className="text-label-sm text-on-surface-variant max-w-xs line-clamp-2">
+            <p className="text-[11px] sm:text-label-sm text-neutral-300 max-w-[250px] sm:max-w-xs line-clamp-1 leading-tight">
               {currentVideo.title}
             </p>
           </div>
         ) : previewError ? (
-          <div className="flex flex-col items-center justify-center text-center p-6 gap-3 z-30 max-w-sm mx-auto">
-            <span className="material-symbols-outlined text-[42px] text-error">
-              {isAuthError ? 'lock_person' : 'error'}
+          <div className="flex flex-col items-center justify-center text-center p-2.5 sm:p-6 gap-1 sm:gap-3 z-30 max-w-xs sm:max-w-sm mx-auto max-h-full overflow-hidden">
+            <span className="material-symbols-outlined text-[26px] sm:text-[42px] text-error shrink-0">
+              {isAuthError ? "lock_person" : "error"}
             </span>
-            <p className="font-title-sm text-title-sm font-bold text-on-surface">
-              {isAuthError ? 'Vídeo com Restrição de Idade (+18)' : 'Falha ao carregar o vídeo'}
-            </p>
-            <p className="text-body-sm text-on-surface-variant line-clamp-4">
+            <p className="font-bold text-white text-xs sm:text-title-sm leading-tight">
               {isAuthError
-                ? 'Este vídeo possui restrição de idade (+18) do YouTube. O download requer autorização da conta global configurada no servidor (storage/cookies.txt).'
+                ? "Vídeo com Restrição (+18)"
+                : "Falha ao carregar o vídeo"}
+            </p>
+            <p className="text-[10px] sm:text-body-sm text-neutral-300 line-clamp-2 sm:line-clamp-4 leading-tight">
+              {isAuthError
+                ? "Requer autorização de conta global salva no servidor (cookies.txt)."
                 : previewError}
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => {
                   if (currentVideo) loadVideoPreview(currentVideo);
                 }}
+                className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 py-0.5 shrink-0"
                 leftIcon={
-                  <span className="material-symbols-outlined text-[16px]">
+                  <span className="material-symbols-outlined text-[14px] sm:text-[16px]">
                     refresh
                   </span>
                 }
@@ -280,8 +338,12 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
             }}
             onError={(e) => {
               const err = e.currentTarget.error;
-              console.error('Erro no elemento de vídeo:', err?.code, err?.message);
-              toast.error('Erro ao decodificar stream do vídeo no navegador.');
+              console.error(
+                "Erro no elemento de vídeo:",
+                err?.code,
+                err?.message,
+              );
+              toast.error("Erro ao decodificar stream do vídeo no navegador.");
             }}
             className="w-full h-full object-contain select-none"
           />
@@ -290,12 +352,14 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
         {/* Camada de Canvas Sobreposta ao Vídeo */}
         <canvas
           ref={canvasRef}
-          width={aspectRatio === '9:16' ? 360 : 640}
-          height={aspectRatio === '9:16' ? 640 : 360}
+          width={aspectRatio === "9:16" ? 360 : 640}
+          height={aspectRatio === "9:16" ? 640 : 360}
           className={cn(
-            'absolute inset-0 w-full h-full object-contain pointer-events-none z-20',
-            (!previewStreamUrl || isPreparingPreview || Boolean(previewError)) &&
-              'hidden'
+            "absolute inset-0 w-full h-full object-contain pointer-events-none z-20",
+            (!previewStreamUrl ||
+              isPreparingPreview ||
+              Boolean(previewError)) &&
+              "hidden",
           )}
         />
 
@@ -325,12 +389,12 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
       </div>
 
       {/* Barra de Controles do Player com Cronômetro Tabular */}
-      <div className="w-full max-w-xl mt-4 px-3 py-2 rounded-xl bg-surface-container/80 backdrop-blur-md border border-surface-container-high/80">
-        {/* Layout para telas pequenas (sm e mobile): Marcador In na esquerda, temporizador no meio, Marcador Out na direita na linha superior; botões de player na linha inferior */}
-        <div className="flex md:hidden flex-col items-center gap-2.5 w-full">
+      <div className="w-full max-w-xl mt-4 px-3 py-2 rounded-xl bg-white/90 text-slate-800 border border-slate-200/80 shadow-md backdrop-blur-md dark:bg-surface-container/80 dark:text-on-surface dark:border-surface-container-high/80 dark:shadow-none">
+        {/* Layout para telas pequenas (sm e mobile) */}
+        <div className="flex sm:hidden flex-col items-center gap-2.5 w-full">
           <div className="flex items-center justify-between w-full gap-2 min-w-0">
             {renderMarkerInButton()}
-            {renderTimerDisplay('justify-center')}
+            {renderTimerDisplay("justify-center")}
             {renderMarkerOutButton()}
           </div>
           <div className="flex items-center justify-center">
@@ -338,8 +402,8 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
           </div>
         </div>
 
-        {/* Layout para desktop (md e superior): Linha única clássica */}
-        <div className="hidden md:flex items-center justify-between gap-3 w-full">
+        {/* Layout para desktop (sm e superior) */}
+        <div className="hidden sm:flex items-center justify-between gap-3 w-full">
           {renderPlayerButtons()}
           {renderTimerDisplay()}
           <div className="flex items-center gap-1 shrink-0">

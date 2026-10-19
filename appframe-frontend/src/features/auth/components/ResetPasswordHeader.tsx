@@ -16,7 +16,7 @@ export const ResetPasswordHeader: React.FC<ResetPasswordHeaderProps> = ({
         onClick={onLogoClick}
       >
         <AppFrameLogo className="w-8 h-8" />
-        <span className="font-title-lg text-title-lg font-bold tracking-tight text-on-surface">
+        <span className="font-title-lg text-title-lg font-bold tracking-tight text-neutral-900 dark:text-on-surface">
           AppFrame
         </span>
       </div>

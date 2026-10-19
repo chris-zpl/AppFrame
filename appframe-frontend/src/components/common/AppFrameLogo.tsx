@@ -115,7 +115,7 @@ export const AppFrameLogo: React.FC<AppFrameLogoProps> = ({
           )}
         >
           <span className="text-on-surface font-bold">App</span>
-          <span className="text-primary font-bold">Frame</span>
+          <span className="text-amber-600 dark:text-primary font-bold">Frame</span>
         </div>
       )}
     </div>

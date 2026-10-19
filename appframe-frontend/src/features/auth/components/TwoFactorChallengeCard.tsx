@@ -44,7 +44,7 @@ export const TwoFactorChallengeCard: React.FC<TwoFactorChallengeCardProps> = ({
     >
       {/* Cabeçalho */}
       <div className="flex flex-col items-center text-center">
-        <div className="w-14 h-14 rounded-2xl bg-surface-container-highest flex items-center justify-center text-primary mb-space-sm shadow-[0_0_20px_rgba(212,163,70,0.25)] border border-primary/30">
+        <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-surface-container-highest flex items-center justify-center text-amber-700 dark:text-primary mb-space-sm shadow-[0_0_20px_rgba(212,163,70,0.25)] border border-primary/30">
           <span className="material-symbols-outlined text-[28px]">
             shield_locked
           </span>

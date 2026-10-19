@@ -22,7 +22,7 @@ export const AdminNavigationTabs: React.FC<AdminNavigationTabsProps> = ({
   isGeminiConfigured,
 }) => {
   return (
-    <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container border border-surface-container-highest overflow-x-auto">
+    <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-100 dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest overflow-x-auto">
       <AdminTabButton
         isActive={activeTab === 'users'}
         onClick={() => onSelectTab('users')}

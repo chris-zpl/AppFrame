@@ -31,7 +31,7 @@ export const HistoryJobList: React.FC<HistoryJobListProps> = (props) => {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-        <span className="text-on-surface-variant text-sm">Carregando fila de jobs...</span>
+        <span className="text-neutral-600 dark:text-on-surface-variant text-sm">Carregando fila de jobs...</span>
       </div>
     );
   }

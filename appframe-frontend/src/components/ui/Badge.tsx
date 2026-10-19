@@ -29,21 +29,21 @@ export const Badge: React.FC<BadgeProps> = ({
     short:
       'bg-primary text-label-sm font-label-sm text-neutral-950 dark:text-neutral-950 font-bold shadow-md rounded-md px-2 py-0.5',
     long:
-      'bg-surface-container-lowest/85 backdrop-blur-md text-label-sm font-label-sm text-white font-semibold tracking-wide rounded-md px-2 py-0.5',
+      'bg-black/75 backdrop-blur-md text-label-sm font-label-sm text-white font-semibold tracking-wide rounded-md px-2 py-0.5',
     timestamp:
-      'bg-surface-container-lowest/90 backdrop-blur-md text-label-sm font-label-sm text-white font-mono tracking-wider rounded px-2 py-0.5',
+      'bg-black/75 backdrop-blur-md text-label-sm font-label-sm text-white font-mono tracking-wider rounded px-2 py-0.5',
     'status-live':
-      'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary-container/15 text-label-sm font-label-sm text-primary border border-primary/30 shadow-[0_0_12px_rgba(212,163,70,0.15)]',
+      'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 dark:bg-primary-container/15 text-label-sm font-label-sm text-amber-800 dark:text-primary border border-amber-600/30 dark:border-primary/30 shadow-[0_0_12px_rgba(212,163,70,0.15)]',
     'status-processing':
-      'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-label-sm font-label-sm text-amber-500 border border-amber-500/30 shadow-[0_0_12px_rgba(212,163,70,0.15)]',
+      'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-label-sm font-label-sm text-amber-800 dark:text-amber-400 border border-amber-600/30 dark:border-amber-500/30 shadow-[0_0_12px_rgba(212,163,70,0.15)]',
     'status-completed':
-      'truncate items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-label-sm font-label-sm text-emerald-500 border border-emerald-500/30',
+      'truncate items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-label-sm font-label-sm text-emerald-700 dark:text-emerald-400 border border-emerald-500/30',
     'status-failed':
-      'truncate items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/15 text-label-sm font-label-sm text-rose-500 border border-rose-500/30',
+      'truncate items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/15 text-label-sm font-label-sm text-rose-700 dark:text-rose-400 border border-rose-500/30',
     count:
-      'px-1.5 py-0.5 rounded-full bg-primary/20 text-label-sm font-label-sm font-semibold',
+      'px-1.5 py-0.5 rounded-full bg-amber-500/15 dark:bg-primary/20 text-label-sm font-label-sm text-amber-800 dark:text-primary font-semibold',
     neutral:
-      'bg-surface-container text-label-sm font-label-sm text-on-surface-variant rounded-md px-2 py-0.5',
+      'bg-neutral-100 dark:bg-surface-container text-label-sm font-label-sm text-neutral-700 dark:text-on-surface-variant rounded-md px-2 py-0.5 border border-neutral-200 dark:border-transparent',
   };
 
   const isPulsing = pulseDot || variant === 'status-live' || variant === 'status-processing';

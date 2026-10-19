@@ -37,7 +37,7 @@ export const ScannerPagination: React.FC<ScannerPaginationProps> = (props) => {
           type="button"
           disabled={safeCurrentPage <= 1}
           onClick={() => onPageChange(safeCurrentPage - 1)}
-          className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-title-sm font-title-sm text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-outline/10"
+          className="px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-title-sm font-title-sm text-neutral-700 dark:text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-neutral-200 dark:border-outline/10"
         >
           <span className="material-symbols-outlined text-[18px]">chevron_left</span>
           <span>Anterior</span>
@@ -64,7 +64,7 @@ export const ScannerPagination: React.FC<ScannerPaginationProps> = (props) => {
               className={`min-w-[36px] h-9 px-2.5 rounded-lg font-title-sm text-title-sm transition-all cursor-pointer flex items-center justify-center ${
                 isActive
                   ? 'bg-primary text-neutral-950 dark:text-neutral-950 font-bold shadow-sm'
-                  : 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-outline/10'
+                  : 'bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface border border-neutral-200 dark:border-outline/10'
               }`}
             >
               {pageItem}
@@ -76,7 +76,7 @@ export const ScannerPagination: React.FC<ScannerPaginationProps> = (props) => {
           type="button"
           disabled={safeCurrentPage >= totalPages}
           onClick={() => onPageChange(safeCurrentPage + 1)}
-          className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-title-sm font-title-sm text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-outline/10"
+          className="px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-title-sm font-title-sm text-neutral-700 dark:text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-neutral-200 dark:border-outline/10"
         >
           <span>Próxima</span>
           <span className="material-symbols-outlined text-[18px]">chevron_right</span>

@@ -37,13 +37,13 @@ export const SettingsProfileSection: React.FC<SettingsProfileSectionProps> = (pr
   const onGoogleProviderAction = props.onGoogleProviderAction ?? (() => settings.handleGoogleProviderAction(isGoogleLinked));
   return (
     <div className="flex flex-col gap-space-md animate-in fade-in duration-200">
-      <Card className="p-6 bg-surface-container border border-surface-container-high shadow-lg flex flex-col gap-6">
-        <div className="flex items-center justify-between border-b border-surface-container-high/60 pb-4">
+      <Card className="p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-high shadow-sm dark:shadow-lg flex flex-col gap-6">
+        <div className="flex items-center justify-between border-b border-neutral-200 dark:border-surface-container-high/60 pb-4">
           <div>
-            <h3 className="font-title-md text-title-md font-bold text-on-surface">
+            <h3 className="font-title-md text-title-md font-bold text-neutral-900 dark:text-on-surface">
               Dados do Usuário
             </h3>
-            <p className="font-body-sm text-body-sm text-on-surface-variant">
+            <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
               Suas informações primárias no AppFrame
             </p>
           </div>
@@ -99,21 +99,21 @@ export const SettingsProfileSection: React.FC<SettingsProfileSectionProps> = (pr
       </Card>
 
       {/* Provedores Conectados (Google OAuth) */}
-      <Card className="p-6 bg-surface-container border border-surface-container-high shadow-lg flex flex-col gap-4">
+      <Card className="p-6 bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-high shadow-sm dark:shadow-lg flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-title-md text-title-md font-bold text-on-surface">
+            <h3 className="font-title-md text-title-md font-bold text-neutral-900 dark:text-on-surface">
               Provedor de Autenticação
             </h3>
-            <p className="font-body-sm text-body-sm text-on-surface-variant">
+            <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
               Contas federadas vinculadas para login em 1 clique
             </p>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-surface-container-lowest border border-surface-container-highest flex items-center justify-between gap-4">
+        <div className="p-4 rounded-xl bg-neutral-50 dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center p-2 shadow-sm shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center p-2 shadow-sm shrink-0 border border-neutral-200 dark:border-transparent">
               <svg viewBox="0 0 24 24" className="w-full h-full" aria-hidden="true">
                 <path
                   fill="#4285F4"
@@ -136,20 +136,20 @@ export const SettingsProfileSection: React.FC<SettingsProfileSectionProps> = (pr
 
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <span className="font-title-sm text-title-sm font-bold text-on-surface">
-                  Google OAuth 2.0
+                <span className="font-title-sm text-title-sm font-bold text-neutral-900 dark:text-on-surface">
+                  Google
                 </span>
                 {isGoogleLinked ? (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
                     Conectado
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full bg-surface-container-highest text-outline text-[10px]">
+                  <span className="px-2 py-0.5 rounded-full bg-neutral-200 dark:bg-surface-container-highest text-neutral-600 dark:text-outline text-[10px] font-medium">
                     Não conectado
                   </span>
                 )}
               </div>
-              <span className="font-body-sm text-body-sm text-on-surface-variant font-mono">
+              <span className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant font-mono">
                 {isGoogleLinked
                   ? (googleEmail || 'Conta vinculada ao Google')
                   : 'Nenhuma conta Google vinculada'}
