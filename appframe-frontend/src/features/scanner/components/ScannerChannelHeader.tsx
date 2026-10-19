@@ -10,6 +10,12 @@ export const ScannerChannelHeader: React.FC<ScannerChannelHeaderProps> = ({
   channelMeta,
   totalVideos,
 }) => {
+  const [imgError, setImgError] = React.useState(false);
+
+  React.useEffect(() => {
+    setImgError(false);
+  }, [channelMeta.avatarUrl]);
+
   return (
     <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-surface-container-low p-space-md sm:p-space-lg shadow-[0_6px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-neutral-200 dark:border-primary/20">
       <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
@@ -17,10 +23,12 @@ export const ScannerChannelHeader: React.FC<ScannerChannelHeaderProps> = ({
         <div className="flex items-center gap-space-md">
           {/* Avatar do Canal */}
           <div className="relative shrink-0">
-            {channelMeta.avatarUrl ? (
+            {channelMeta.avatarUrl && !imgError ? (
               <img
                 src={channelMeta.avatarUrl}
                 alt={channelMeta.name}
+                referrerPolicy="no-referrer"
+                onError={() => setImgError(true)}
                 className="w-14 h-14 md:w-16 md:h-16 rounded-2xl object-cover shadow-[0_0_16px_rgba(212,163,70,0.25)] ring-1 ring-primary/40"
               />
             ) : (

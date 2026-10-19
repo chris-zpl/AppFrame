@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   Injectable,
   Logger,
@@ -71,6 +73,80 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   }
 
   /**
+   * Obtém cookies configurados no servidor (storage/cookies.txt) formatados para o cabeçalho Cookie
+   */
+  private getCookiesHeader(): string | undefined {
+    try {
+      const candidates = [
+        process.env.YTDLP_COOKIES_PATH,
+        path.resolve(process.cwd(), 'storage/cookies.txt'),
+        path.resolve(process.cwd(), 'cookies.txt'),
+      ].filter(Boolean) as string[];
+
+      for (const p of candidates) {
+        if (fs.existsSync(p)) {
+          const content = fs.readFileSync(p, 'utf8');
+          const cookies: string[] = [];
+          for (const line of content.split('\n')) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('#')) continue;
+            const parts = trimmed.split('\t');
+            if (parts.length >= 7) {
+              const name = parts[5].trim();
+              const value = parts[6].trim();
+              if (name && value) {
+                cookies.push(`${name}=${value}`);
+              }
+            }
+          }
+          if (cookies.length > 0) {
+            return cookies.join('; ');
+          }
+        }
+      }
+    } catch {
+      // Silencioso se não houver cookies configurados
+    }
+    return undefined;
+  }
+
+  /**
+   * Cabeçalhos padronizados para requisições de raspagem ao YouTube
+   */
+  getFetchHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+    };
+    const cookies = this.getCookiesHeader();
+    if (cookies) {
+      headers['Cookie'] = cookies;
+    }
+    return headers;
+  }
+
+  /**
+   * Limpa e normaliza a URL do avatar do YouTube, decodificando caracteres escapados e otimizando a resolução
+   */
+  cleanAvatarUrl(rawUrl?: string): string | undefined {
+    if (!rawUrl) return undefined;
+    let url = rawUrl
+      .replace(/\\u0026/g, '&')
+      .replace(/\\x3d/gi, '=')
+      .replace(/\\u003d/gi, '=')
+      .replace(/\\\//g, '/')
+      .trim();
+    if (url.startsWith('//')) {
+      url = `https:${url}`;
+    }
+    url = url.replace(/^"+|"+$/g, '');
+    // Se a URL contiver parâmetro de dimensionamento pequeno (=s48, =s72, etc), otimiza para =s250 mantendo filtros
+    url = url.replace(/=s\d+(-c-k)?/, '=s250$1');
+    return url;
+  }
+
+  /**
    * Extrai o ID de 11 caracteres de um vídeo ou Short do YouTube a partir da URL informada
    */
   extractVideoId(input: string): string | null {
@@ -99,15 +175,17 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   } | null> {
     try {
       const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      const headers = {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-      };
+      const headers = this.getFetchHeaders();
 
-      const res = await fetch(watchUrl, { headers });
-      if (!res.ok) return null;
-      const html = await res.text();
+      let html = '';
+      try {
+        const res = await fetch(watchUrl, { headers });
+        if (res.ok) {
+          html = await res.text();
+        }
+      } catch {
+        // Falha na requisição HTML direta; continuará via oEmbed
+      }
 
       let channelUrl: string | null = null;
       let channelTitle: string | null = null;
@@ -117,68 +195,122 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       let thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
       let isShort = false;
 
-      // 1. Tenta ytInitialPlayerResponse
-      const playerMatch = html.match(
-        /(?:var\s+ytInitialPlayerResponse\s*=|window\["ytInitialPlayerResponse"\]\s*=)\s*({.+?});(?:var|<\/script>)/s,
-      );
-      if (playerMatch) {
+      // 1. Tenta ytInitialPlayerResponse se HTML foi obtido
+      if (html) {
+        const playerMatch = html.match(
+          /(?:var\s+ytInitialPlayerResponse\s*=|window\["ytInitialPlayerResponse"\]\s*=)\s*({.+?});(?:var|<\/script>)/s,
+        );
+        if (playerMatch) {
+          try {
+            const pData = JSON.parse(playerMatch[1]);
+            if (pData.videoDetails) {
+              videoTitle = pData.videoDetails.title || videoTitle;
+              channelTitle = pData.videoDetails.author || channelTitle;
+              const secs = parseInt(pData.videoDetails.lengthSeconds, 10);
+              if (!isNaN(secs)) durationSeconds = secs;
+              const bestThumb = pData.videoDetails.thumbnail?.thumbnails?.slice(-1)?.[0]?.url;
+              if (bestThumb) thumbnailUrl = bestThumb;
+              if (pData.videoDetails.channelId && !channelUrl) {
+                channelUrl = `https://www.youtube.com/channel/${pData.videoDetails.channelId}`;
+              }
+            }
+            if (pData.microformat?.playerMicroformatRenderer) {
+              const pm = pData.microformat.playerMicroformatRenderer;
+              if (pm.ownerChannelName && !channelTitle) channelTitle = pm.ownerChannelName;
+              if (pm.ownerProfileUrl) channelUrl = pm.ownerProfileUrl.replace('http://', 'https://');
+            }
+          } catch (e: any) {
+            this.logger.warn(`Erro no parsing de ytInitialPlayerResponse: ${e.message}`);
+          }
+        }
+
+        // 2. Extrações de fallback para canal via regex no HTML
+        if (!channelUrl) {
+          const ownerMatch = html.match(/"ownerProfileUrl":"([^"]+)"/);
+          if (ownerMatch) channelUrl = ownerMatch[1].replace('http://', 'https://');
+        }
+        if (!channelUrl) {
+          const canonMatch = html.match(/"canonicalBaseUrl":"([^"]+)"/);
+          if (canonMatch) {
+            const cleanBase = canonMatch[1].replace(/\/(shorts|videos)$/, '');
+            channelUrl = `https://www.youtube.com${cleanBase}`;
+          }
+        }
+        if (!channelUrl) {
+          const channelIdMatch = html.match(/"channelId":\s*"([^"]+)"/);
+          if (channelIdMatch) channelUrl = `https://www.youtube.com/channel/${channelIdMatch[1]}`;
+        }
+
+        if (!channelTitle) {
+          const authorMatch = html.match(/"author":"([^"]+)"/);
+          if (authorMatch) channelTitle = authorMatch[1];
+        }
+
+        // 3. Avatar do canal a partir do HTML (múltiplas estratégias para vídeos regulares, Shorts e páginas modernas)
+        const avatarMatch =
+          html.match(/"videoOwnerRenderer":\{"thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"/) ||
+          html.match(/"channelThumbnailSupportedRenderers":\{"channelThumbnailWithLinkRenderer":\{"thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"/) ||
+          html.match(/"decoratedAvatarViewModel":\{"avatar":\{"avatarViewModel":\{"image":\{"sources":\[\{"url":"([^"]+)"/) ||
+          html.match(/"authorThumbnail":\{"thumbnails":\[\{"url":"([^"]+)"/) ||
+          html.match(/(https?:\\?\/\\?\/[^"'\s]*yt3\.(?:ggpht\.com|googleusercontent\.com)[^"'\s]*)/);
+
+        if (avatarMatch) {
+          channelAvatarUrl = this.cleanAvatarUrl(avatarMatch[1]) || null;
+        }
+
+        // 4. Duração e verificação de Short
+        if (durationSeconds <= 0) {
+          const lengthMatch = html.match(/"lengthSeconds":"(\d+)"/);
+          if (lengthMatch) durationSeconds = parseInt(lengthMatch[1], 10);
+        }
+        if (durationSeconds > 0 && durationSeconds <= 60) {
+          isShort = true;
+        }
+      }
+
+      // 5. Fallback oficial via oEmbed caso canal ou título ainda não tenham sido identificados
+      if (!channelUrl || !channelTitle) {
         try {
-          const pData = JSON.parse(playerMatch[1]);
-          if (pData.videoDetails) {
-            videoTitle = pData.videoDetails.title || videoTitle;
-            channelTitle = pData.videoDetails.author || channelTitle;
-            const secs = parseInt(pData.videoDetails.lengthSeconds, 10);
-            if (!isNaN(secs)) durationSeconds = secs;
-            const bestThumb = pData.videoDetails.thumbnail?.thumbnails?.slice(-1)?.[0]?.url;
-            if (bestThumb) thumbnailUrl = bestThumb;
+          const oembedRes = await fetch(
+            `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
+            { headers },
+          );
+          if (oembedRes.ok) {
+            const oData: any = await oembedRes.json();
+            if (oData.author_url && !channelUrl) {
+              channelUrl = oData.author_url.replace('http://', 'https://');
+            }
+            if (oData.author_name && !channelTitle) {
+              channelTitle = oData.author_name;
+            }
+            if (oData.title && videoTitle === `Vídeo (${videoId})`) {
+              videoTitle = oData.title;
+            }
+            if (oData.thumbnail_url && thumbnailUrl.includes('hqdefault.jpg')) {
+              thumbnailUrl = oData.thumbnail_url;
+            }
           }
-          if (pData.microformat?.playerMicroformatRenderer) {
-            const pm = pData.microformat.playerMicroformatRenderer;
-            if (pm.ownerChannelName && !channelTitle) channelTitle = pm.ownerChannelName;
-            if (pm.ownerProfileUrl) channelUrl = pm.ownerProfileUrl.replace('http://', 'https://');
-          }
-        } catch (e: any) {
-          this.logger.warn(`Erro no parsing de ytInitialPlayerResponse: ${e.message}`);
+        } catch (oembedErr: any) {
+          this.logger.warn(`Fallback oEmbed falhou para o vídeo ${videoId}: ${oembedErr.message}`);
         }
       }
 
-      // 2. Extrações de fallback para canal via regex
-      if (!channelUrl) {
-        const ownerMatch = html.match(/"ownerProfileUrl":"([^"]+)"/);
-        if (ownerMatch) channelUrl = ownerMatch[1].replace('http://', 'https://');
-      }
-      if (!channelUrl) {
-        const canonMatch = html.match(/"canonicalBaseUrl":"([^"]+)"/);
-        if (canonMatch) {
-          const cleanBase = canonMatch[1].replace(/\/(shorts|videos)$/, '');
-          channelUrl = `https://www.youtube.com${cleanBase}`;
+      // 6. Se temos o channelUrl mas o avatar não veio da página do vídeo, faz uma consulta rápida à home do canal para capturar o og:image
+      if (channelUrl && !channelAvatarUrl) {
+        try {
+          const chRes = await fetch(channelUrl, { headers });
+          if (chRes.ok) {
+            const chHtml = await chRes.text();
+            const ogMatch =
+              chHtml.match(/<meta\s+(?:property="og:image"|name="twitter:image")\s+content="([^"]+)"/i) ||
+              chHtml.match(/<meta\s+content="([^"]+)"\s+(?:property="og:image"|name="twitter:image")/i);
+            if (ogMatch && (ogMatch[1].includes('yt3.ggpht.com') || ogMatch[1].includes('yt3.googleusercontent.com'))) {
+              channelAvatarUrl = this.cleanAvatarUrl(ogMatch[1]) || null;
+            }
+          }
+        } catch {
+          // Continua normalmente
         }
-      }
-      if (!channelUrl) {
-        const channelIdMatch = html.match(/"channelId":"([^"]+)"/);
-        if (channelIdMatch) channelUrl = `https://www.youtube.com/channel/${channelIdMatch[1]}`;
-      }
-
-      if (!channelTitle) {
-        const authorMatch = html.match(/"author":"([^"]+)"/);
-        if (authorMatch) channelTitle = authorMatch[1];
-      }
-
-      // 3. Avatar do canal
-      const avatarMatch = html.match(
-        /"videoOwnerRenderer":\{"thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"/,
-      );
-      if (avatarMatch) {
-        channelAvatarUrl = avatarMatch[1];
-      }
-
-      // 4. Duração e verificação de Short
-      if (durationSeconds <= 0) {
-        const lengthMatch = html.match(/"lengthSeconds":"(\d+)"/);
-        if (lengthMatch) durationSeconds = parseInt(lengthMatch[1], 10);
-      }
-      if (durationSeconds > 0 && durationSeconds <= 60) {
-        isShort = true;
       }
 
       if (!channelUrl) return null;
@@ -270,7 +402,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         tabNotFoundCount++;
       } else {
         if (!channelTitle && regularResult.channelTitle) channelTitle = regularResult.channelTitle;
-        if (!channelAvatarUrl && regularResult.channelAvatarUrl) channelAvatarUrl = regularResult.channelAvatarUrl;
+        if (regularResult.channelAvatarUrl) channelAvatarUrl = regularResult.channelAvatarUrl;
         for (const item of regularResult.items) {
           itemsMap.set(item.id, item);
         }
@@ -295,7 +427,31 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         );
       }
 
-      // Popula metadados de canal em todos os itens
+      // Se channelAvatarUrl ainda não foi encontrado após raspar /videos e /shorts, busca fallback na home do canal
+      if (!channelAvatarUrl && baseUrl) {
+        try {
+          const homeRes = await fetch(baseUrl, {
+            headers: this.getFetchHeaders(),
+          });
+          if (homeRes.ok) {
+            const homeHtml = await homeRes.text();
+            const ogMatch =
+              homeHtml.match(/<meta\s+(?:property="og:image"|name="twitter:image")\s+content="([^"]+)"/i) ||
+              homeHtml.match(/<meta\s+content="([^"]+)"\s+(?:property="og:image"|name="twitter:image")/i);
+            if (ogMatch && (ogMatch[1].includes('yt3.ggpht.com') || ogMatch[1].includes('yt3.googleusercontent.com'))) {
+              channelAvatarUrl = this.cleanAvatarUrl(ogMatch[1]);
+            }
+            if (!channelTitle) {
+              const ogTitle = homeHtml.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i);
+              if (ogTitle) channelTitle = ogTitle[1];
+            }
+          }
+        } catch (e: any) {
+          this.logger.warn(`Fallback na home do canal falhou: ${e.message}`);
+        }
+      }
+
+      // Popula metadados de canal em todos os itens da grade
       for (const item of itemsMap.values()) {
         if (channelTitle && !item.channelTitle) item.channelTitle = channelTitle;
         if (channelAvatarUrl && !item.channelAvatarUrl) item.channelAvatarUrl = channelAvatarUrl;
@@ -309,6 +465,8 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
           targetItem = itemsMap.get(targetVideoId)!;
           targetItem.isTargetVideo = true;
           targetItem.selected = true;
+          if (channelAvatarUrl) targetItem.channelAvatarUrl = channelAvatarUrl;
+          if (channelTitle && !targetItem.channelTitle) targetItem.channelTitle = channelTitle;
           itemsMap.delete(targetVideoId);
         } else if (resolvedTarget) {
           const v = resolvedTarget.video;
@@ -339,6 +497,13 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       const results: ScrapedMediaItem[] = targetItem
         ? [targetItem, ...Array.from(itemsMap.values())]
         : Array.from(itemsMap.values());
+
+      // Garante que TODOS os itens de resultado (inclusive targetItem no índice 0) tenham o avatar e título populados
+      for (const item of results) {
+        if (channelTitle && !item.channelTitle) item.channelTitle = channelTitle;
+        if (channelAvatarUrl && !item.channelAvatarUrl) item.channelAvatarUrl = channelAvatarUrl;
+        if (!item.channelUrl) item.channelUrl = baseUrl;
+      }
 
       if (results.length === 0) {
         throw new NotFoundException(
@@ -378,11 +543,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
     channelTitle?: string;
     channelAvatarUrl?: string;
   }> {
-    const headers = {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-    };
+    const headers = this.getFetchHeaders();
 
     try {
       const response = await fetch(url, { headers });
@@ -398,26 +559,70 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       }
 
       const html = await response.text();
-      const initialData = this.extractInitialJsonFromHtml(html);
-      if (!initialData) {
-        return { items: [], notFound: false };
+
+      // Extrai metadados do canal (título e avatar) mesmo antes ou independentemente do grid
+      let channelTitle: string | undefined;
+      let channelAvatarUrl: string | undefined;
+
+      // 1. Prioridade para Avatar: OpenGraph og:image (alta resolução 900x900 estática e sempre confiável no HTML do YouTube)
+      const ogMatch =
+        html.match(/<meta\s+(?:property="og:image"|name="twitter:image")\s+content="([^"]+)"/i) ||
+        html.match(/<meta\s+content="([^"]+)"\s+(?:property="og:image"|name="twitter:image")/i);
+      if (
+        ogMatch &&
+        (ogMatch[1].includes('yt3.ggpht.com') ||
+          ogMatch[1].includes('yt3.googleusercontent.com'))
+      ) {
+        channelAvatarUrl = ogMatch[1];
       }
 
-      // Extrai metadados do canal (título e avatar) se disponíveis na aba
-      let channelTitle: string | undefined =
-        initialData?.metadata?.channelMetadataRenderer?.title ||
-        initialData?.header?.pageHeaderRenderer?.pageTitle;
+      const initialData = this.extractInitialJsonFromHtml(html);
+
+      // 2. Extrai título do canal
+      if (!channelTitle && initialData) {
+        channelTitle =
+          initialData.metadata?.channelMetadataRenderer?.title ||
+          initialData.header?.pageHeaderRenderer?.pageTitle ||
+          initialData.header?.c4TabbedHeaderRenderer?.title;
+      }
       if (!channelTitle) {
         const titleMatch = html.match(/"channelMetadataRenderer":\{"title":"([^"]+)"/);
         if (titleMatch) channelTitle = titleMatch[1];
       }
+      if (!channelTitle) {
+        const ogTitle = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i);
+        if (ogTitle) channelTitle = ogTitle[1];
+      }
 
-      let channelAvatarUrl: string | undefined =
-        initialData?.metadata?.channelMetadataRenderer?.avatar?.thumbnails?.[0]?.url ||
-        initialData?.header?.pageHeaderRenderer?.content?.pageHeaderViewModel?.image?.decoratedAvatarViewModel?.avatar?.avatarViewModel?.image?.sources?.[0]?.url;
+      // 3. Fallbacks para avatar via initialData
+      if (!channelAvatarUrl && initialData) {
+        const metaThumbs = initialData.metadata?.channelMetadataRenderer?.avatar?.thumbnails;
+        const pageHeaderSources = initialData.header?.pageHeaderRenderer?.content?.pageHeaderViewModel?.image?.decoratedAvatarViewModel?.avatar?.avatarViewModel?.image?.sources;
+        const c4Thumbs = initialData.header?.c4TabbedHeaderRenderer?.avatar?.thumbnails;
+
+        channelAvatarUrl =
+          metaThumbs?.[metaThumbs.length - 1]?.url ||
+          metaThumbs?.[0]?.url ||
+          pageHeaderSources?.[pageHeaderSources.length - 1]?.url ||
+          pageHeaderSources?.[0]?.url ||
+          c4Thumbs?.[c4Thumbs.length - 1]?.url ||
+          c4Thumbs?.[0]?.url;
+      }
+
+      // 4. Fallback para avatar via regex no HTML
       if (!channelAvatarUrl) {
-        const avatarMatch = html.match(/"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/);
+        const avatarMatch =
+          html.match(/"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/) ||
+          html.match(/(https?:\\?\/\\?\/[^"'\s]*yt3\.(?:ggpht\.com|googleusercontent\.com)[^"'\s]*)/);
         if (avatarMatch) channelAvatarUrl = avatarMatch[1];
+      }
+
+      if (channelAvatarUrl) {
+        channelAvatarUrl = this.cleanAvatarUrl(channelAvatarUrl);
+      }
+
+      if (!initialData) {
+        return { items: [], notFound: false, channelTitle, channelAvatarUrl };
       }
 
       const visitedIds = new Set<string>();

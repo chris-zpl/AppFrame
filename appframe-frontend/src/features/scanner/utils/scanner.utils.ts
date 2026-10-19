@@ -80,7 +80,10 @@ export function mapScannedItems(items: any[], cleanUrl: string): MappedScanResul
   const shortsCount = mappedVideos.filter((v) => v.isShort).length;
   const longCount = mappedVideos.filter((v) => !v.isShort).length;
 
-  let channelName = items[0]?.channelTitle;
+  const titleItem = items.find(
+    (it) => it.channelTitle && it.channelTitle.trim().length > 0,
+  );
+  let channelName = titleItem?.channelTitle || items[0]?.channelTitle;
   if (!channelName) {
     channelName = cleanUrl
       .replace(/https?:\/\/(www\.)?youtube\.com\//, '')
@@ -91,7 +94,10 @@ export function mapScannedItems(items: any[], cleanUrl: string): MappedScanResul
     }
   }
 
-  const avatarUrl = items[0]?.channelAvatarUrl || mappedVideos[0]?.thumbnailUrl;
+  const avatarItem = items.find(
+    (it) => it.channelAvatarUrl && it.channelAvatarUrl.trim().length > 0,
+  );
+  const avatarUrl = avatarItem?.channelAvatarUrl;
 
   const videoMatch = cleanUrl.match(
     /(?:(?:v|vi)=|\/(?:v|vi|shorts|embed)\/|youtu\.be\/|\/watch\?v=)([\w-]{11})/i,
