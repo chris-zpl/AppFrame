@@ -16,7 +16,8 @@ export const ScannerChannelHeader: React.FC<ScannerChannelHeaderProps> = ({
     setImgError(false);
   }, [channelMeta.avatarUrl]);
 
-  const displayTotal = Math.max(channelMeta.totalChannelVideos || 0, totalVideos);
+  const loadedCount = Math.max(totalVideos, channelMeta.totalIndexed || 0);
+  const displayTotal = Math.max(channelMeta.totalChannelVideos || 0, loadedCount);
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-surface-container-low p-space-md sm:p-space-lg shadow-[0_6px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-neutral-200 dark:border-primary/20">
@@ -64,9 +65,9 @@ export const ScannerChannelHeader: React.FC<ScannerChannelHeaderProps> = ({
               <span className="font-semibold text-on-surface">Canal Oficial</span>
               <span className="text-outline">•</span>
               <span>
-                {displayTotal > channelMeta.totalIndexed
-                  ? `${channelMeta.totalIndexed.toLocaleString('pt-BR')} de ${displayTotal.toLocaleString('pt-BR')} mídias carregadas`
-                  : `${channelMeta.totalIndexed.toLocaleString('pt-BR')} mídias indexadas`}
+                {displayTotal > loadedCount
+                  ? `${loadedCount.toLocaleString('pt-BR')} de ${displayTotal.toLocaleString('pt-BR')} mídias carregadas`
+                  : `${loadedCount.toLocaleString('pt-BR')} mídias indexadas`}
               </span>
               <span className="text-outline">•</span>
               <span className="text-amber-700 dark:text-primary flex items-center gap-1 font-medium">

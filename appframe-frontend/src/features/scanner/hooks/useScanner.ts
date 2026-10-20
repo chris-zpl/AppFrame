@@ -207,11 +207,19 @@ export const useScanner = () => {
             return prev;
           }
           const merged = [...prev, ...fresh];
-          saveScannerCache({
-            channelUrl,
-            videos: merged,
-            channelMeta,
-            hasMoreByFilter: nextHasMore,
+          setChannelMeta((metaPrev) => {
+            if (!metaPrev) return metaPrev;
+            const updatedMeta = {
+              ...metaPrev,
+              totalIndexed: merged.length,
+            };
+            saveScannerCache({
+              channelUrl,
+              videos: merged,
+              channelMeta: updatedMeta,
+              hasMoreByFilter: nextHasMore,
+            });
+            return updatedMeta;
           });
           return merged;
         });
@@ -326,14 +334,6 @@ export const useScanner = () => {
       }
       return next;
     });
-  };
-
-  const handleSelectAll = () => {
-    if (selectedIds.size === filteredVideos.length && filteredVideos.length > 0) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredVideos.map((v) => v.id)));
-    }
   };
 
   const handleClearSelection = () => {
@@ -554,7 +554,6 @@ export const useScanner = () => {
     handleFilterChange,
     handlePageChange,
     handleToggleSelect,
-    handleSelectAll,
     handleClearSelection,
     handleDownloadSelected,
     handleOpenStudio,

@@ -1,16 +1,13 @@
 import React from 'react';
 import type { ScannerFilterType, ChannelMeta, ScrapedVideoCardData } from '../types';
 import { useScannerContext } from '../context';
-import { Tabs, Button, type TabItem } from '../../../components/ui';
+import { Tabs, type TabItem } from '../../../components/ui';
 
 export interface ScannerFilterTabsProps {
   filter?: ScannerFilterType;
   onFilterChange?: (nextFilter: ScannerFilterType) => void;
   videos?: ScrapedVideoCardData[];
   channelMeta?: ChannelMeta | null;
-  selectedCount?: number;
-  filteredCount?: number;
-  onSelectAll?: () => void;
 }
 
 export const ScannerFilterTabs: React.FC<ScannerFilterTabsProps> = (props) => {
@@ -20,9 +17,6 @@ export const ScannerFilterTabs: React.FC<ScannerFilterTabsProps> = (props) => {
   const onFilterChange = props.onFilterChange ?? scanner.handleFilterChange;
   const videos = props.videos ?? scanner.videos;
   const channelMeta = props.channelMeta !== undefined ? props.channelMeta : scanner.channelMeta;
-  const selectedCount = props.selectedCount ?? scanner.selectedCount;
-  const filteredCount = props.filteredCount ?? scanner.filteredVideos.length;
-  const onSelectAll = props.onSelectAll ?? scanner.handleSelectAll;
 
   if (!scanner.hasScanned || scanner.videos.length === 0 || scanner.isScanning) {
     return null;
@@ -57,25 +51,6 @@ export const ScannerFilterTabs: React.FC<ScannerFilterTabsProps> = (props) => {
         tabClassName="rounded-full"
         ariaLabel="Filtrar vídeos por tipo"
       />
-
-      {/* Botão de Selecionar / Desmarcar Todos */}
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={onSelectAll}
-          leftIcon={
-            <span className="material-symbols-outlined text-[16px]">
-              select_all
-            </span>
-          }
-        >
-          {selectedCount === filteredCount && filteredCount > 0
-            ? 'Desmarcar Todos'
-            : 'Selecionar Todos'}
-        </Button>
-      </div>
     </div>
   );
 };

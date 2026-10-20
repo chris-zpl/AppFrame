@@ -497,7 +497,13 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
                   channelUrl = `https://www.youtube.com/channel/${pData.videoDetails.channelId}`;
                 }
               }
-              if (pData.videoDetails.isLive || pData.videoDetails.isLiveContent) {
+              if (
+                pData.videoDetails.isLive ||
+                pData.videoDetails.isLiveContent ||
+                pData.videoDetails.isUpcoming ||
+                pData.videoDetails.liveBroadcastDetails ||
+                pData.playabilityStatus?.status === 'LIVE_STREAM_OFFLINE'
+              ) {
                 isLive = true;
               }
             }
@@ -505,7 +511,12 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
               const pm = pData.microformat.playerMicroformatRenderer;
               if (pm.ownerChannelName && !channelTitle) channelTitle = pm.ownerChannelName;
               if (pm.ownerProfileUrl) channelUrl = pm.ownerProfileUrl.replace('http://', 'https://');
-              if (pm.isLiveBroadcast || pm.liveBroadcastDetails) {
+              if (
+                pm.isLiveBroadcast ||
+                pm.liveBroadcastDetails ||
+                pm.isUpcoming ||
+                pm.liveBroadcastDetails?.isLiveNow
+              ) {
                 isLive = true;
               }
             }
@@ -527,7 +538,10 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             /"isLive":\s*true/.test(html) ||
             /"isLiveContent":\s*true/.test(html) ||
             /"isLiveBroadcast":\s*true/.test(html) ||
-            /"liveBroadcastDetails"/.test(html)
+            /"isUpcoming":\s*true/.test(html) ||
+            /"status":\s*"LIVE_STREAM_OFFLINE"/.test(html) ||
+            /"liveBroadcastDetails"/.test(html) ||
+            /"upcomingEventData"/.test(html)
           ) {
             isLive = true;
           }
@@ -1447,6 +1461,204 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
   }
 
   /**
+   * Identifica se uma duração ou badge textual representa uma live ao vivo ou estreia futura
+   */
+  isLiveOrUpcomingBadgeText(text?: string): boolean {
+    if (!text) return false;
+    const clean = text.trim().toLowerCase();
+    return (
+      clean === 'ao vivo' ||
+      clean === 'live' ||
+      clean === 'ao vivo agora' ||
+      clean === 'estreia' ||
+      clean === 'premiere' ||
+      clean === 'em breve' ||
+      clean === 'programado' ||
+      clean === 'upcoming' ||
+      clean.includes('ao vivo') ||
+      clean.includes('estreia') ||
+      clean.includes('premiere')
+    );
+  }
+
+  /**
+   * Identifica se o título possui indicação inequívoca de live ou estreia pendente
+   */
+  isLiveOrUpcomingTitle(title?: string): boolean {
+    if (!title) return false;
+    const clean = title.trim().toLowerCase();
+    return (
+      clean.startsWith('[ao vivo]') ||
+      clean.startsWith('(ao vivo)') ||
+      clean.startsWith('ao vivo:') ||
+      clean.startsWith('[live]') ||
+      clean.startsWith('(live)') ||
+      clean.startsWith('[estreia]') ||
+      clean.startsWith('(estreia)') ||
+      clean.startsWith('[premiere]') ||
+      clean.startsWith('(premiere)')
+    );
+  }
+
+  /**
+   * Identifica transmissões ao vivo em andamento ou vídeos/lives programados para estrear
+   */
+  isLiveOrUpcoming(node: any): boolean {
+    if (!node || typeof node !== 'object') return false;
+
+    // 1. Verificação direta em campos conhecidos do YouTube InnerTube
+    if (
+      node.isLive === true ||
+      node.isLiveContent === true ||
+      node.isLiveBroadcast === true ||
+      node.isUpcoming === true ||
+      node.upcomingEventData !== undefined ||
+      node.liveBroadcastDetails !== undefined ||
+      node.videoRenderer?.upcomingEventData !== undefined ||
+      node.lockupViewModel?.upcomingEventData !== undefined ||
+      node.lockupViewModel?.metadata?.lockupMetadataViewModel?.upcomingEventData !== undefined
+    ) {
+      return true;
+    }
+
+    // 2. Verificação de badges em metadados e overlays
+    const checkBadgeList = (badges?: any[]): boolean => {
+      if (!Array.isArray(badges) || badges.length === 0) return false;
+      return badges.some((b) => {
+        if (!b) return false;
+        const style = (
+          b.badgeViewModel?.badgeStyle ||
+          b.metadataBadgeRenderer?.style ||
+          b.thumbnailBadgeViewModel?.badgeStyle ||
+          b.thumbnailOverlayTimeStatusRenderer?.style ||
+          ''
+        ).toUpperCase();
+        const icon = (
+          b.badgeViewModel?.iconName ||
+          b.metadataBadgeRenderer?.icon?.iconType ||
+          ''
+        ).toUpperCase();
+        const label = (
+          b.badgeViewModel?.badgeText ||
+          b.metadataBadgeRenderer?.label ||
+          b.metadataBadgeRenderer?.accessibilityData?.label ||
+          b.thumbnailBadgeViewModel?.text ||
+          b.thumbnailOverlayTimeStatusRenderer?.text?.simpleText ||
+          b.thumbnailOverlayTimeStatusRenderer?.text?.runs?.[0]?.text ||
+          ''
+        ).toLowerCase();
+
+        return (
+          style.includes('LIVE') ||
+          style.includes('UPCOMING') ||
+          style.includes('PREMIERE') ||
+          icon.includes('LIVE') ||
+          icon.includes('UPCOMING') ||
+          label.includes('ao vivo') ||
+          label.includes('live') ||
+          label.includes('estreia') ||
+          label.includes('premiere') ||
+          label.includes('em breve') ||
+          label.includes('programado') ||
+          label.includes('upcoming')
+        );
+      });
+    };
+
+    // LockupViewModel metadata rows badges e textos (ex: "Transmitindo ao vivo", "Estreia em...")
+    const metadataRows =
+      node.lockupViewModel?.metadata?.contentMetadataViewModel?.metadataRows ||
+      node.metadata?.contentMetadataViewModel?.metadataRows ||
+      node.lockupViewModel?.metadata?.lockupMetadataViewModel?.metadata?.contentMetadataViewModel?.metadataRows ||
+      node.metadata?.lockupMetadataViewModel?.metadata?.contentMetadataViewModel?.metadataRows;
+    if (Array.isArray(metadataRows)) {
+      for (const row of metadataRows) {
+        if (checkBadgeList(row.badges)) return true;
+        if (Array.isArray(row.metadataParts)) {
+          for (const part of row.metadataParts) {
+            const text = (part?.text?.content || '').toLowerCase();
+            if (
+              text.includes('ao vivo') ||
+              text.includes('transmitindo ao vivo') ||
+              text.includes('estreia') ||
+              text.includes('premieres') ||
+              text.includes('programad') ||
+              text.includes('assistindo agora') ||
+              text.includes('watching now')
+            ) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    // LockupViewModel / videoRenderer overlays
+    const overlays =
+      node.lockupViewModel?.contentImage?.thumbnailViewModel?.overlays ||
+      node.contentImage?.thumbnailViewModel?.overlays ||
+      node.videoRenderer?.thumbnailOverlays ||
+      node.thumbnailOverlays;
+    if (Array.isArray(overlays)) {
+      for (const ov of overlays) {
+        if (checkBadgeList(ov.thumbnailBottomOverlayViewModel?.badges)) return true;
+        if (checkBadgeList(ov.thumbnailTopOverlayViewModel?.badges)) return true;
+        if (checkBadgeList(ov.thumbnailOverlayBadgeViewModel?.badges)) return true;
+        if (ov.thumbnailOverlayTimeStatusRenderer) {
+          const style = (ov.thumbnailOverlayTimeStatusRenderer.style || '').toUpperCase();
+          const text = (
+            ov.thumbnailOverlayTimeStatusRenderer.text?.simpleText ||
+            ov.thumbnailOverlayTimeStatusRenderer.text?.runs?.[0]?.text ||
+            ''
+          ).toLowerCase();
+          if (
+            style === 'LIVE' ||
+            style === 'UPCOMING' ||
+            style === 'LIVE_NOW' ||
+            text.includes('ao vivo') ||
+            text.includes('live') ||
+            text.includes('estreia') ||
+            text.includes('premiere') ||
+            text.includes('em breve') ||
+            text.includes('programad')
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+
+    // Shorts badges
+    const shortsBadges =
+      node.shortsLockupViewModel?.overlayMetadata?.badges ||
+      node.overlayMetadata?.badges;
+    if (checkBadgeList(shortsBadges)) return true;
+
+    // Legacy renderers badges
+    if (checkBadgeList(node.videoRenderer?.badges || node.badges)) return true;
+    if (checkBadgeList(node.gridVideoRenderer?.badges)) return true;
+    if (checkBadgeList(node.compactVideoRenderer?.badges)) return true;
+    if (checkBadgeList(node.reelItemRenderer?.badges)) return true;
+
+    // Legacy viewCountText (ex: "1.234 assistindo agora")
+    const viewText = (
+      node.videoRenderer?.viewCountText?.simpleText ||
+      node.videoRenderer?.viewCountText?.runs?.[0]?.text ||
+      ''
+    ).toLowerCase();
+    if (
+      viewText.includes('assistindo agora') ||
+      viewText.includes('watching now') ||
+      viewText.includes('transmitindo ao vivo') ||
+      viewText.includes('transmissão ao vivo')
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Percorre recursivamente os renderers do YouTube para extrair vídeos e Shorts
    */
   private extractItemsFromData(
@@ -1464,7 +1676,12 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         const lockup = node.lockupViewModel;
         const id = lockup.contentId;
         if (id && !visitedIds.has(id)) {
-          if (this.isMembersOnly(node) || this.isMembersOnly(lockup)) {
+          if (
+            this.isMembersOnly(node) ||
+            this.isMembersOnly(lockup) ||
+            this.isLiveOrUpcoming(node) ||
+            this.isLiveOrUpcoming(lockup)
+          ) {
             visitedIds.add(id);
             return;
           }
@@ -1475,7 +1692,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             lockup.metadata?.lockupMetadataViewModel?.title?.content ||
             'Sem título';
 
-          if (this.isMembersOnlyTitle(title)) {
+          if (this.isMembersOnlyTitle(title) || this.isLiveOrUpcomingTitle(title)) {
             return;
           }
 
@@ -1485,6 +1702,10 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
               ?.thumbnailBadgeViewModel;
 
           const durationText = badge?.text || '00:00';
+          if (this.isLiveOrUpcomingBadgeText(durationText)) {
+            return;
+          }
+
           const durationSeconds = this.parseDurationToSeconds(durationText);
           const durationFormatted = this.formatDuration(durationSeconds);
           const timestampFormatted = this.formatTimestamp(durationSeconds);
@@ -1526,7 +1747,12 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
         }
 
         if (id && !visitedIds.has(id)) {
-          if (this.isMembersOnly(node) || this.isMembersOnly(short)) {
+          if (
+            this.isMembersOnly(node) ||
+            this.isMembersOnly(short) ||
+            this.isLiveOrUpcoming(node) ||
+            this.isLiveOrUpcoming(short)
+          ) {
             visitedIds.add(id);
             return;
           }
@@ -1538,7 +1764,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             short.accessibilityText?.split(',')?.[0]?.trim() ||
             'Short do YouTube';
 
-          if (this.isMembersOnlyTitle(title)) {
+          if (this.isMembersOnlyTitle(title) || this.isLiveOrUpcomingTitle(title)) {
             return;
           }
 
@@ -1578,7 +1804,12 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       if (videoRenderer && videoRenderer.videoId) {
         const id = videoRenderer.videoId;
         if (!visitedIds.has(id)) {
-          if (this.isMembersOnly(node) || this.isMembersOnly(videoRenderer)) {
+          if (
+            this.isMembersOnly(node) ||
+            this.isMembersOnly(videoRenderer) ||
+            this.isLiveOrUpcoming(node) ||
+            this.isLiveOrUpcoming(videoRenderer)
+          ) {
             visitedIds.add(id);
             return;
           }
@@ -1590,7 +1821,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             videoRenderer.title?.simpleText ||
             'Sem título';
 
-          if (this.isMembersOnlyTitle(title)) {
+          if (this.isMembersOnlyTitle(title) || this.isLiveOrUpcomingTitle(title)) {
             return;
           }
 
@@ -1600,6 +1831,10 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             videoRenderer.thumbnailOverlays?.find((o: any) => o.thumbnailOverlayTimeStatusRenderer)
               ?.thumbnailOverlayTimeStatusRenderer?.text?.simpleText ||
             '00:00';
+
+          if (this.isLiveOrUpcomingBadgeText(durationText)) {
+            return;
+          }
 
           const durationSeconds = this.parseDurationToSeconds(durationText);
           const durationFormatted = this.formatDuration(durationSeconds);
@@ -1635,7 +1870,12 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
       if (reelRenderer && reelRenderer.videoId) {
         const id = reelRenderer.videoId;
         if (!visitedIds.has(id)) {
-          if (this.isMembersOnly(node) || this.isMembersOnly(reelRenderer)) {
+          if (
+            this.isMembersOnly(node) ||
+            this.isMembersOnly(reelRenderer) ||
+            this.isLiveOrUpcoming(node) ||
+            this.isLiveOrUpcoming(reelRenderer)
+          ) {
             visitedIds.add(id);
             return;
           }
@@ -1647,7 +1887,7 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
             reelRenderer.headline?.runs?.[0]?.text ||
             'Short do YouTube';
 
-          if (this.isMembersOnlyTitle(title)) {
+          if (this.isMembersOnlyTitle(title) || this.isLiveOrUpcomingTitle(title)) {
             return;
           }
 
