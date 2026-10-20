@@ -20,14 +20,6 @@ export interface StudioSubtitlesTabProps {
   trimOut?: number;
   totalDuration?: number;
   handleTranscribeCurrentVideo?: () => void;
-  showAdvancedGeminiOptions?: boolean;
-  setShowAdvancedGeminiOptions?: React.Dispatch<React.SetStateAction<boolean>>;
-  geminiPrompt?: string;
-  setGeminiPrompt?: (val: string) => void;
-  mediaFileInputRef?: React.RefObject<HTMLInputElement | null>;
-  selectedMediaFile?: File | null;
-  setSelectedMediaFile?: (file: File | null) => void;
-  handleGenerateGeminiSubtitles?: (prompt: string) => void;
   dynamicSegments?: GeminiSubtitleSegment[];
   currentTime?: number;
   setCurrentTime?: (t: number) => void;
@@ -60,14 +52,6 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
   const trimOut = props.trimOut ?? studio.trimOut;
   const totalDuration = props.totalDuration ?? studio.totalDuration;
   const handleTranscribeCurrentVideo = props.handleTranscribeCurrentVideo ?? studio.handleTranscribeCurrentVideo;
-  const showAdvancedGeminiOptions = props.showAdvancedGeminiOptions ?? studio.showAdvancedGeminiOptions;
-  const setShowAdvancedGeminiOptions = props.setShowAdvancedGeminiOptions ?? studio.setShowAdvancedGeminiOptions;
-  const geminiPrompt = props.geminiPrompt ?? studio.geminiPrompt;
-  const setGeminiPrompt = props.setGeminiPrompt ?? studio.setGeminiPrompt;
-  const mediaFileInputRef = props.mediaFileInputRef ?? studio.mediaFileInputRef;
-  const selectedMediaFile = props.selectedMediaFile ?? studio.selectedMediaFile;
-  const setSelectedMediaFile = props.setSelectedMediaFile ?? studio.setSelectedMediaFile;
-  const handleGenerateGeminiSubtitles = props.handleGenerateGeminiSubtitles ?? studio.handleGenerateGeminiSubtitles;
   const dynamicSegments = props.dynamicSegments ?? studio.dynamicSegments;
   const currentTime = props.currentTime ?? studio.currentTime;
   const setCurrentTime = props.setCurrentTime ?? studio.setCurrentTime;
@@ -229,108 +213,6 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
               <p className="text-[11px] text-neutral-500 dark:text-outline text-center">
                 IA Gemini não configurada no servidor. Contate o administrador.
               </p>
-            )}
-          </div>
-
-          {/* Opções Alternativas: Roteiro por IA ou Upload de Arquivo Próprio */}
-          <div className="rounded-xl border border-neutral-200 dark:border-surface-container-highest bg-neutral-50 dark:bg-surface-container-lowest overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowAdvancedGeminiOptions((v) => !v)}
-              className="w-full flex items-center justify-between p-2.5 text-[12px] font-semibold text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-low transition-colors cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px] text-neutral-500 dark:text-outline">tune</span>
-                <span>Outras opções: Gerar por roteiro de IA ou arquivo externo</span>
-              </span>
-              <span
-                className={cn(
-                  'material-symbols-outlined text-[16px] transition-transform duration-200',
-                  showAdvancedGeminiOptions && 'rotate-180'
-                )}
-              >
-                expand_more
-              </span>
-            </button>
-
-            {showAdvancedGeminiOptions && (
-              <div className="p-3 border-t border-neutral-200 dark:border-surface-container-highest flex flex-col gap-3">
-                <Textarea
-                  label="Roteiro / Contexto para o Gemini"
-                  value={geminiPrompt}
-                  onChange={(e) => setGeminiPrompt(e.target.value)}
-                  rows={3}
-                  disabled={!isGeminiConnected}
-                  placeholder="Informe o tema/roteiro do vídeo caso queira que a IA invente legendas dinâmicas a partir de um texto..."
-                  className="resize-none"
-                />
-
-                {/* Upload opcional de arquivo externo */}
-                <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-neutral-100 dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest">
-                  <input
-                    ref={mediaFileInputRef}
-                    type="file"
-                    accept="audio/*,video/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0] || null;
-                      setSelectedMediaFile(f);
-                    }}
-                  />
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="material-symbols-outlined text-[18px] text-amber-700 dark:text-primary shrink-0">
-                      audio_file
-                    </span>
-                    <span className="text-body-xs text-neutral-600 dark:text-on-surface-variant truncate">
-                      {selectedMediaFile
-                        ? selectedMediaFile.name
-                        : 'Arquivo avulso (opcional)'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {selectedMediaFile && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedMediaFile(null);
-                          if (mediaFileInputRef.current) {
-                            mediaFileInputRef.current.value = '';
-                          }
-                        }}
-                        className="p-1 rounded-lg text-neutral-500 dark:text-outline hover:text-error cursor-pointer"
-                        title="Remover arquivo"
-                        aria-label="Remover arquivo selecionado"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">close</span>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      disabled={!isGeminiConnected}
-                      onClick={() => mediaFileInputRef.current?.click()}
-                      className="px-2.5 py-1 rounded-lg bg-neutral-200 dark:bg-surface-container-high hover:bg-neutral-300 dark:hover:bg-surface-container-highest text-[11px] font-semibold text-neutral-800 dark:text-on-surface transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      Escolher Arquivo
-                    </button>
-                  </div>
-                </div>
-
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={!isGeminiConnected || isGeneratingSubtitles || isTranscribingAudio}
-                  isLoading={isGeneratingSubtitles}
-                  onClick={() => handleGenerateGeminiSubtitles(geminiPrompt)}
-                  leftIcon={
-                    <span className="material-symbols-outlined text-[16px]">
-                      auto_awesome
-                    </span>
-                  }
-                  className="w-full font-bold"
-                >
-                  Gerar Legendas por Roteiro / Arquivo
-                </Button>
-              </div>
             )}
           </div>
         </div>

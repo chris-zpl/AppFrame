@@ -426,8 +426,12 @@ Retorne estritamente um JSON válido no seguinte formato:
     try {
       this.logger.log(`Enviando mídia (${buffer.length} bytes) para o modelo Gemini: ${this.modelName}`);
 
-      const prompt = `Você é um motor especializado em reconhecimento de fala (STT) para geração de legendas dinâmicas.
-Transcreva todo o conteúdo de fala do arquivo fornecido, segmentando os trechos falados em blocos curtos (2 a 6 palavras) com seus respectivos tempos de início (start) e término (end) em segundos (com duas casas decimais).
+      const prompt = `Você é um motor especializado em reconhecimento de fala (STT) para legendagem de vídeo.
+Transcreva fielmente todo o conteúdo falado do áudio fornecido, segmentando os trechos falados em frases curtas e naturais (3 a 6 palavras por bloco).
+Para cada frase falada, indique os tempos precisos de início (start) e término (end) em segundos (com duas casas decimais).
+REGRAS OBRIGATÓRIAS:
+1. NÃO sobreponha tempos entre blocos consecutivos (o start do bloco seguinte deve ser maior ou igual ao end do bloco anterior).
+2. NÃO gere blocos para silêncios, pausas ou intervalos sem fala.
 Retorne estritamente um JSON no seguinte formato:
 {
   "fullText": "Texto completo transcrito aqui...",
@@ -458,13 +462,27 @@ Retorne estritamente um JSON no seguinte formato:
       const rawJsonText = response.text || '';
       const parsed = JSON.parse(rawJsonText);
 
-      const segments: AudioTimestampSegment[] = (parsed.segments || [])
-        .map((seg: any) => ({
-          start: typeof seg.start === 'number' ? Number(seg.start.toFixed(2)) : 0.0,
-          end: typeof seg.end === 'number' ? Number(seg.end.toFixed(2)) : 2.0,
-          text: String(seg.text || '').trim(),
-        }))
-        .filter((seg: AudioTimestampSegment) => seg.text.length > 0);
+      let lastEnd = 0;
+      const rawSegments = Array.isArray(parsed.segments) ? parsed.segments : [];
+      const segments: AudioTimestampSegment[] = [];
+
+      for (const seg of rawSegments) {
+        let start = typeof seg.start === 'number' ? Number(seg.start.toFixed(2)) : lastEnd;
+        let end = typeof seg.end === 'number' ? Number(seg.end.toFixed(2)) : start + 1.5;
+        const text = String(seg.text || '').trim();
+
+        if (!text || end <= start) continue;
+
+        if (start < lastEnd) {
+          start = lastEnd;
+        }
+        if (end <= start) {
+          end = Number((start + 0.3).toFixed(2));
+        }
+
+        segments.push({ start, end, text });
+        lastEnd = end;
+      }
 
       return {
         fullText: parsed.fullText || segments.map((s) => s.text).join(' '),

@@ -81,27 +81,19 @@ export const useStudioCanvas = ({
     };
 
     let displayLines: string[] = [];
-    let highlightWord = '';
 
     if (subtitleMode === 'static') {
       if (staticText.trim()) {
         displayLines = wrapText(staticText, maxTextWidth);
       }
     } else if (dynamicSegments.length > 0) {
-      // Modo Legenda Dinâmica: exibe o segmento ativo no currentTime
-      const activeSeg =
-        dynamicSegments.find((s) => currentTime >= s.start && currentTime <= s.end) ||
-        dynamicSegments.find((s) => Math.abs(s.start - currentTime) <= 1.5) ||
-        dynamicSegments[0];
+      // Modo Transcrição de Fala: exibe o bloco falado estritamente durante o tempo da fala
+      // Durante pausas, silêncios ou intervalos sem fala, a legenda desaparece da tela
+      const activeSeg = dynamicSegments.find(
+        (s) => currentTime >= s.start && currentTime <= s.end
+      );
 
       if (activeSeg && activeSeg.text) {
-        const segWords = activeSeg.text.trim().split(/\s+/).filter(Boolean);
-        if (segWords.length > 0) {
-          const segDuration = Math.max(0.2, activeSeg.end - activeSeg.start);
-          const progress = Math.max(0, Math.min(0.999, (currentTime - activeSeg.start) / segDuration));
-          const wordIdx = Math.floor(progress * segWords.length);
-          highlightWord = segWords[wordIdx] || '';
-        }
         displayLines = wrapText(activeSeg.text, maxTextWidth);
       }
     }
@@ -147,12 +139,6 @@ export const useStudioCanvas = ({
         // Texto principal
         ctx.fillStyle = textColor;
         ctx.fillText(line, width / 2, lineY);
-
-        // Destaque âmbar para palavra dinâmica ativa
-        if (highlightWord && line.toLowerCase().includes(highlightWord.toLowerCase())) {
-          ctx.fillStyle = '#F2BE5E';
-          ctx.fillText(line, width / 2, lineY);
-        }
         ctx.restore();
       });
     }

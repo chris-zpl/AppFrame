@@ -515,7 +515,10 @@ export class FFmpegService {
     const events: string[] = [];
 
     if (config?.mode === 'dynamic' && config?.segments && config.segments.length > 0) {
-      for (const seg of config.segments) {
+      const sortedSegments = [...config.segments].sort((a, b) => (a.start || 0) - (b.start || 0));
+
+      let lastEffectiveEnd = 0;
+      for (const seg of sortedSegments) {
         const segStart = typeof seg.start === 'number' ? seg.start : 0;
         const segEnd = typeof seg.end === 'number' ? seg.end : segStart + 2;
 
@@ -526,7 +529,11 @@ export class FFmpegService {
         if (trimEnd && trimStart && segStart >= trimEnd) continue;
 
         effectiveStart = Math.max(0, effectiveStart);
+        if (effectiveStart < lastEffectiveEnd) {
+          effectiveStart = lastEffectiveEnd;
+        }
         effectiveEnd = Math.max(effectiveStart + 0.1, effectiveEnd);
+        lastEffectiveEnd = effectiveEnd;
 
         const startTimeStr = this.formatAssTimestamp(effectiveStart);
         const endTimeStr = this.formatAssTimestamp(effectiveEnd);
@@ -535,12 +542,6 @@ export class FFmpegService {
           seg.lines && seg.lines.length > 0
             ? seg.lines
             : this.calculateDeterministicLines(seg.text, width, baseScaledFontSize, canvasScale);
-
-        const segDuration = Math.max(0.2, effectiveEnd - effectiveStart);
-        const segWords = seg.text.trim().split(/\s+/).filter(Boolean);
-        const durationCs = Math.round(segDuration * 100);
-        const csPerWord =
-          segWords.length > 0 ? Math.max(10, Math.floor(durationCs / segWords.length)) : 50;
 
         lines.forEach((l, index) => {
           const lineY = Math.round(startY + index * lineHeight);
@@ -558,11 +559,8 @@ export class FFmpegService {
             );
           }
 
-          const lineWords = l.text.trim().split(/\s+/).filter(Boolean);
-          const karaokeTagged = lineWords.map((w) => `{\\k${csPerWord}}${w}`).join(' ');
-
           events.push(
-            `Dialogue: 1,${startTimeStr},${endTimeStr},HighlightText,,0,0,0,,{\\an5\\pos(${centerX},${lineY})}${karaokeTagged}`,
+            `Dialogue: 1,${startTimeStr},${endTimeStr},Default,,0,0,0,,{\\an5\\pos(${centerX},${lineY})}${l.text}`,
           );
         });
       }

@@ -112,9 +112,7 @@ export const useStudioSubtitles = ({
           `Transcrição concluída! ${result.segments.length} blocos de fala sincronizados com o áudio do vídeo.`
         );
       } else {
-        toast.info(
-          'Nenhuma fala foi detectada no áudio do vídeo. Caso o vídeo não possua narração, você pode gerar legendas por roteiro nas outras opções.'
-        );
+        toast.info('Nenhuma fala foi detectada no áudio do vídeo.');
       }
     } catch (err: any) {
       const msg =
