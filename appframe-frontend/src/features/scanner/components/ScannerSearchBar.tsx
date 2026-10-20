@@ -48,7 +48,7 @@ export const ScannerSearchBar: React.FC<ScannerSearchBarProps> = (props) => {
                 type="button"
                 onClick={() => setChannelUrl('')}
                 title="Limpar URL"
-                className="text-neutral-400 hover:text-neutral-900 dark:text-outline dark:hover:text-on-surface p-1 rounded-md transition-colors cursor-pointer"
+                className="flex text-neutral-400 hover:text-neutral-900 dark:text-outline dark:hover:text-on-surface p-1 rounded-md transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">
                   cancel
