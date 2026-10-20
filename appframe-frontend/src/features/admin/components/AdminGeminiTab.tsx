@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Card, Badge, Button, Input, VisibilityToggle } from "../../../components/ui";
+import { Card, Badge, Button, Input, VisibilityToggle, ConfirmModal } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
 import type { GeminiStatus } from "../types";
 
@@ -32,6 +32,7 @@ export const AdminGeminiTab: React.FC<AdminGeminiTabProps> = ({
 }) => {
   const [internalKey, setInternalKey] = useState('');
   const [internalShowKey, setInternalShowKey] = useState(false);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
   const geminiKeyInput = controlledKey !== undefined ? controlledKey : internalKey;
   const setGeminiKeyInput = controlledSetKey ?? setInternalKey;
@@ -142,10 +143,11 @@ export const AdminGeminiTab: React.FC<AdminGeminiTabProps> = ({
 
             {geminiStatus?.configured && (
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
-                onClick={onDeleteGemini}
-                isLoading={isDeletingGemini}
+                onClick={() => setIsConfirmDeleteOpen(true)}
+                disabled={isDeletingGemini}
                 className="text-error hover:text-error hover:bg-error/10 sm:order-2 order-2"
                 leftIcon={
                   <span className="material-symbols-outlined text-[16px]">
@@ -172,6 +174,26 @@ export const AdminGeminiTab: React.FC<AdminGeminiTabProps> = ({
           </div>
         </form>
       </Card>
+
+      {/* Modal de Confirmação para Remover Chave Global do Gemini */}
+      <ConfirmModal
+        isOpen={isConfirmDeleteOpen}
+        onClose={() => setIsConfirmDeleteOpen(false)}
+        onConfirm={async () => {
+          await onDeleteGemini();
+          setIsConfirmDeleteOpen(false);
+        }}
+        title="Remover Chave do Gemini"
+        icon="delete_forever"
+        message="Deseja realmente remover a chave de API global do Google Gemini?"
+        itemTitle="Google Gemini AI"
+        itemSubtitle="Inteligência Artificial & Legendas Dinâmicas"
+        warningText="A transcrição e sincronização de legendas por IA ficarão desativadas no Studio até que uma nova chave seja cadastrada."
+        confirmText="Remover Chave"
+        cancelText="Cancelar"
+        isLoading={isDeletingGemini}
+        variant="danger"
+      />
     </div>
   );
 };

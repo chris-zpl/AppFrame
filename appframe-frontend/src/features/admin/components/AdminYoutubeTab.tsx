@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Badge, Button, Textarea, Input } from '../../../components/ui';
+import { Card, Badge, Button, Textarea, Input, ConfirmModal } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import type { YouTubeCookiesStatus } from '../types';
 
@@ -25,6 +25,7 @@ export const AdminYoutubeTab: React.FC<AdminYoutubeTabProps> = ({
   onFileUpload: controlledFileUpload,
 }) => {
   const [internalCookies, setInternalCookies] = useState('');
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
   const cookiesInput = controlledCookies !== undefined ? controlledCookies : internalCookies;
   const setCookiesInput = controlledSetCookies ?? setInternalCookies;
@@ -83,10 +84,11 @@ export const AdminYoutubeTab: React.FC<AdminYoutubeTabProps> = ({
 
         {ytStatus?.hasCookies && (
           <Button
+            type="button"
             variant="ghost"
             size="sm"
-            onClick={onDeleteCookies}
-            isLoading={isDeletingCookies}
+            onClick={() => setIsConfirmDeleteOpen(true)}
+            disabled={isDeletingCookies}
             className="text-error hover:text-error hover:bg-error/10 shrink-0"
             leftIcon={<span className="material-symbols-outlined text-[16px]">delete</span>}
           >
@@ -157,6 +159,26 @@ export const AdminYoutubeTab: React.FC<AdminYoutubeTabProps> = ({
           </div>
         </form>
       </Card>
+
+      {/* Modal de Confirmação para Remover Cookies do YouTube */}
+      <ConfirmModal
+        isOpen={isConfirmDeleteOpen}
+        onClose={() => setIsConfirmDeleteOpen(false)}
+        onConfirm={async () => {
+          await onDeleteCookies();
+          setIsConfirmDeleteOpen(false);
+        }}
+        title="Remover Cookies do YouTube"
+        icon="delete_forever"
+        message="Deseja realmente remover os cookies globais do YouTube?"
+        itemTitle="Cookies Globais de Autenticação"
+        itemSubtitle={ytStatus?.sizeBytes ? `Arquivo cookies.txt (${ytStatus.sizeBytes} bytes)` : 'Arquivo cookies.txt'}
+        warningText="Downloads de vídeos com restrição de idade ou que exigem login de usuário no YouTube podem falhar."
+        confirmText="Remover Cookies"
+        cancelText="Cancelar"
+        isLoading={isDeletingCookies}
+        variant="danger"
+      />
     </div>
   );
 };
