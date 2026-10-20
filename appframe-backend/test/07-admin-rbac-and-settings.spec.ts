@@ -548,6 +548,13 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       expect(authService.verifyGoogleLinkState('invalid_token')).toBeNull();
     });
 
+    it('signGoogleLoginState e verifyGoogleLoginState devem gerar e extrair preferência de rememberMe', () => {
+      expect(authService.signGoogleLoginState(true)).toBe('signed_token_123');
+      expect(authService.verifyGoogleLoginState(JSON.stringify({ purpose: 'google_login', rememberMe: false }))).toBe(false);
+      expect(authService.verifyGoogleLoginState(JSON.stringify({ purpose: 'google_login', rememberMe: true }))).toBe(true);
+      expect(authService.verifyGoogleLoginState('')).toBeNull();
+    });
+
     it('linkGoogleAccount deve vincular Google ID e Google Email ao perfil do usuário atual', async () => {
       const joaoUser: any = {
         id: 'user-joao',

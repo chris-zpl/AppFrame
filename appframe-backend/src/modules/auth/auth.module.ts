@@ -14,6 +14,7 @@ import { AuthController } from './auth.controller';
 import { TwoFactorService } from './services/two-factor.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { SharedModule } from '../../shared/shared.module';
 
 @Module({
@@ -41,6 +42,7 @@ import { SharedModule } from '../../shared/shared.module';
     TwoFactorService,
     JwtStrategy,
     GoogleStrategy,
+    GoogleAuthGuard,
   ],
   exports: [AuthService, JwtStrategy, PassportModule, JwtModule],
 })

@@ -131,17 +131,9 @@ export class AuthController {
     const meta = this.extractMeta(req);
     const stateParam = (req.query?.state as string) || '';
 
-    // Verifica se a requisição originou de um fluxo de vinculação de conta (Settings)
-    if (stateParam) {
-      const linkUserId = this.authService.verifyGoogleLinkState(stateParam);
-      if (!linkUserId) {
-        return res.redirect(
-          `${this.frontendUrl}/settings?error=${encodeURIComponent(
-            'A solicitação de vinculação da conta Google expirou ou é inválida. Por favor, tente novamente.',
-          )}`,
-        );
-      }
-
+    // 1. Verifica se a requisição originou de um fluxo de vinculação de conta (Settings)
+    const linkUserId = this.authService.verifyGoogleLinkState(stateParam);
+    if (linkUserId) {
       const linkResult = await this.authService.linkGoogleAccount(
         linkUserId,
         googleProfile,
@@ -159,15 +151,28 @@ export class AuthController {
       return res.redirect(`${this.frontendUrl}/settings?google_linked=true`);
     }
 
+    // 2. Se stateParam tinha a intenção de vincular conta Google mas expirou ou é inválido
+    if (this.authService.isGoogleLinkState(stateParam)) {
+      return res.redirect(
+        `${this.frontendUrl}/settings?error=${encodeURIComponent(
+          'A solicitação de vinculação da conta Google expirou ou é inválida. Por favor, tente novamente.',
+        )}`,
+      );
+    }
+
+    // 3. Fluxo de autenticação Google: extrai preferência de rememberMe
+    const rememberMe = this.authService.verifyGoogleLoginState(stateParam) ?? false;
+
     const authResult = await this.authService.handleGoogleCallback(
       googleProfile,
       meta,
+      rememberMe,
     );
 
-    // Se o usuário possui 2FA ativo, redireciona com o token temporário de desafio
+    // Se o usuário possui 2FA ativo, redireciona com o token temporário de desafio e o flag de rememberMe
     if (authResult.require_2fa && authResult.temp_token) {
       return res.redirect(
-        `${this.frontendUrl}/auth/2fa?tempToken=${encodeURIComponent(authResult.temp_token)}`,
+        `${this.frontendUrl}/auth/2fa?tempToken=${encodeURIComponent(authResult.temp_token)}&rememberMe=${rememberMe}`,
       );
     }
 
@@ -177,13 +182,14 @@ export class AuthController {
         res,
         authResult.access_token,
         authResult.refresh_token,
-        Boolean(authResult.remember_me ?? true),
+        rememberMe,
       );
     }
 
-    // Redirecionamento seguro para a aplicação cliente apenas com o access_token
+    // Redirecionamento seguro para a aplicação cliente apenas com o access_token e rememberMe
     const redirectUrl = new URL(`${this.frontendUrl}/auth/callback`);
     redirectUrl.searchParams.set('token', authResult.access_token || '');
+    redirectUrl.searchParams.set('rememberMe', String(rememberMe));
 
     return res.redirect(redirectUrl.toString());
   }

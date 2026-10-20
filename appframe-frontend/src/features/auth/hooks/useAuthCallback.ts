@@ -41,6 +41,10 @@ export const useAuthCallback = (): UseAuthCallbackReturn => {
           urlParams.get('requires2fa') === 'true' || hashParams.get('requires2fa') === 'true';
         const tempToken = urlParams.get('tempToken') || hashParams.get('tempToken');
         const errParam = urlParams.get('error') || hashParams.get('error');
+        const rememberMe =
+          urlParams.get('rememberMe') === 'true' ||
+          hashParams.get('rememberMe') === 'true' ||
+          localStorage.getItem('appframe_remember_me') === 'true';
 
         if (errParam) {
           throw new Error(
@@ -53,7 +57,7 @@ export const useAuthCallback = (): UseAuthCallbackReturn => {
           setStatusText('Desafio de Dois Fatores (2FA) detectado...');
           setProgress(75);
           setTimeout(() => {
-            navigate(`/2fa?tempToken=${encodeURIComponent(tempToken)}`, { replace: true });
+            navigate('2fa', { tempToken, rememberMe });
           }, 400);
           return;
         }
@@ -63,7 +67,7 @@ export const useAuthCallback = (): UseAuthCallbackReturn => {
         setProgress(50);
 
         if (token) {
-          await handleOAuthCallback(token, refreshToken || undefined);
+          await handleOAuthCallback(token, refreshToken || undefined, rememberMe);
         } else {
           throw new Error('Nenhum token retornado pelo provedor de autenticação.');
         }

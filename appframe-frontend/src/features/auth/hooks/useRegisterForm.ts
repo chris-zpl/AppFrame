@@ -19,7 +19,12 @@ export const useRegisterForm = () => {
   const passwordStrength = useMemo(() => calculatePasswordStrength(password), [password]);
 
   const handleGoogleSignup = useCallback(() => {
-    window.location.href = `${API_BASE_URL}/auth/google`;
+    try {
+      localStorage.removeItem('appframe_remember_me');
+      localStorage.removeItem('appframe_has_session');
+      sessionStorage.setItem('appframe_has_session', 'true');
+    } catch {}
+    window.location.href = `${API_BASE_URL}/auth/google?rememberMe=false`;
   }, []);
 
   const handleRegisterSubmit = useCallback(

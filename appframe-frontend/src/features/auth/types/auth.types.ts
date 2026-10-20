@@ -19,7 +19,7 @@ export interface AuthContextType {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<{ requires2fa?: boolean; tempToken?: string; user?: UserProfile }>;
   register: (name: string, email: string, password: string) => Promise<{ user?: UserProfile }>;
   verify2fa: (tempToken: string, token: string, rememberMe?: boolean) => Promise<{ user?: UserProfile }>;
-  handleOAuthCallback: (accessToken?: string, refreshToken?: string) => Promise<void>;
+  handleOAuthCallback: (accessToken?: string, refreshToken?: string, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: (tokenOverride?: string) => Promise<UserProfile | null>;
 }

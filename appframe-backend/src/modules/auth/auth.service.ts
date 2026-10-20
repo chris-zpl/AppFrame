@@ -357,6 +357,7 @@ export class AuthService {
   async handleGoogleCallback(
     profile: GoogleProfile,
     meta?: SessionMeta,
+    rememberMe: boolean = false,
   ): Promise<AuthResponseDto> {
     const emailNormalized = profile.email.trim().toLowerCase();
 
@@ -421,14 +422,15 @@ export class AuthService {
 
     // Se 2FA estiver ativado na conta, emite desafio
     if (user.is_two_factor_enabled) {
-      const tempToken = this.sign2faChallengeToken(user, true);
+      const tempToken = this.sign2faChallengeToken(user, rememberMe);
       return {
         require_2fa: true,
         temp_token: tempToken,
+        remember_me: rememberMe,
       };
     }
 
-    return this.createSessionAndTokens(user, meta, true);
+    return this.createSessionAndTokens(user, meta, rememberMe);
   }
 
   // --- Segundo Fator de Autenticação (2FA) ---
@@ -976,6 +978,39 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  isGoogleLinkState(state: string): boolean {
+    if (!state) return false;
+    try {
+      const decoded: any = this.jwtService.decode(state);
+      return Boolean(decoded && decoded.purpose === 'google_link');
+    } catch {
+      return false;
+    }
+  }
+
+  signGoogleLoginState(rememberMe: boolean): string {
+    const payload = { purpose: 'google_login', rememberMe: Boolean(rememberMe) };
+    return this.jwtService.sign(payload, { expiresIn: '15m' });
+  }
+
+  verifyGoogleLoginState(state: string): boolean | null {
+    if (!state) return null;
+    try {
+      const payload = this.jwtService.verify(state);
+      if (payload && payload.purpose === 'google_login') {
+        return Boolean(payload.rememberMe);
+      }
+    } catch {
+      try {
+        const parsed = JSON.parse(state);
+        if (parsed && parsed.purpose === 'google_login') {
+          return Boolean(parsed.rememberMe);
+        }
+      } catch {}
+    }
+    return null;
   }
 
   async linkGoogleAccount(

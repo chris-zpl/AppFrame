@@ -24,8 +24,18 @@ export const useLoginForm = (options?: UseLoginFormOptions) => {
   const [showForgotModal, setShowForgotModal] = useState(false);
 
   const handleGoogleLogin = useCallback(() => {
-    window.location.href = `${API_BASE_URL}/auth/google`;
-  }, []);
+    try {
+      if (rememberMe) {
+        localStorage.setItem('appframe_remember_me', 'true');
+        localStorage.setItem('appframe_has_session', 'true');
+      } else {
+        localStorage.removeItem('appframe_remember_me');
+        localStorage.removeItem('appframe_has_session');
+      }
+      sessionStorage.setItem('appframe_has_session', 'true');
+    } catch {}
+    window.location.href = `${API_BASE_URL}/auth/google?rememberMe=${rememberMe}`;
+  }, [rememberMe]);
 
   const handleLoginSubmit = useCallback(
     async (e: React.FormEvent) => {

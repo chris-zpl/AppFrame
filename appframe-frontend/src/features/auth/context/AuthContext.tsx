@@ -407,12 +407,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const handleOAuthCallback = useCallback(
-    async (accessToken?: string, _refreshToken?: string) => {
+    async (accessToken?: string, _refreshToken?: string, rememberMe: boolean = false) => {
       setIsLoading(true);
       try {
         try {
-          localStorage.setItem('appframe_remember_me', 'true');
-          localStorage.setItem('appframe_has_session', 'true');
+          if (rememberMe) {
+            localStorage.setItem('appframe_remember_me', 'true');
+            localStorage.setItem('appframe_has_session', 'true');
+          } else {
+            localStorage.removeItem('appframe_remember_me');
+            localStorage.removeItem('appframe_has_session');
+          }
           sessionStorage.setItem('appframe_has_session', 'true');
         } catch {}
         const profile = await refreshProfile(accessToken);
