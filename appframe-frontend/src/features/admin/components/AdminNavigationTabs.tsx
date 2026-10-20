@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { AdminTab } from '../types';
-import { AdminTabButton } from './AdminTabButton';
+import { Tabs, type TabItem } from '../../../components/ui';
 
 export interface AdminNavigationTabsProps {
   activeTab: AdminTab;
@@ -21,60 +21,63 @@ export const AdminNavigationTabs: React.FC<AdminNavigationTabsProps> = ({
   hasYoutubeCookies,
   isGeminiConfigured,
 }) => {
+  const tabs = useMemo<TabItem[]>(() => {
+    const list: TabItem[] = [
+      {
+        id: 'users',
+        label: 'Usuários & Sessões',
+        icon: 'group',
+        count: usersCount,
+      },
+      {
+        id: 'audit',
+        label: 'Auditoria de Segurança',
+        icon: 'policy',
+        count: auditCount > 0 ? auditCount : undefined,
+      },
+    ];
+
+    if (isSuperAdmin) {
+      list.push(
+        {
+          id: 'youtube',
+          label: 'YouTube (Sessão Global)',
+          icon: 'smart_display',
+          badge: hasYoutubeCookies ? (
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+          ) : undefined,
+        },
+        {
+          id: 'gemini',
+          label: 'Google Gemini AI',
+          icon: 'auto_awesome',
+          badge: isGeminiConfigured ? (
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+          ) : undefined,
+        },
+        {
+          id: 'smtp',
+          label: 'Servidor SMTP',
+          icon: 'mail',
+        },
+        {
+          id: 'legal',
+          label: 'Termos & Privacidade',
+          icon: 'gavel',
+        },
+      );
+    }
+
+    return list;
+  }, [isSuperAdmin, usersCount, auditCount, hasYoutubeCookies, isGeminiConfigured]);
+
   return (
-    <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-100 dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest overflow-x-auto">
-      <AdminTabButton
-        isActive={activeTab === 'users'}
-        onClick={() => onSelectTab('users')}
-        icon="group"
-        label="Usuários & Sessões"
-        count={usersCount}
-      />
-
-      <AdminTabButton
-        isActive={activeTab === 'audit'}
-        onClick={() => onSelectTab('audit')}
-        icon="policy"
-        label="Auditoria de Segurança"
-        count={auditCount > 0 ? auditCount : undefined}
-      />
-
-      {isSuperAdmin && (
-        <>
-          <AdminTabButton
-            isActive={activeTab === 'youtube'}
-            onClick={() => onSelectTab('youtube')}
-            icon="smart_display"
-            label="YouTube (Sessão Global)"
-            hasStatusDot={hasYoutubeCookies}
-          />
-
-          <AdminTabButton
-            isActive={activeTab === 'gemini'}
-            onClick={() => onSelectTab('gemini')}
-            icon="auto_awesome"
-            label="Google Gemini AI"
-            hasStatusDot={isGeminiConfigured}
-          />
-
-          <AdminTabButton
-            isActive={activeTab === 'smtp'}
-            onClick={() => onSelectTab('smtp')}
-            icon="mail"
-            label="Servidor SMTP"
-          />
-
-          <AdminTabButton
-            isActive={activeTab === 'legal'}
-            onClick={() => onSelectTab('legal')}
-            icon="gavel"
-            label="Termos & Privacidade"
-          />
-        </>
-      )}
-    </div>
+    <Tabs
+      tabs={tabs}
+      activeTab={activeTab}
+      onChange={(id) => onSelectTab(id as AdminTab)}
+      variant="segmented"
+      ariaLabel="Navegação administrativa"
+    />
   );
 };
-
-export { AdminTabButton };
-export type { AdminTabButtonProps } from './AdminTabButton';

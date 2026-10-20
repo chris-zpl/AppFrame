@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Button } from "../../../components/ui";
+import { Card, Button, Tabs } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
 import { toast } from "sonner";
 import type { AspectRatio } from "../types";
@@ -194,44 +194,26 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
 
       {/* Alternador de Aspecto entre 9:16 e 16:9 Centralizado no Topo do Player */}
       <div className="flex items-center justify-center mb-4 z-20">
-        <div className="flex items-center p-1 rounded-xl bg-neutral-100 dark:bg-surface-container/90 backdrop-blur-md border border-neutral-200 dark:border-surface-container-highest shadow-sm">
-          <button
-            type="button"
-            aria-label="Formato Vertical 9:16 (Shorts/Reels/TikTok)"
-            aria-pressed={aspectRatio === "9:16"}
-            onClick={() => setAspectRatio("9:16")}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label-md font-label-md transition-all cursor-pointer",
-              aspectRatio === "9:16"
-                ? "bg-primary text-on-primary font-bold shadow-sm"
-                : "text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface",
-            )}
-            title="Formato Vertical 9:16 (Shorts/Reels/TikTok)"
-          >
-            <span className="material-symbols-outlined text-[16px]">
-              stay_current_portrait
-            </span>
-            <span>9:16</span>
-          </button>
-          <button
-            type="button"
-            aria-label="Formato Horizontal 16:9 (YouTube Widescreen)"
-            aria-pressed={aspectRatio === "16:9"}
-            onClick={() => setAspectRatio("16:9")}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-label-md font-label-md transition-all cursor-pointer",
-              aspectRatio === "16:9"
-                ? "bg-primary text-on-primary font-bold shadow-sm"
-                : "text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface",
-            )}
-            title="Formato Horizontal 16:9 (YouTube Widescreen)"
-          >
-            <span className="material-symbols-outlined text-[16px]">
-              stay_current_landscape
-            </span>
-            <span>16:9</span>
-          </button>
-        </div>
+        <Tabs
+          tabs={[
+            {
+              id: "9:16",
+              label: "9:16",
+              icon: "stay_current_portrait",
+            },
+            {
+              id: "16:9",
+              label: "16:9",
+              icon: "stay_current_landscape",
+            },
+          ]}
+          activeTab={aspectRatio}
+          onChange={(id) => setAspectRatio(id as AspectRatio)}
+          variant="segmented"
+          size="sm"
+          className="backdrop-blur-md"
+          ariaLabel="Formato de proporção do vídeo"
+        />
       </div>
 
       {/* Moldura do Vídeo com Aspect Ratio Dinâmico */}

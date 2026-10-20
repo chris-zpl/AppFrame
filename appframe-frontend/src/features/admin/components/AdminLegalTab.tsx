@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { marked } from 'marked';
-import { Card, Badge, Button, Input, Textarea } from '../../../components/ui';
-import { cn } from '../../../lib/utils';
+import { Card, Badge, Button, Input, Textarea, Tabs } from '../../../components/ui';
 import type { SaveLegalSettingsDto, LegalDocumentsResponse } from '../types';
 
 export interface AdminLegalTabProps {
@@ -218,70 +217,34 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
         {/* Barra de Seleção de Documento e Modo de Exibição */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-neutral-200 dark:border-surface-container-highest">
           {/* Switcher Termos vs Privacidade */}
-          <div className="flex items-center p-1 bg-neutral-100 dark:bg-surface-container rounded-xl border border-neutral-200 dark:border-surface-container-highest">
-            <button
-              type="button"
-              onClick={() => setActiveLegalDoc('terms')}
-              className={cn(
-                'px-4 py-2 rounded-lg text-label-md font-semibold transition-all cursor-pointer flex items-center gap-2',
-                activeLegalDoc === 'terms'
-                  ? 'bg-primary text-on-primary shadow-sm'
-                  : 'text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
-              )}
-            >
-              <span className="material-symbols-outlined text-[18px]">gavel</span>
-              <span>Termos de Serviço</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveLegalDoc('privacy')}
-              className={cn(
-                'px-4 py-2 rounded-lg text-label-md font-semibold transition-all cursor-pointer flex items-center gap-2',
-                activeLegalDoc === 'privacy'
-                  ? 'bg-primary text-on-primary shadow-sm'
-                  : 'text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
-              )}
-            >
-              <span className="material-symbols-outlined text-[18px]">verified_user</span>
-              <span>Política de Privacidade</span>
-            </button>
-          </div>
+          <Tabs
+            tabs={[
+              { id: 'terms', label: 'Termos de Serviço', icon: 'gavel' },
+              { id: 'privacy', label: 'Política de Privacidade', icon: 'verified_user' },
+            ]}
+            activeTab={activeLegalDoc}
+            onChange={(id) => setActiveLegalDoc(id as 'terms' | 'privacy')}
+            variant="segmented"
+            ariaLabel="Alternar documento legal do sistema"
+          />
 
           {/* Switcher Editor vs Preview */}
-          <div className="flex items-center p-1 bg-neutral-100 dark:bg-surface-container rounded-xl border border-neutral-200 dark:border-surface-container-highest">
-            <button
-              type="button"
-              onClick={() => {
-                if (activeLegalDoc === 'terms') setActiveTermsMode('edit');
-                else setActivePrivacyMode('edit');
-              }}
-              className={cn(
-                'px-3.5 py-1.5 rounded-lg text-label-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5',
-                (activeLegalDoc === 'terms' ? activeTermsMode : activePrivacyMode) === 'edit'
-                  ? 'bg-white dark:bg-surface-container-highest text-neutral-900 dark:text-on-surface shadow-xs'
-                  : 'text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
-              )}
-            >
-              <span className="material-symbols-outlined text-[16px]">edit_note</span>
-              <span>Editor Markdown</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (activeLegalDoc === 'terms') setActiveTermsMode('preview');
-                else setActivePrivacyMode('preview');
-              }}
-              className={cn(
-                'px-3.5 py-1.5 rounded-lg text-label-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5',
-                (activeLegalDoc === 'terms' ? activeTermsMode : activePrivacyMode) === 'preview'
-                  ? 'bg-white dark:bg-surface-container-highest text-neutral-900 dark:text-on-surface shadow-xs'
-                  : 'text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
-              )}
-            >
-              <span className="material-symbols-outlined text-[16px]">visibility</span>
-              <span>Visualização Prévia</span>
-            </button>
-          </div>
+          <Tabs
+            tabs={[
+              { id: 'edit', label: 'Editor Markdown', icon: 'edit_note' },
+              { id: 'preview', label: 'Visualização Prévia', icon: 'visibility' },
+            ]}
+            activeTab={activeLegalDoc === 'terms' ? activeTermsMode : activePrivacyMode}
+            onChange={(id) => {
+              const mode = id as 'edit' | 'preview';
+              if (activeLegalDoc === 'terms') setActiveTermsMode(mode);
+              else setActivePrivacyMode(mode);
+            }}
+            variant="segmented"
+            size="sm"
+            colorScheme="surface"
+            ariaLabel="Alternar modo de edição ou visualização"
+          />
         </div>
 
         {/* Área de Conteúdo (Editor ou Preview) */}

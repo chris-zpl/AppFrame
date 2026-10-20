@@ -1,8 +1,7 @@
 import React from 'react';
-import { cn } from '../../../lib/utils';
 import type { HistoryFilterType, VideoJobItem } from '../types';
-
 import { useHistoryContext } from '../context';
+import { Tabs, type TabItem } from '../../../components/ui';
 
 export interface HistoryFilterTabsProps {
   filter?: HistoryFilterType;
@@ -28,89 +27,44 @@ export const HistoryFilterTabs: React.FC<HistoryFilterTabsProps> = (props) => {
   const expiredCount = jobs.filter((j) => String(j.status || '').toUpperCase() === 'EXPIRED').length;
   const failedCount = jobs.filter((j) => String(j.status || '').toUpperCase() === 'FAILED').length;
 
+  const tabs: TabItem[] = [
+    {
+      id: 'all',
+      label: 'Todos',
+      count: jobs.length,
+    },
+    {
+      id: 'processing',
+      label: 'Andamento',
+      count: processingCount,
+    },
+    {
+      id: 'completed',
+      label: 'Concluídos',
+      count: completedCount,
+    },
+    {
+      id: 'expired',
+      label: 'Expirados',
+      count: expiredCount,
+    },
+    {
+      id: 'failed',
+      label: 'Falhas',
+      count: failedCount,
+    },
+  ];
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-space-md mb-space-md">
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-        <button
-          type="button"
-          onClick={() => onFilterChange('all')}
-          className={cn(
-            'flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer',
-            filter === 'all'
-              ? 'bg-amber-400/20 text-[#0F1115] dark:text-primary border border-primary/40 shadow-sm font-bold'
-              : 'bg-neutral-100 dark:bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-neutral-200 dark:hover:bg-surface-container-high border border-transparent'
-          )}
-        >
-          <span>Todos</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-neutral-200 dark:bg-surface-container-highest text-label-sm font-label-sm">
-            {jobs.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onFilterChange('processing')}
-          className={cn(
-            'flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer',
-            filter === 'processing'
-              ? 'bg-amber-400/20 text-[#0F1115] dark:text-primary border border-primary/40 shadow-sm font-bold'
-              : 'bg-neutral-100 dark:bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-neutral-200 dark:hover:bg-surface-container-high border border-transparent'
-          )}
-        >
-          <span>Andamento</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 dark:bg-primary/20 text-amber-900 dark:text-primary text-label-sm font-label-sm">
-            {processingCount}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onFilterChange('completed')}
-          className={cn(
-            'flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer',
-            filter === 'completed'
-              ? 'bg-amber-400/20 text-[#0F1115] dark:text-primary border border-primary/40 shadow-sm font-bold'
-              : 'bg-neutral-100 dark:bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-neutral-200 dark:hover:bg-surface-container-high border border-transparent'
-          )}
-        >
-          <span>Concluídos</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 text-label-sm font-label-sm">
-            {completedCount}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onFilterChange('expired')}
-          className={cn(
-            'flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer',
-            filter === 'expired'
-              ? 'bg-amber-400/20 text-[#0F1115] dark:text-primary border border-primary/40 shadow-sm font-bold'
-              : 'bg-neutral-100 dark:bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-neutral-200 dark:hover:bg-surface-container-high border border-transparent'
-          )}
-        >
-          <span>Expirados</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-neutral-500/20 text-neutral-600 dark:text-neutral-400 text-label-sm font-label-sm">
-            {expiredCount}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onFilterChange('failed')}
-          className={cn(
-            'flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer',
-            filter === 'failed'
-              ? 'bg-amber-400/20 text-[#0F1115] dark:text-primary border border-primary/40 shadow-sm font-bold'
-              : 'bg-neutral-100 dark:bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-neutral-200 dark:hover:bg-surface-container-high border border-transparent'
-          )}
-        >
-          <span>Falhas</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-red-500/20 text-red-400 text-label-sm font-label-sm">
-            {failedCount}
-          </span>
-        </button>
-      </div>
+      <Tabs
+        tabs={tabs}
+        activeTab={filter}
+        onChange={(id) => onFilterChange(id as HistoryFilterType)}
+        variant="pills"
+        tabClassName="rounded-full"
+        ariaLabel="Filtrar histórico por status"
+      />
     </div>
   );
 };

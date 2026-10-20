@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Textarea, Input, Select, Checkbox } from '../../../components/ui';
+import { Button, Textarea, Input, Select, Checkbox, Tabs } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import { toast } from 'sonner';
 import type { FontFamily, SubtitleMode } from '../types';
@@ -105,46 +105,30 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
         <label className="text-label-sm font-label-sm text-neutral-500 dark:text-outline font-semibold uppercase tracking-wider">
           Modo de Legenda
         </label>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setSubtitleMode('static')}
-            className={cn(
-              'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-label-md font-label-md transition-all cursor-pointer',
-              subtitleMode === 'static'
-                ? 'bg-amber-500/15 dark:bg-primary/15 border-amber-600/40 dark:border-primary text-amber-800 dark:text-primary font-bold shadow-sm'
-                : 'bg-neutral-50 dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
-            )}
-          >
-            <span className="material-symbols-outlined text-[18px]">title</span>
-            <span>Legenda Fixa</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (!isGeminiConnected) {
-                toast.info(
-                  'O assistente de inteligência artificial (Gemini) ainda não foi configurado na plataforma pelo administrador.'
-                );
-                return;
-              }
-              setSubtitleMode('dynamic');
-            }}
-            className={cn(
-              'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-label-md font-label-md transition-all cursor-pointer',
-              subtitleMode === 'dynamic' && isGeminiConnected
-                ? 'bg-amber-500/15 dark:bg-primary/15 border-amber-600/40 dark:border-primary text-amber-800 dark:text-primary font-bold shadow-sm'
-                : !isGeminiConnected
-                  ? 'bg-neutral-50 dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest text-outline opacity-75 hover:border-primary/40'
-                  : 'bg-neutral-50 dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface'
-            )}
-          >
-            <span className="material-symbols-outlined text-[18px]">
-              {isGeminiConnected ? 'auto_awesome' : 'lock'}
-            </span>
-            <span>Dinâmica (Gemini)</span>
-          </button>
-        </div>
+        <Tabs
+          tabs={[
+            { id: 'static', label: 'Legenda Fixa', icon: 'title' },
+            {
+              id: 'dynamic',
+              label: 'Dinâmica (Gemini)',
+              icon: isGeminiConnected ? 'auto_awesome' : 'lock',
+            },
+          ]}
+          activeTab={subtitleMode}
+          onChange={(mode) => {
+            if (mode === 'dynamic' && !isGeminiConnected) {
+              toast.info(
+                'O assistente de inteligência artificial (Gemini) ainda não foi configurado na plataforma pelo administrador.'
+              );
+              return;
+            }
+            setSubtitleMode(mode as SubtitleMode);
+          }}
+          variant="segmented"
+          className="w-full flex"
+          tabClassName="flex-1 justify-center"
+          ariaLabel="Modo de legenda"
+        />
       </div>
 
       {/* Campo de Texto Estático ou Gerador Dinâmico Gemini */}

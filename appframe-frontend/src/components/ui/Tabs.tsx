@@ -8,6 +8,8 @@ export interface TabItem {
   count?: number;
   badge?: React.ReactNode;
   disabled?: boolean;
+  className?: string;
+  activeClassName?: string;
 }
 
 export interface TabsProps {
@@ -15,6 +17,7 @@ export interface TabsProps {
   activeTab: string;
   onChange: (tabId: string) => void;
   variant?: 'pills' | 'segmented' | 'underline';
+  colorScheme?: 'primary' | 'surface';
   size?: 'sm' | 'md';
   className?: string;
   tabClassName?: string;
@@ -26,6 +29,7 @@ export const Tabs: React.FC<TabsProps> = ({
   activeTab,
   onChange,
   variant = 'pills',
+  colorScheme = 'primary',
   size = 'md',
   className,
   tabClassName,
@@ -60,15 +64,20 @@ export const Tabs: React.FC<TabsProps> = ({
           baseStyles = isSm
             ? 'px-3 py-1.5 rounded-lg text-label-md font-label-md'
             : 'px-4 py-2 rounded-xl text-title-sm font-title-sm';
-          activeStyles = 'bg-primary text-on-primary font-bold shadow-sm';
+          activeStyles =
+            colorScheme === 'primary'
+              ? 'bg-primary text-on-primary font-bold shadow-sm'
+              : 'bg-white dark:bg-surface-container-highest text-neutral-900 dark:text-on-surface font-bold shadow-xs';
           inactiveStyles =
             'text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container';
         } else if (variant === 'segmented') {
           baseStyles = isSm
-            ? 'px-3 py-1 rounded-lg text-label-sm font-semibold'
-            : 'px-3.5 py-1.5 rounded-lg text-label-md font-semibold';
+            ? 'px-3 py-1.5 rounded-lg text-label-sm font-semibold'
+            : 'px-3.5 py-2 rounded-lg text-label-md font-semibold';
           activeStyles =
-            'bg-white dark:bg-surface-container-highest text-neutral-900 dark:text-on-surface shadow-xs font-bold';
+            colorScheme === 'primary'
+              ? 'bg-primary text-on-primary font-bold shadow-sm'
+              : 'bg-white dark:bg-surface-container-highest text-neutral-900 dark:text-on-surface shadow-xs font-bold';
           inactiveStyles =
             'text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface';
         } else if (variant === 'underline') {
@@ -92,7 +101,9 @@ export const Tabs: React.FC<TabsProps> = ({
             className={cn(
               'inline-flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer select-none',
               baseStyles,
-              isActive ? activeStyles : inactiveStyles,
+              isActive
+                ? (tab.activeClassName || activeStyles)
+                : (tab.className || inactiveStyles),
               tab.disabled && 'opacity-40 pointer-events-none cursor-not-allowed',
               tabClassName,
             )}
@@ -100,7 +111,7 @@ export const Tabs: React.FC<TabsProps> = ({
             {tab.icon && typeof tab.icon === 'string' ? (
               <span
                 className={cn(
-                  'material-symbols-outlined',
+                  'material-symbols-outlined shrink-0',
                   isSm ? 'text-[16px]' : 'text-[18px]',
                 )}
               >
@@ -117,7 +128,9 @@ export const Tabs: React.FC<TabsProps> = ({
                 className={cn(
                   'px-1.5 py-0.5 rounded-full font-mono text-[10px] font-bold leading-none',
                   isActive
-                    ? 'bg-on-primary/20 text-on-primary'
+                    ? colorScheme === 'primary'
+                      ? 'bg-on-primary/20 text-on-primary'
+                      : 'bg-neutral-200 dark:bg-surface-container text-neutral-900 dark:text-on-surface'
                     : 'bg-neutral-200 dark:bg-surface-container-highest text-neutral-800 dark:text-on-surface',
                 )}
               >

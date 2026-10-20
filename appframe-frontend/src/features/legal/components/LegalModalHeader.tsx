@@ -1,7 +1,5 @@
 import React from 'react';
-import { Badge } from '../../../components/ui/Badge';
-import { Button } from '../../../components/ui/Button';
-import { LegalTabSwitcher } from './LegalTabSwitcher';
+import { Badge, Button, Tabs } from '../../../components/ui';
 import type { LegalDocType } from '../types';
 
 export interface LegalModalHeaderProps {
@@ -44,7 +42,18 @@ export const LegalModalHeader: React.FC<LegalModalHeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-2 self-end sm:self-auto">
-        <LegalTabSwitcher activeDoc={activeDoc} onSelectDoc={onSelectDoc} />
+        <Tabs
+          tabs={[
+            { id: 'terms', label: 'Termos', icon: 'gavel' },
+            { id: 'privacy', label: 'Privacidade', icon: 'verified_user' },
+          ]}
+          activeTab={activeDoc}
+          onChange={(id) => onSelectDoc(id as LegalDocType)}
+          variant="segmented"
+          size="sm"
+          className="bg-white dark:bg-surface-container-lowest"
+          ariaLabel="Alternar documento legal"
+        />
 
         <Button
           type="button"

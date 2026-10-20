@@ -1,7 +1,7 @@
 import React from 'react';
 import type { ScannerFilterType, ChannelMeta, ScrapedVideoCardData } from '../types';
-
 import { useScannerContext } from '../context';
+import { Tabs, Button, type TabItem } from '../../../components/ui';
 
 export interface ScannerFilterTabsProps {
   filter?: ScannerFilterType;
@@ -27,72 +27,54 @@ export const ScannerFilterTabs: React.FC<ScannerFilterTabsProps> = (props) => {
   if (!scanner.hasScanned || scanner.videos.length === 0 || scanner.isScanning) {
     return null;
   }
+
+  const tabs: TabItem[] = [
+    {
+      id: 'all',
+      label: 'Todos',
+      count: channelMeta?.totalChannelVideos ?? videos.length,
+    },
+    {
+      id: 'long',
+      label: 'Vídeos',
+      count: channelMeta?.longCount ?? videos.filter((v) => !v.isShort).length,
+    },
+    {
+      id: 'shorts',
+      label: 'Shorts',
+      count: channelMeta?.shortsCount ?? videos.filter((v) => v.isShort).length,
+    },
+  ];
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-space-md pt-1">
       {/* Chips de Categoria Dinâmicos */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-        <button
-          type="button"
-          onClick={() => onFilterChange('all')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer ${
-            filter === 'all'
-              ? 'bg-amber-500/15 dark:bg-primary-container/20 text-amber-800 dark:text-primary border border-amber-600/30 dark:border-primary/40 shadow-sm font-semibold'
-              : 'bg-neutral-100 dark:bg-surface-container text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-200 dark:hover:bg-surface-container-high border border-neutral-200 dark:border-transparent'
-          }`}
-        >
-          <span>Todos</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 dark:bg-primary/20 text-amber-900 dark:text-primary text-label-sm font-label-sm">
-            {channelMeta?.totalChannelVideos ?? videos.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onFilterChange('long')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer ${
-            filter === 'long'
-              ? 'bg-amber-500/15 dark:bg-primary-container/20 text-amber-800 dark:text-primary border border-amber-600/30 dark:border-primary/40 shadow-sm font-semibold'
-              : 'bg-neutral-100 dark:bg-surface-container text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-200 dark:hover:bg-surface-container-high border border-neutral-200 dark:border-transparent'
-          }`}
-        >
-          <span>Vídeos</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-neutral-200 dark:bg-surface-container-highest text-label-sm font-label-sm">
-            {channelMeta?.longCount ?? videos.filter((v) => !v.isShort).length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onFilterChange('shorts')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-title-sm text-title-sm transition-all cursor-pointer ${
-            filter === 'shorts'
-              ? 'bg-amber-500/15 dark:bg-primary-container/20 text-amber-800 dark:text-primary border border-amber-600/30 dark:border-primary/40 shadow-sm font-semibold'
-              : 'bg-neutral-100 dark:bg-surface-container text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-200 dark:hover:bg-surface-container-high border border-neutral-200 dark:border-transparent'
-          }`}
-        >
-          <span>Shorts</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-neutral-200 dark:bg-surface-container-highest text-label-sm font-label-sm">
-            {channelMeta?.shortsCount ?? videos.filter((v) => v.isShort).length}
-          </span>
-        </button>
-      </div>
+      <Tabs
+        tabs={tabs}
+        activeTab={filter}
+        onChange={(id) => onFilterChange(id as ScannerFilterType)}
+        variant="pills"
+        tabClassName="rounded-full"
+        ariaLabel="Filtrar vídeos por tipo"
+      />
 
       {/* Botão de Selecionar / Desmarcar Todos */}
       <div className="flex items-center gap-2">
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           onClick={onSelectAll}
-          className="px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface font-title-sm text-title-sm transition-colors flex items-center gap-1 cursor-pointer border border-neutral-200 dark:border-outline/10"
+          leftIcon={
+            <span className="material-symbols-outlined text-[16px]">
+              select_all
+            </span>
+          }
         >
-          <span className="material-symbols-outlined text-[16px]">
-            select_all
-          </span>
-          <span>
-            {selectedCount === filteredCount && filteredCount > 0
-              ? 'Desmarcar Todos'
-              : 'Selecionar Todos'}
-          </span>
-        </button>
+          {selectedCount === filteredCount && filteredCount > 0
+            ? 'Desmarcar Todos'
+            : 'Selecionar Todos'}
+        </Button>
       </div>
     </div>
   );
