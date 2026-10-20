@@ -52,6 +52,7 @@ export const useStudioPlayer = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const draggingHandleRef = useRef<'in' | 'out' | 'playhead' | null>(null);
+  const lastTimeRef = useRef<number>(currentTime);
   const initialSeekTimeRef = useRef<number | null>(
     typeof initialSaved?.currentTime === 'number' && initialSaved.currentTime > 0
       ? initialSaved.currentTime
@@ -100,6 +101,7 @@ export const useStudioPlayer = ({
         maxDuration > 0
           ? Math.max(0, Math.min(maxDuration, targetTime))
           : Math.max(0, targetTime);
+      lastTimeRef.current = clamped;
       setCurrentTime(clamped);
       if (videoRef.current && Number.isFinite(videoRef.current.duration)) {
         try {
@@ -118,12 +120,15 @@ export const useStudioPlayer = ({
     if (!videoEl || !previewStreamUrl) return;
 
     if (videoEl.paused) {
-      // Se estiver no fim do corte ou fora dos limites, reposiciona no início
-      if (
-        trimOut > trimIn &&
-        (videoEl.currentTime < trimIn || videoEl.currentTime >= trimOut - 0.15)
-      ) {
+      // Se estiver no fim do corte ou no fim do vídeo, reposiciona no início do corte (trimIn)
+      const isAtCutEnd =
+        trimOut > trimIn && Math.abs(videoEl.currentTime - trimOut) <= 0.2;
+      const isAtVideoEnd =
+        totalDuration > 0 && videoEl.currentTime >= totalDuration - 0.15;
+
+      if (isAtCutEnd || isAtVideoEnd) {
         videoEl.currentTime = trimIn;
+        lastTimeRef.current = trimIn;
         setCurrentTime(trimIn);
       }
       try {
@@ -146,7 +151,7 @@ export const useStudioPlayer = ({
       videoEl.pause();
       setIsPlaying(false);
     }
-  }, [previewStreamUrl, trimIn, trimOut]);
+  }, [previewStreamUrl, trimIn, trimOut, totalDuration]);
 
   // Pausa o vídeo de forma síncrona e garante que o elemento de vídeo seja interrompido
   const pauseVideo = useCallback(() => {
@@ -307,6 +312,7 @@ export const useStudioPlayer = ({
         setTrimOut(restoredTrimOut);
         setCurrentTime(restoredCurrentTime);
         initialSeekTimeRef.current = restoredCurrentTime;
+        lastTimeRef.current = restoredCurrentTime;
         setWaveformPeaks(
           Array.isArray(preview.waveformPeaks) && preview.waveformPeaks.length > 0
             ? preview.waveformPeaks
@@ -417,6 +423,7 @@ export const useStudioPlayer = ({
     handleTogglePlay,
     pauseVideo,
     initialSeekTimeRef,
+    lastTimeRef,
     handleTimelineMouseDown,
     handleTimelineClick,
     loadVideoPreview,

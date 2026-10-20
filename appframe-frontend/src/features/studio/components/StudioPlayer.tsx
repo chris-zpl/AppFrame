@@ -36,6 +36,7 @@ export interface StudioPlayerProps {
   isGenerating?: boolean;
   renderProgress?: number;
   initialSeekTimeRef?: React.MutableRefObject<number | null>;
+  lastTimeRef?: React.MutableRefObject<number>;
 }
 
 export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
@@ -68,6 +69,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
   const isGenerating = props.isGenerating ?? studio.isGenerating;
   const renderProgress = props.renderProgress ?? studio.renderProgress ?? 0;
   const initialSeekTimeRef = props.initialSeekTimeRef ?? studio.initialSeekTimeRef;
+  const lastTimeRef = props.lastTimeRef ?? studio.lastTimeRef;
   const onNavigateToVarredura =
     props.onNavigateToVarredura ?? (() => studio.navigate("varredura"));
 
@@ -90,7 +92,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
         type="button"
         aria-label="Retroceder 5 segundos"
         disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
-        onClick={() => seekVideoTo(Math.max(trimIn, currentTime - 5))}
+        onClick={() => seekVideoTo(Math.max(0, currentTime - 5))}
         title="Retroceder 5 segundos"
         className="w-8 h-8 rounded-lg text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
       >
@@ -101,7 +103,13 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
         type="button"
         aria-label="Avançar 5 segundos"
         disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
-        onClick={() => seekVideoTo(Math.min(trimOut, currentTime + 5))}
+        onClick={() =>
+          seekVideoTo(
+            totalDuration > 0
+              ? Math.min(totalDuration, currentTime + 5)
+              : currentTime + 5,
+          )
+        }
         title="Avançar 5 segundos"
         className="w-8 h-8 rounded-lg text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
       >
@@ -331,6 +339,9 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
               if (targetTime !== null && targetTime > 0) {
                 try {
                   vid.currentTime = targetTime;
+                  if (lastTimeRef) {
+                    lastTimeRef.current = targetTime;
+                  }
                   setCurrentTime(targetTime);
                 } catch {}
               }
@@ -346,10 +357,27 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
               }
               const vid = e.currentTarget;
               const now = vid.currentTime;
+              const prevTime = lastTimeRef?.current ?? now;
+              if (lastTimeRef) {
+                lastTimeRef.current = now;
+              }
               setCurrentTime(now);
-              if (trimOut > trimIn && now >= trimOut) {
+
+              // Só interrompe o vídeo e reseta para trimIn se o vídeo estava de fato reproduzindo
+              // e cruzou a fronteira do final do corte (trimOut) vindo de dentro do corte ou do início.
+              // Se o usuário clicou ou posicionou a agulha manualmente na área cinza após trimOut,
+              // ele pode inspecionar e reproduzir livremente sem ser redirecionado para dentro.
+              if (
+                !vid.paused &&
+                trimOut > trimIn &&
+                prevTime < trimOut &&
+                now >= trimOut
+              ) {
                 vid.pause();
                 vid.currentTime = trimIn;
+                if (lastTimeRef) {
+                  lastTimeRef.current = trimIn;
+                }
                 setIsPlaying(false);
                 setCurrentTime(trimIn);
               }

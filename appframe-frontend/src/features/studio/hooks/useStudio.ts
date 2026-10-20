@@ -345,6 +345,7 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     handleTogglePlay: player.handleTogglePlay,
     pauseVideo: player.pauseVideo,
     initialSeekTimeRef: player.initialSeekTimeRef,
+    lastTimeRef: player.lastTimeRef,
     handleTimelineMouseDown: player.handleTimelineMouseDown,
     handleTimelineClick: player.handleTimelineClick,
     loadVideoPreview: player.loadVideoPreview,
