@@ -25,3 +25,4 @@ yarn-debug.log*
 # System
 .DS_Store
 Thumbs.db
+favicon_io*
