@@ -38,7 +38,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = (props) => {
   const onGenerateVideo = props.onGenerateVideo ?? studio.handleGenerateVideo;
   return (
     <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-space-md p-3.5 rounded-2xl bg-white dark:bg-surface-container-low border border-neutral-200 dark:border-surface-container-high/80 shadow-sm">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-center gap-3">
         <Button
           type="button"
           variant="secondary"
@@ -53,13 +53,13 @@ export const StudioHeader: React.FC<StudioHeaderProps> = (props) => {
         </Button>
 
         <div className="flex flex-col">
-          <div className="flex items-center justify-center gap-2 flex-wrap">
+          <div className="flex items-center justify-start gap-2 flex-wrap">
             <span className="font-title-md text-title-md font-bold text-neutral-900 dark:text-on-surface line-clamp-1 max-w-md">
               {studioProjectTitle}
             </span>
           </div>
           <span className="text-label-sm font-label-sm text-neutral-500 dark:text-outline">
-            Canvas 1080p • FFmpeg Hardware Acceleration Ativo
+            Canvas 1080p
           </span>
         </div>
       </div>

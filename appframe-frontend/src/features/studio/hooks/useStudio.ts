@@ -11,6 +11,8 @@ import { useStudioCanvas } from './useStudioCanvas';
 import { useStudioRender } from './useStudioRender';
 import { useStudioPersistence } from './useStudioPersistence';
 import { getSavedStudioState } from '../utils';
+import { DEFAULT_SUBTITLE_COLORS } from '../constants';
+import { toast } from 'sonner';
 
 const VALID_STUDIO_TABS: Record<string, 'legendas' | 'marca-dagua'> = {
   legendas: 'legendas',
@@ -106,13 +108,13 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     () => initialSaved?.fontFamily || 'Plus Jakarta Sans'
   );
   const [textColor, setTextColor] = useState<string>(
-    () => initialSaved?.textColor || '#FFFFFF'
+    () => initialSaved?.textColor || DEFAULT_SUBTITLE_COLORS.textColor
   );
   const [bgColor, setBgColor] = useState<string>(
-    () => initialSaved?.bgColor || '#10131A'
+    () => initialSaved?.bgColor || DEFAULT_SUBTITLE_COLORS.bgColor
   );
   const [strokeColor, setStrokeColor] = useState<string>(
-    () => initialSaved?.strokeColor || '#000000'
+    () => initialSaved?.strokeColor || DEFAULT_SUBTITLE_COLORS.strokeColor
   );
   const [fontSize, setFontSize] = useState<number>(
     () => (typeof initialSaved?.fontSize === 'number' ? initialSaved.fontSize : 28)
@@ -120,6 +122,13 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
   const [useBackgroundBox, setUseBackgroundBox] = useState<boolean>(
     () => (typeof initialSaved?.useBackgroundBox === 'boolean' ? initialSaved.useBackgroundBox : true)
   );
+
+  const handleResetColors = useCallback(() => {
+    setTextColor(DEFAULT_SUBTITLE_COLORS.textColor);
+    setStrokeColor(DEFAULT_SUBTITLE_COLORS.strokeColor);
+    setBgColor(DEFAULT_SUBTITLE_COLORS.bgColor);
+    toast.success('Cores da legenda restauradas para o padrão.');
+  }, []);
   const mediaFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Bloqueia modo dinâmico caso Gemini não esteja conectado
@@ -370,6 +379,7 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     setBgColor,
     strokeColor,
     setStrokeColor,
+    handleResetColors,
     fontSize,
     setFontSize,
     useBackgroundBox,

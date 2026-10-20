@@ -1,15 +1,14 @@
-import React from 'react';
-import { useNavigation } from '../contexts/NavigationContext';
-import { AppShell } from '../components/layout/AppShell';
+import React from "react";
+import { useNavigation } from "../contexts/NavigationContext";
+import { AppShell } from "../components/layout/AppShell";
 import {
   ScannerProvider,
   ScannerHeader,
   ScannerSearchBar,
-  ScannerFilterTabs,
   ScannerVideoFeed,
   ScannerBatchDock,
   useScannerContext,
-} from '../features/scanner';
+} from "../features/scanner";
 
 const ScraperPageContent: React.FC = () => {
   const { navigate } = useNavigation();
@@ -21,17 +20,18 @@ const ScraperPageContent: React.FC = () => {
       <section className="flex flex-col gap-space-md mb-space-lg">
         <ScannerHeader />
         <ScannerSearchBar />
-        <ScannerFilterTabs />
       </section>
 
-      {/* FEED DE VÍDEOS */}
+      {/* FEED DE VÍDEOS E FILTROS*/}
       <ScannerVideoFeed />
 
       {/* DOCK FLUTUANTE DE LOTE (BatchDock) */}
       <ScannerBatchDock
-        onDownloadSelected={() => handleDownloadSelected(() => navigate('historico'))}
+        onDownloadSelected={() =>
+          handleDownloadSelected(() => navigate("historico"))
+        }
         onOpenStudio={() =>
-          handleOpenStudio((params) => navigate('studio', params))
+          handleOpenStudio((params) => navigate("studio", params))
         }
       />
     </div>
@@ -43,10 +43,7 @@ export const ScraperPage: React.FC = () => {
 
   return (
     <ScannerProvider>
-      <AppShell
-        currentPath="varredura"
-        onNavigate={(path) => navigate(path)}
-      >
+      <AppShell currentPath="varredura" onNavigate={(path) => navigate(path)}>
         <ScraperPageContent />
       </AppShell>
     </ScannerProvider>

@@ -4,6 +4,7 @@ import type { StudioVideoQueueItem, SubtitleSegmentData } from '../../history';
 import type { AspectRatio, FontFamily, SubtitleMode, WatermarkPosition } from '../types';
 import type { WatermarkItem } from '../../watermarks';
 import { saveStudioState, removeStudioState } from '../utils';
+import { DEFAULT_SUBTITLE_COLORS } from '../constants';
 
 export interface UseStudioPersistenceProps {
   currentVideo: StudioVideoQueueItem | null;
@@ -198,9 +199,9 @@ export const useStudioPersistence = ({
     setGeminiPrompt(currentVideo.title || '');
     setDynamicSegments([]);
     setFontFamily('Plus Jakarta Sans');
-    setTextColor('#FFFFFF');
-    setBgColor('#10131A');
-    setStrokeColor('#000000');
+    setTextColor(DEFAULT_SUBTITLE_COLORS.textColor);
+    setBgColor(DEFAULT_SUBTITLE_COLORS.bgColor);
+    setStrokeColor(DEFAULT_SUBTITLE_COLORS.strokeColor);
     setFontSize(28);
     setUseBackgroundBox(true);
     if (onMarkWatermarkAsSelected) {

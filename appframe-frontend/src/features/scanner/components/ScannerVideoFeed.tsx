@@ -7,6 +7,7 @@ import { ScannerVideoSkeleton } from './ScannerVideoSkeleton';
 import type { ScrapedVideoCardData, ChannelMeta } from '../types';
 
 import { useScannerContext } from '../context';
+import { ScannerFilterTabs } from './ScannerFilterTabs';
 
 export interface ScannerVideoFeedProps {
   isScanning?: boolean;
@@ -43,7 +44,7 @@ export const ScannerVideoFeed: React.FC<ScannerVideoFeedProps> = (props) => {
 
       {/* Estado Populado com Dados Reais */}
       {!isScanning && hasScanned && videos.length > 0 && (
-        <div className="flex flex-col gap-space-lg">
+        <div className="flex flex-col gap-space-md mb-space-lg">
           {/* Card de Cabeçalho do Canal Real */}
           {channelMeta && (
             <ScannerChannelHeader
@@ -51,6 +52,8 @@ export const ScannerVideoFeed: React.FC<ScannerVideoFeedProps> = (props) => {
               totalVideos={videos.length}
             />
           )}
+
+          <ScannerFilterTabs />
 
           {/* Grid responsivo de vídeos reais */}
           {paginatedVideos.length === 0 && (scanner.isFetchingMore || scanner.hasMore) ? (

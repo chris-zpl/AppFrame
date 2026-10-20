@@ -36,3 +36,9 @@ export const MATRIX_POSITIONS: MatrixPositionItem[] = [
   { key: 'bottom-center', label: 'Inferior Centro', icon: 'south' },
   { key: 'bottom-right', label: 'Inferior Direito', icon: 'south_east' },
 ];
+
+export const DEFAULT_SUBTITLE_COLORS = {
+  textColor: '#FFFFFF',
+  strokeColor: '#000000',
+  bgColor: '#10131A',
+} as const;

@@ -4,6 +4,7 @@ import { cn } from '../../../lib/utils';
 import { toast } from 'sonner';
 import type { FontFamily, SubtitleMode } from '../types';
 import type { GeminiSubtitleSegment } from '../../history';
+import { DEFAULT_SUBTITLE_COLORS } from '../constants';
 
 import { useStudioContext } from '../context';
 
@@ -35,6 +36,7 @@ export interface StudioSubtitlesTabProps {
   setFontSize?: (s: number) => void;
   useBackgroundBox?: boolean;
   setUseBackgroundBox?: (b: boolean) => void;
+  handleResetColors?: () => void;
 }
 
 export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => {
@@ -67,6 +69,15 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
   const setFontSize = props.setFontSize ?? studio.setFontSize;
   const useBackgroundBox = props.useBackgroundBox ?? studio.useBackgroundBox;
   const setUseBackgroundBox = props.setUseBackgroundBox ?? studio.setUseBackgroundBox;
+  const handleResetColors =
+    props.handleResetColors ??
+    studio.handleResetColors ??
+    (() => {
+      setTextColor(DEFAULT_SUBTITLE_COLORS.textColor);
+      setStrokeColor(DEFAULT_SUBTITLE_COLORS.strokeColor);
+      setBgColor(DEFAULT_SUBTITLE_COLORS.bgColor);
+      toast.success('Cores da legenda restauradas para o padrão.');
+    });
   return (
     <div className="flex flex-col gap-4 animate-in fade-in duration-200">
       {/* Indicador de Status da IA Gemini (Global) */}
@@ -254,92 +265,116 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
         ]}
       />
 
-      {/* Seletores Nativos de Cor Hexadecimal */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        <div className="flex flex-col gap-1">
-          <label
-            htmlFor="subtitle-text-color-hex"
-            className="text-[11px] font-label-sm text-neutral-500 dark:text-outline font-semibold"
-          >
-            Cor do Texto
+      {/* Seção de Cores da Legenda */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <label className="text-label-sm font-label-sm text-neutral-500 dark:text-outline font-semibold uppercase tracking-wider">
+            Cores da Legenda
           </label>
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest">
-            <Input
-              id="subtitle-text-color-picker"
-              name="textColorPicker"
-              type="color"
-              aria-label="Paleta de cor do texto"
-              value={textColor}
-              onChange={(e) => setTextColor(e.target.value)}
-            />
-            <Input
-              id="subtitle-text-color-hex"
-              name="textColor"
-              type="text"
-              aria-label="Código hexadecimal da cor do texto"
-              value={textColor}
-              onChange={(e) => setTextColor(e.target.value)}
-              className="w-full bg-transparent text-[11px] font-mono outline-none border-0 text-neutral-900 dark:text-on-surface uppercase h-auto p-0 focus:ring-0 focus:border-0"
-              containerClassName="flex-1"
-            />
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleResetColors}
+            title="Restaurar cores padrão da legenda"
+            leftIcon={
+              <span className="material-symbols-outlined text-[15px]">
+                restart_alt
+              </span>
+            }
+            className="h-7 px-2 text-[11px] text-neutral-500 dark:text-outline hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high cursor-pointer"
+          >
+            Resetar Cores
+          </Button>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label
-            htmlFor="subtitle-stroke-color-hex"
-            className="text-[11px] font-label-sm text-neutral-500 dark:text-outline font-semibold"
-          >
-            Contorno
-          </label>
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest">
-            <Input
-              id="subtitle-stroke-color-picker"
-              name="strokeColorPicker"
-              type="color"
-              aria-label="Paleta de cor do contorno"
-              value={strokeColor}
-              onChange={(e) => setStrokeColor(e.target.value)}
-            />
-            <Input
-              id="subtitle-stroke-color-hex"
-              name="strokeColor"
-              type="text"
-              aria-label="Código hexadecimal da cor do contorno"
-              value={strokeColor}
-              onChange={(e) => setStrokeColor(e.target.value)}
-              className="w-full bg-transparent text-[11px] font-mono outline-none border-0 text-neutral-900 dark:text-on-surface uppercase h-auto p-0 focus:ring-0 focus:border-0"
-              containerClassName="flex-1"
-            />
+        {/* Seletores Nativos de Cor Hexadecimal */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="subtitle-text-color-hex"
+              className="text-[11px] font-label-sm text-neutral-500 dark:text-outline font-semibold"
+            >
+              Cor do Texto
+            </label>
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest">
+              <Input
+                id="subtitle-text-color-picker"
+                name="textColorPicker"
+                type="color"
+                aria-label="Paleta de cor do texto"
+                value={textColor}
+                onChange={(e) => setTextColor(e.target.value)}
+              />
+              <Input
+                id="subtitle-text-color-hex"
+                name="textColor"
+                type="text"
+                aria-label="Código hexadecimal da cor do texto"
+                value={textColor}
+                onChange={(e) => setTextColor(e.target.value)}
+                className="w-full bg-transparent text-[11px] font-mono outline-none border-0 text-neutral-900 dark:text-on-surface uppercase h-auto p-0 focus:ring-0 focus:border-0"
+                containerClassName="flex-1"
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="flex flex-col gap-1">
-          <label
-            htmlFor="subtitle-bg-color-hex"
-            className="text-[11px] font-label-sm text-neutral-500 dark:text-outline font-semibold"
-          >
-            Cor do Fundo
-          </label>
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest">
-            <Input
-              id="subtitle-bg-color-picker"
-              name="bgColorPicker"
-              type="color"
-              aria-label="Paleta de cor do fundo"
-              value={bgColor}
-              onChange={(e) => setBgColor(e.target.value)}
-            />
-            <Input
-              id="subtitle-bg-color-hex"
-              name="bgColor"
-              type="text"
-              aria-label="Código hexadecimal da cor do fundo"
-              value={bgColor}
-              onChange={(e) => setBgColor(e.target.value)}
-              className="w-full bg-transparent text-[11px] font-mono outline-none border-0 text-neutral-900 dark:text-on-surface uppercase h-auto p-0 focus:ring-0 focus:border-0"
-              containerClassName="flex-1"
-            />
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="subtitle-stroke-color-hex"
+              className="text-[11px] font-label-sm text-neutral-500 dark:text-outline font-semibold"
+            >
+              Contorno
+            </label>
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest">
+              <Input
+                id="subtitle-stroke-color-picker"
+                name="strokeColorPicker"
+                type="color"
+                aria-label="Paleta de cor do contorno"
+                value={strokeColor}
+                onChange={(e) => setStrokeColor(e.target.value)}
+              />
+              <Input
+                id="subtitle-stroke-color-hex"
+                name="strokeColor"
+                type="text"
+                aria-label="Código hexadecimal da cor do contorno"
+                value={strokeColor}
+                onChange={(e) => setStrokeColor(e.target.value)}
+                className="w-full bg-transparent text-[11px] font-mono outline-none border-0 text-neutral-900 dark:text-on-surface uppercase h-auto p-0 focus:ring-0 focus:border-0"
+                containerClassName="flex-1"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="subtitle-bg-color-hex"
+              className="text-[11px] font-label-sm text-neutral-500 dark:text-outline font-semibold"
+            >
+              Cor do Fundo
+            </label>
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest">
+              <Input
+                id="subtitle-bg-color-picker"
+                name="bgColorPicker"
+                type="color"
+                aria-label="Paleta de cor do fundo"
+                value={bgColor}
+                onChange={(e) => setBgColor(e.target.value)}
+              />
+              <Input
+                id="subtitle-bg-color-hex"
+                name="bgColor"
+                type="text"
+                aria-label="Código hexadecimal da cor do fundo"
+                value={bgColor}
+                onChange={(e) => setBgColor(e.target.value)}
+                className="w-full bg-transparent text-[11px] font-mono outline-none border-0 text-neutral-900 dark:text-on-surface uppercase h-auto p-0 focus:ring-0 focus:border-0"
+                containerClassName="flex-1"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -373,7 +408,7 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
       {/* Selo fix_bounds */}
       <div className="p-2.5 rounded-xl bg-amber-500/10 dark:bg-primary/10 border border-amber-600/30 dark:border-primary/30 flex items-center gap-2 text-label-sm font-label-sm text-amber-800 dark:text-primary">
         <span className="material-symbols-outlined text-[18px]">verified</span>
-        <span>Cálculo determinístico fix_bounds ativado (sem estouro de bordas)</span>
+        <span>Cálculo determinístico ativado (sem estouro de bordas)</span>
       </div>
     </div>
   );
