@@ -1,5 +1,5 @@
-import React from 'react';
-import { Card, Badge, Button, Select } from '../../../components/ui';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Card, Badge, Button, Select, Pagination } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import type { AdminUser, AdminSession } from '../types';
 import { isSuperAdminUser } from '../../auth';
@@ -11,6 +11,11 @@ interface AdminUsersTabProps {
   currentUser: { id?: string; email?: string } | null;
   isAdmin?: boolean;
   isSuperAdmin?: boolean;
+  page?: number;
+  pageSize?: number;
+  pageSizeOptions?: number[];
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
   onRoleChange: (targetUser: AdminUser, newRole: 'SUPER_ADMIN' | 'ADMIN' | 'USER') => void;
   onStatusToggle: (targetUser: AdminUser) => void;
   onRevokeSession: (session: AdminSession) => void;
@@ -21,15 +26,73 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   sessions,
   currentUser,
   isSuperAdmin: isSuperAdminProp,
+  page: controlledPage,
+  pageSize: controlledPageSize,
+  pageSizeOptions = [10, 25, 50, 100],
+  onPageChange: controlledOnPageChange,
+  onPageSizeChange: controlledOnPageSizeChange,
   onRoleChange,
   onStatusToggle,
   onRevokeSession,
 }) => {
   const isSuperAdmin = isSuperAdminProp ?? (currentUser ? isSuperAdminUser(currentUser) : false);
+
+  const [internalPage, setInternalPage] = useState(1);
+  const [internalPageSize, setInternalPageSize] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('appframe_admin_users_page_size');
+      const num = Number(saved);
+      return pageSizeOptions.includes(num) ? num : 10;
+    } catch {
+      return 10;
+    }
+  });
+
+  const currentPage = controlledPage !== undefined ? controlledPage : internalPage;
+  const pageSize = controlledPageSize !== undefined ? controlledPageSize : internalPageSize;
+
   const totalUsersCount = users.length;
   const activeUsersCount = users.filter((u) => u.is_active).length;
   const totalActiveSessionsCount = sessions.length;
   const totalRendersCount = users.reduce((acc, u) => acc + (u.total_renders || 0), 0);
+
+  const totalPages = Math.max(1, Math.ceil(totalUsersCount / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      if (controlledOnPageChange) {
+        controlledOnPageChange(totalPages);
+      } else {
+        setInternalPage(totalPages);
+      }
+    }
+  }, [currentPage, totalPages, controlledOnPageChange]);
+
+  const handlePageChange = (newPage: number) => {
+    if (controlledOnPageChange) {
+      controlledOnPageChange(newPage);
+    } else {
+      setInternalPage(newPage);
+    }
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    if (controlledOnPageSizeChange) {
+      controlledOnPageSizeChange(newSize);
+    } else {
+      setInternalPageSize(newSize);
+      setInternalPage(1);
+      try {
+        localStorage.setItem('appframe_admin_users_page_size', String(newSize));
+      } catch {}
+    }
+  };
+
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (safePage - 1) * pageSize;
+    return users.slice(startIndex, startIndex + pageSize);
+  }, [users, safePage, pageSize]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -103,7 +166,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200 dark:divide-surface-container-highest">
-              {users.map((u) => {
+              {paginatedUsers.map((u) => {
                 const isTargetSuper = isSuperAdminUser(u);
                 const isSelf = u.id === currentUser?.id || u.email === currentUser?.email;
                 const canChangeRole = isSuperAdmin && !isTargetSuper && !isSelf;
@@ -227,6 +290,18 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
             </tbody>
           </table>
         </div>
+
+        {/* Paginação de Usuários */}
+        <Pagination
+          currentPage={safePage}
+          totalPages={totalPages}
+          totalItems={totalUsersCount}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+          itemsLabel="usuários"
+        />
       </Card>
 
       {/* Sessões Conectadas em Tempo Real */}

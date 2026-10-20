@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -26,6 +26,8 @@ const VALID_HISTORY_FILTERS: Record<string, HistoryFilterType> = {
   erro: 'failed',
 };
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
 function resolveHistoryFilter(searchParams: URLSearchParams): HistoryFilterType {
   const raw = (
     searchParams.get('filter') ||
@@ -40,9 +42,25 @@ export const useHistoryJobs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilterState] = useState<HistoryFilterType>(() => resolveHistoryFilter(searchParams));
 
+  const [page, setPageState] = useState<number>(() => {
+    const p = Number(searchParams.get('page'));
+    return Number.isInteger(p) && p > 0 ? p : 1;
+  });
+
+  const [pageSize, setPageSizeState] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('appframe_history_page_size');
+      const num = Number(saved);
+      return PAGE_SIZE_OPTIONS.includes(num) ? num : 10;
+    } catch {
+      return 10;
+    }
+  });
+
   const setFilter = useCallback(
     (nextFilter: HistoryFilterType) => {
       setFilterState(nextFilter);
+      setPageState(1);
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -55,6 +73,7 @@ export const useHistoryJobs = () => {
             next.delete('tab');
             next.delete('status');
           }
+          next.delete('page');
           return next;
         },
         { replace: true }
@@ -63,11 +82,16 @@ export const useHistoryJobs = () => {
     [setSearchParams]
   );
 
-  // Sincroniza filter se a URL mudar (ex: botão voltar/avançar do navegador)
+  // Sincroniza filter e page se a URL mudar (ex: botão voltar/avançar do navegador)
   useEffect(() => {
     const nextFilter = resolveHistoryFilter(searchParams);
     if (nextFilter !== filter) {
       setFilterState(nextFilter);
+    }
+    const rawPage = Number(searchParams.get('page'));
+    const nextPage = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+    if (nextPage !== page) {
+      setPageState(nextPage);
     }
   }, [searchParams]);
 
@@ -86,7 +110,61 @@ export const useHistoryJobs = () => {
     refetchInterval: 3000,
   });
 
-  const filteredJobs = filterHistoryJobs(jobs, filter);
+  const filteredJobs = useMemo(() => filterHistoryJobs(jobs, filter), [jobs, filter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredJobs.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+
+  // Ajusta a página caso ultrapasse o total de páginas após filtros ou exclusões
+  useEffect(() => {
+    if (page > totalPages && totalPages > 0) {
+      setPageState(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const paginatedJobs = useMemo(() => {
+    const startIndex = (safePage - 1) * pageSize;
+    return filteredJobs.slice(startIndex, startIndex + pageSize);
+  }, [filteredJobs, safePage, pageSize]);
+
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      setPageState(newPage);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (newPage <= 1) {
+            next.delete('page');
+          } else {
+            next.set('page', String(newPage));
+          }
+          return next;
+        },
+        { replace: true }
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    [setSearchParams]
+  );
+
+  const handlePageSizeChange = useCallback(
+    (newSize: number) => {
+      setPageSizeState(newSize);
+      setPageState(1);
+      try {
+        localStorage.setItem('appframe_history_page_size', String(newSize));
+      } catch {}
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('page');
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
 
   const handleDownloadVideo = async (job: VideoJobItem) => {
     try {
@@ -117,6 +195,13 @@ export const useHistoryJobs = () => {
   return {
     jobs,
     filteredJobs,
+    paginatedJobs,
+    page: safePage,
+    pageSize,
+    pageSizeOptions: PAGE_SIZE_OPTIONS,
+    totalPages,
+    handlePageChange,
+    handlePageSizeChange,
     isLoading,
     filter,
     setFilter,
