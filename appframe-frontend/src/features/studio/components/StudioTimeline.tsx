@@ -42,7 +42,7 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
   const setTrimIn = props.setTrimIn ?? studio.setTrimIn;
   const setTrimOut = props.setTrimOut ?? studio.setTrimOut;
   return (
-    <Card className="bg-white dark:bg-surface-container-low border border-neutral-200 dark:border-surface-container-high/90 p-4 flex flex-col gap-3 shadow-sm dark:shadow-lg">
+    <Card className="relative isolate bg-white dark:bg-surface-container-low border border-neutral-200 dark:border-surface-container-high/90 p-4 flex flex-col gap-3 shadow-sm dark:shadow-lg">
       <div className="flex flex-col sm:flex-row gap-1.5 items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[20px] text-primary">

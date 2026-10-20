@@ -180,7 +180,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
   );
 
   return (
-    <Card className="relative overflow-hidden bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-high/90 p-4 flex flex-col items-center justify-center min-h-[460px] shadow-sm dark:shadow-2xl">
+    <Card className="relative isolate overflow-hidden bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-high/90 p-4 flex flex-col items-center justify-center min-h-[460px] shadow-sm dark:shadow-2xl">
       {/* Halos Luminosos Sutis no Player */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
@@ -232,7 +232,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
           previewStreamUrl && !isPreparingPreview && !isGenerating ? handleTogglePlay : undefined
         }
         className={cn(
-          "relative overflow-hidden rounded-2xl bg-black border border-surface-container-highest transition-all duration-300 shadow-[0_12px_40px_rgba(0,0,0,0.8)] flex items-center justify-center",
+          "relative isolate overflow-hidden rounded-2xl bg-black border border-surface-container-highest transition-all duration-300 shadow-[0_12px_40px_rgba(0,0,0,0.8)] flex items-center justify-center",
           previewStreamUrl && !isPreparingPreview && !isGenerating ? "cursor-pointer" : "",
           aspectRatio === "9:16"
             ? "w-[290px] h-[515px] sm:w-[320px] sm:h-[568px]"
@@ -396,7 +396,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
         {isGenerating && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="absolute inset-0 z-40 rounded-2xl bg-black/70 backdrop-blur-[3px] flex flex-col items-center justify-center text-center p-4 transition-all duration-300 pointer-events-auto select-none"
+            className="absolute inset-0 z-30 rounded-2xl bg-black/70 backdrop-blur-[3px] flex flex-col items-center justify-center text-center p-4 transition-all duration-300 pointer-events-auto select-none"
           >
             <div className="flex flex-col items-center justify-center p-5 sm:p-6 rounded-3xl bg-neutral-950/80 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md max-w-[280px] sm:max-w-xs">
               <div className="relative flex items-center justify-center mb-3">
