@@ -10,6 +10,4 @@ export * from './RevokeSessionModal';
 export * from './ResetLegalModal';
 export * from './AdminHeader';
 export * from './AdminNavigationTabs';
-export * from './AdminPaginationButton';
-export * from './AdminPaginationControls';
 export * from './AdminModals';

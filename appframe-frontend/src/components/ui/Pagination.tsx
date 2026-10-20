@@ -14,6 +14,9 @@ export interface PaginationProps {
   itemsLabel?: string;
   className?: string;
   showFirstLast?: boolean;
+  extraSummary?: React.ReactNode;
+  startItemIndex?: number;
+  endItemIndex?: number;
 }
 
 export const Pagination: React.FC<PaginationProps> = ({
@@ -27,6 +30,9 @@ export const Pagination: React.FC<PaginationProps> = ({
   itemsLabel = 'itens',
   className,
   showFirstLast = true,
+  extraSummary,
+  startItemIndex,
+  endItemIndex,
 }) => {
   const calculatedTotalPages = useMemo(() => {
     if (propTotalPages !== undefined) return propTotalPages;
@@ -40,13 +46,17 @@ export const Pagination: React.FC<PaginationProps> = ({
   const safePage = Math.min(Math.max(1, currentPage), totalPages);
 
   const startItem =
-    totalItems !== undefined && totalItems > 0
-      ? (safePage - 1) * (pageSize || 1) + 1
-      : 0;
+    startItemIndex !== undefined
+      ? startItemIndex
+      : totalItems !== undefined && totalItems > 0
+        ? (safePage - 1) * (pageSize || 1) + 1
+        : 0;
   const endItem =
-    totalItems !== undefined
-      ? Math.min(safePage * (pageSize || 1), totalItems)
-      : 0;
+    endItemIndex !== undefined
+      ? endItemIndex
+      : totalItems !== undefined
+        ? Math.min(safePage * (pageSize || 1), totalItems)
+        : 0;
 
   const pageNumbers = useMemo(() => {
     const pages: (number | 'ellipsis-start' | 'ellipsis-end')[] = [];
@@ -91,6 +101,8 @@ export const Pagination: React.FC<PaginationProps> = ({
             {itemsLabel}
           </span>
         )}
+
+        {extraSummary}
 
         {pageSizeOptions && pageSizeOptions.length > 0 && onPageSizeChange && (
           <div className="flex items-center gap-1.5 ml-auto sm:ml-2">

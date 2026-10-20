@@ -1,5 +1,5 @@
 import React from 'react';
-
+import { Pagination } from '../../../components/ui';
 import { useScannerContext } from '../context';
 
 export interface ScannerPaginationProps {
@@ -17,7 +17,6 @@ export const ScannerPagination: React.FC<ScannerPaginationProps> = (props) => {
 
   const safeCurrentPage = props.safeCurrentPage ?? scanner.safeCurrentPage;
   const totalPages = props.totalPages ?? scanner.totalPages;
-  const pageNumbers = props.pageNumbers ?? scanner.pageNumbers;
   const startItemIndex = props.startItemIndex ?? scanner.startItemIndex;
   const endItemIndex = props.endItemIndex ?? scanner.endItemIndex;
   const totalFilteredCount = props.totalFilteredCount ?? scanner.totalVideosAvailable;
@@ -26,68 +25,24 @@ export const ScannerPagination: React.FC<ScannerPaginationProps> = (props) => {
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 pb-2 border-t border-neutral-200 dark:border-surface-container-high/60">
-      <div className="flex items-center gap-3">
-        <span className="font-body-sm text-body-sm text-on-surface-variant">
-          Mostrando <strong className="text-on-surface">{startItemIndex}–{endItemIndex}</strong> de{' '}
-          <strong className="text-on-surface">{typeof totalFilteredCount === 'number' ? totalFilteredCount.toLocaleString('pt-BR') : totalFilteredCount}</strong> mídias
-        </span>
-        {scanner.isFetchingMore && (
+    <Pagination
+      currentPage={safeCurrentPage}
+      totalPages={totalPages}
+      totalItems={typeof totalFilteredCount === 'number' ? totalFilteredCount : undefined}
+      startItemIndex={startItemIndex}
+      endItemIndex={endItemIndex}
+      onPageChange={onPageChange}
+      showFirstLast={false}
+      itemsLabel="mídias"
+      className="pb-2 border-neutral-200 dark:border-surface-container-high/60"
+      extraSummary={
+        scanner.isFetchingMore ? (
           <span className="inline-flex items-center gap-1.5 text-xs text-primary font-medium animate-pulse">
             <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
             Carregando mais...
           </span>
-        )}
-      </div>
-
-      <div className="flex items-center gap-1.5 flex-wrap justify-center">
-        <button
-          type="button"
-          disabled={safeCurrentPage <= 1}
-          onClick={() => onPageChange(safeCurrentPage - 1)}
-          className="px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-title-sm font-title-sm text-neutral-700 dark:text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-neutral-200 dark:border-outline/10"
-        >
-          <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-        </button>
-
-        {pageNumbers.map((pageItem) => {
-          if (pageItem === 'ellipsis-start' || pageItem === 'ellipsis-end') {
-            return (
-              <span
-                key={pageItem}
-                className="px-2 py-1 text-on-surface-variant font-mono select-none"
-              >
-                ...
-              </span>
-            );
-          }
-
-          const isActive = pageItem === safeCurrentPage;
-          return (
-            <button
-              key={pageItem}
-              type="button"
-              onClick={() => onPageChange(pageItem)}
-              className={`min-w-[36px] h-9 px-2.5 rounded-lg font-title-sm text-title-sm transition-all cursor-pointer flex items-center justify-center ${
-                isActive
-                  ? 'bg-primary text-neutral-950 dark:text-neutral-950 font-bold shadow-sm'
-                  : 'bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface border border-neutral-200 dark:border-outline/10'
-              }`}
-            >
-              {pageItem}
-            </button>
-          );
-        })}
-
-        <button
-          type="button"
-          disabled={safeCurrentPage >= totalPages}
-          onClick={() => onPageChange(safeCurrentPage + 1)}
-          className="px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-title-sm font-title-sm text-neutral-700 dark:text-on-surface disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer border border-neutral-200 dark:border-outline/10"
-        >
-          <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-        </button>
-      </div>
-    </div>
+        ) : null
+      }
+    />
   );
 };

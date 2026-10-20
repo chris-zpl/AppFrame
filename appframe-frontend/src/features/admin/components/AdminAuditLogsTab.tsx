@@ -1,11 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Card, Button, Input, Select } from "../../../components/ui";
+import { Card, Button, Input, Select, Pagination } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
 import type { AdminAuditLog, AdminUser } from "../types";
 import { getAuditEventBadge, parseDevice } from "../constants";
 import { AdminAuditMetadata } from "./AdminAuditMetadata";
-import { AdminPaginationControls } from "./AdminPaginationControls";
 
 function resolveAuditPage(searchParams: URLSearchParams): number {
   const raw = searchParams.get('page') || searchParams.get('p') || '1';
@@ -163,32 +162,6 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
     const startIndex = (safeAuditPage - 1) * auditPageSize;
     return filteredAuditLogs.slice(startIndex, startIndex + auditPageSize);
   }, [filteredAuditLogs, safeAuditPage, auditPageSize]);
-
-  const auditStartRecord =
-    filteredAuditLogs.length > 0 ? (safeAuditPage - 1) * auditPageSize + 1 : 0;
-  const auditEndRecord = Math.min(
-    safeAuditPage * auditPageSize,
-    filteredAuditLogs.length,
-  );
-
-  const auditPageNumbers = useMemo(() => {
-    const pages: (number | "ellipsis-start" | "ellipsis-end")[] = [];
-    if (totalAuditPages <= 7) {
-      for (let i = 1; i <= totalAuditPages; i++) pages.push(i);
-      return pages;
-    }
-
-    pages.push(1);
-    const start = Math.max(2, safeAuditPage - 1);
-    const end = Math.min(totalAuditPages - 1, safeAuditPage + 1);
-
-    if (start > 2) pages.push("ellipsis-start");
-    for (let i = start; i <= end; i++) pages.push(i);
-    if (end < totalAuditPages - 1) pages.push("ellipsis-end");
-
-    pages.push(totalAuditPages);
-    return pages;
-  }, [totalAuditPages, safeAuditPage]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -520,48 +493,16 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
           </table>
         </div>
 
-        {/* Barra de Paginação */}
-        {filteredAuditLogs.length > 0 && (
-          <div className="flex flex-row items-center gap-4 pt-4 border-t border-neutral-200 dark:border-surface-container-highest">
-            {/* Informações de Registros e Seletor de Itens por Página */}
-            <div className="w-full flex justify-between items-center gap-4 shrink-0 text-body-sm text-neutral-500 dark:text-outline">
-              <span>
-                Mostrando{" "}
-                <strong className="text-neutral-900 dark:text-on-surface">{auditStartRecord}</strong>{" "}
-                a <strong className="text-neutral-900 dark:text-on-surface">{auditEndRecord}</strong>{" "}
-                de{" "}
-                <strong className="text-neutral-900 dark:text-on-surface">
-                  {filteredAuditLogs.length}
-                </strong>{" "}
-                eventos
-              </span>
-
-              <div className="flex items-center gap-1.5">
-                <label htmlFor="audit-page-size" className="text-xs">Exibir:</label>
-                <Select
-                  id="audit-page-size"
-                  name="auditPageSize"
-                  size="sm"
-                  aria-label="Quantidade de eventos por página"
-                  value={auditPageSize}
-                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  className="w-36 text-xs font-medium"
-                >
-                  <option value={10}>10 por página</option>
-                  <option value={25}>25 por página</option>
-                  <option value={50}>50 por página</option>
-                  <option value={100}>100 por página</option>
-                </Select>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* Controles de Navegação de Página */}
-        <AdminPaginationControls
+        {/* Paginação de Auditoria */}
+        <Pagination
           currentPage={safeAuditPage}
           totalPages={totalAuditPages}
-          pageNumbers={auditPageNumbers}
+          totalItems={filteredAuditLogs.length}
+          pageSize={auditPageSize}
+          pageSizeOptions={[10, 25, 50, 100]}
           onPageChange={setAuditPage}
+          onPageSizeChange={handlePageSizeChange}
+          itemsLabel="eventos"
         />
       </Card>
     </div>
