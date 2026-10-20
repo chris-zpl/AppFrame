@@ -11,6 +11,7 @@ import {
 
 export interface UseTwoFactorChallengeOptions {
   tempToken?: string;
+  rememberMe?: boolean;
 }
 
 /**
@@ -104,7 +105,7 @@ export const useTwoFactorChallenge = (options?: UseTwoFactorChallengeOptions) =>
       const code = isBackupMode ? backupCode.trim() : digits.join('');
 
       try {
-        const result = await verify2fa(activeTempToken, code);
+        const result = await verify2fa(activeTempToken, code, options?.rememberMe);
         const target = getAuthRedirectTarget(result?.user);
         navigate(target, { replace: true });
         return result;
@@ -119,7 +120,7 @@ export const useTwoFactorChallenge = (options?: UseTwoFactorChallengeOptions) =>
         setIsLoading(false);
       }
     },
-    [backupCode, digits, isBackupMode, isComplete, navigate, options?.tempToken, verify2fa]
+    [backupCode, digits, isBackupMode, isComplete, navigate, options?.rememberMe, options?.tempToken, verify2fa]
   );
 
   return {

@@ -11,6 +11,7 @@ import {
 export const TwoFactorChallengePage: React.FC = () => {
   const { navigate, params } = useNavigation();
   const tempToken = params.tempToken || '';
+  const rememberMe = params.rememberMe === 'true';
 
   const {
     digits,
@@ -26,7 +27,7 @@ export const TwoFactorChallengePage: React.FC = () => {
     handlePaste,
     isComplete,
     submitChallenge,
-  } = useTwoFactorChallenge({ tempToken });
+  } = useTwoFactorChallenge({ tempToken, rememberMe });
 
   // Se acessar a página diretamente sem tempToken, redireciona ao login com aviso
   useEffect(() => {

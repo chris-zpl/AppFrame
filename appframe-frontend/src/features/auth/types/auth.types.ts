@@ -16,9 +16,9 @@ export interface AuthContextType {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ requires2fa?: boolean; tempToken?: string; user?: UserProfile }>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ requires2fa?: boolean; tempToken?: string; user?: UserProfile }>;
   register: (name: string, email: string, password: string) => Promise<{ user?: UserProfile }>;
-  verify2fa: (tempToken: string, token: string) => Promise<{ user?: UserProfile }>;
+  verify2fa: (tempToken: string, token: string, rememberMe?: boolean) => Promise<{ user?: UserProfile }>;
   handleOAuthCallback: (accessToken?: string, refreshToken?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: (tokenOverride?: string) => Promise<UserProfile | null>;

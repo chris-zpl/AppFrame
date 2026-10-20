@@ -14,13 +14,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (initialPath.startsWith('/auth/callback') || initialPath === '/auth-callback') {
       return false;
     }
-    let hasStoredSession = false;
+    let isRemembered = false;
+    let hasTabSession = false;
     try {
-      hasStoredSession =
-        localStorage.getItem('appframe_has_session') === 'true' ||
-        sessionStorage.getItem('appframe_has_session') === 'true';
+      isRemembered = localStorage.getItem('appframe_remember_me') === 'true';
+      hasTabSession = sessionStorage.getItem('appframe_has_session') === 'true';
     } catch {}
-    if (isPublicAuthRoute(initialPath) && !hasStoredSession) {
+    if (isPublicAuthRoute(initialPath) && !isRemembered && !hasTabSession) {
       return false;
     }
     return true;
@@ -45,6 +45,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             sessionStorage.setItem('appframe_has_session', 'true');
             if (localStorage.getItem('appframe_remember_me') === 'true') {
               localStorage.setItem('appframe_has_session', 'true');
+            } else {
+              localStorage.removeItem('appframe_has_session');
             }
           } catch {}
           return resolvedUser as UserProfile;
@@ -104,6 +106,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {
       // Ignora falhas de rede no logout
     } finally {
+      try {
+        localStorage.removeItem('appframe_has_session');
+        localStorage.removeItem('appframe_remember_me');
+        sessionStorage.removeItem('appframe_has_session');
+      } catch {}
+      try {
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('appframe_session_sync');
+          channel.postMessage({ type: 'SESSION_LOGOUT' });
+          channel.close();
+        }
+      } catch {}
       cleanupClientCacheAndPreviews();
       setUser(null);
       setIsLoading(false);
@@ -111,7 +125,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // 2. Desvincular checagem de autenticação da navegação: roda exclusivamente na montagem
+  // 2. Sincronização entre abas: escuta pedidos de verificação de sessão e eventos de logout
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
+
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('appframe_session_sync');
+      channel.onmessage = (event) => {
+        if (!event?.data) return;
+        if (event.data.type === 'SESSION_PROBE') {
+          // Se esta aba possui sessão ativa no sessionStorage ou rememberMe no localStorage,
+          // notifica a nova aba de que a sessão do navegador continua ativa
+          const hasSession =
+            sessionStorage.getItem('appframe_has_session') === 'true' ||
+            localStorage.getItem('appframe_remember_me') === 'true';
+          if (hasSession && channel) {
+            channel.postMessage({ type: 'SESSION_ACTIVE' });
+          }
+        } else if (event.data.type === 'SESSION_LOGOUT') {
+          try {
+            localStorage.removeItem('appframe_has_session');
+            localStorage.removeItem('appframe_remember_me');
+            sessionStorage.removeItem('appframe_has_session');
+          } catch {}
+          cleanupClientCacheAndPreviews();
+          setUser(null);
+          setIsLoading(false);
+          window.location.replace('/login');
+        }
+      };
+    } catch {}
+
+    return () => {
+      try {
+        channel?.close();
+      } catch {}
+    };
+  }, []);
+
+  // 3. Desvincular checagem de autenticação da navegação: roda exclusivamente na montagem
   useEffect(() => {
     const initialPath = window.location.pathname;
 
@@ -121,34 +174,123 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    let hasStoredSession = false;
-    try {
-      hasStoredSession =
-        localStorage.getItem('appframe_has_session') === 'true' ||
-        sessionStorage.getItem('appframe_has_session') === 'true';
-    } catch {}
-
-    // Se estiver explicitamente em rota pública e NÃO tiver sessão ativa salva,
-    // NÃO dispara chamada de rede para evitar 401 indevido
-    if (isPublicAuthRoute(initialPath) && !hasStoredSession) {
-      return;
-    }
+    let isSubscribed = true;
 
     const initAuth = async () => {
       try {
-        await refreshProfile();
+        let isRemembered = false;
+        let hasTabSession = false;
+        try {
+          isRemembered = localStorage.getItem('appframe_remember_me') === 'true';
+          hasTabSession = sessionStorage.getItem('appframe_has_session') === 'true';
+        } catch {}
+
+        // Se estiver em rota pública e não houver nenhuma indicação de sessão nesta aba nem no localStorage,
+        // não precisa chamar o backend para carregar perfil
+        if (isPublicAuthRoute(initialPath) && !isRemembered && !hasTabSession) {
+          if (isSubscribed) {
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        // Se não está lembrado e esta aba não possui sessão no sessionStorage,
+        // sonda outras abas abertas pelo BroadcastChannel antes de decidir se o navegador/sessão foi fechado
+        if (!isRemembered && !hasTabSession) {
+          let channel: BroadcastChannel | null = null;
+          try {
+            if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+              channel = new BroadcastChannel('appframe_session_sync');
+            }
+          } catch {}
+
+          if (channel) {
+            const probePromise = new Promise<boolean>((resolve) => {
+              let responded = false;
+              const handleMessage = (evt: MessageEvent) => {
+                if (evt?.data?.type === 'SESSION_ACTIVE') {
+                  responded = true;
+                  resolve(true);
+                }
+              };
+              channel?.addEventListener('message', handleMessage);
+              try {
+                channel?.postMessage({ type: 'SESSION_PROBE' });
+              } catch {}
+
+              setTimeout(() => {
+                try {
+                  channel?.removeEventListener('message', handleMessage);
+                } catch {}
+                if (!responded) resolve(false);
+              }, 60);
+            });
+
+            const anotherTabActive = await probePromise;
+            try {
+              channel.close();
+            } catch {}
+
+            if (anotherTabActive) {
+              hasTabSession = true;
+              try {
+                sessionStorage.setItem('appframe_has_session', 'true');
+              } catch {}
+            }
+          }
+        }
+
+        const hasValidSessionIndicator = isRemembered || hasTabSession;
+
+        // Se NÃO há nenhuma sessão ativa (nem rememberMe, nem aba ativa),
+        // significa que o navegador ou todas as abas da aplicação foram fechadas.
+        if (!hasValidSessionIndicator) {
+          try {
+            await authService.logout();
+          } catch {}
+          try {
+            localStorage.removeItem('appframe_has_session');
+            localStorage.removeItem('appframe_remember_me');
+            sessionStorage.removeItem('appframe_has_session');
+          } catch {}
+          if (isSubscribed) {
+            cleanupClientCacheAndPreviews();
+            setUser(null);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        // Sessão válida detectada: valida o perfil e tokens com o backend
+        const profile = await refreshProfile();
+        if (!profile && isSubscribed) {
+          setUser(null);
+        }
       } catch {
-        setUser(null);
+        if (isSubscribed) {
+          setUser(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (isSubscribed) {
+          setIsLoading(false);
+        }
       }
     };
 
     initAuth();
+
+    return () => {
+      isSubscribed = false;
+    };
   }, [refreshProfile]);
 
   useEffect(() => {
     const handleAuthLogout = () => {
+      try {
+        localStorage.removeItem('appframe_has_session');
+        localStorage.removeItem('appframe_remember_me');
+        sessionStorage.removeItem('appframe_has_session');
+      } catch {}
       cleanupClientCacheAndPreviews();
       setUser(null);
       setIsLoading(false);
@@ -159,32 +301,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('appframe-auth-logout', handleAuthLogout);
   }, []);
 
-  // 3. Sincronização no método de login:
+  // 4. Sincronização no método de login:
   // Aguarda confirmação das credenciais e atualiza o estado de 'user' em memória ANTES de liberar o fluxo
   const login = useCallback(
     async (
       email: string,
       password: string,
+      rememberMe: boolean = false,
     ): Promise<{ requires2fa?: boolean; tempToken?: string; user?: UserProfile }> => {
       setIsLoading(true);
       try {
-        const data = await authService.login({ email, password });
+        const data = await authService.login({ email, password, rememberMe });
         if (data.requires2fa || data.require_2fa) {
           setIsLoading(false);
           return { requires2fa: true, tempToken: data.tempToken || data.temp_token };
         }
+
+        try {
+          if (rememberMe) {
+            localStorage.setItem('appframe_remember_me', 'true');
+            localStorage.setItem('appframe_has_session', 'true');
+          } else {
+            localStorage.removeItem('appframe_remember_me');
+            localStorage.removeItem('appframe_has_session');
+          }
+          sessionStorage.setItem('appframe_has_session', 'true');
+        } catch {}
 
         let resolvedUser = data.user || (data as any)?.data?.user;
         if (!resolvedUser || !resolvedUser.id) {
           resolvedUser = await refreshProfile();
         } else {
           setUser(resolvedUser);
-        }
-
-        if (resolvedUser && resolvedUser.id) {
-          try {
-            localStorage.setItem('appframe_has_session', 'true');
-          } catch {}
         }
 
         setIsLoading(false);
@@ -220,21 +368,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async (
       tempToken: string,
       token: string,
+      rememberMe?: boolean,
     ): Promise<{ user?: UserProfile }> => {
       setIsLoading(true);
       try {
         const data = await authService.verify2fa({ tempToken, token });
+        const shouldRemember =
+          typeof rememberMe === 'boolean'
+            ? rememberMe
+            : localStorage.getItem('appframe_remember_me') === 'true';
+
+        try {
+          if (shouldRemember) {
+            localStorage.setItem('appframe_remember_me', 'true');
+            localStorage.setItem('appframe_has_session', 'true');
+          } else {
+            localStorage.removeItem('appframe_remember_me');
+            localStorage.removeItem('appframe_has_session');
+          }
+          sessionStorage.setItem('appframe_has_session', 'true');
+        } catch {}
+
         let resolvedUser = data.user || (data as any)?.data?.user;
         if (!resolvedUser || !resolvedUser.id) {
           resolvedUser = await refreshProfile();
         } else {
           setUser(resolvedUser);
-        }
-
-        if (resolvedUser && resolvedUser.id) {
-          try {
-            localStorage.setItem('appframe_has_session', 'true');
-          } catch {}
         }
 
         setIsLoading(false);
@@ -252,6 +411,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       try {
         try {
+          localStorage.setItem('appframe_remember_me', 'true');
           localStorage.setItem('appframe_has_session', 'true');
           sessionStorage.setItem('appframe_has_session', 'true');
         } catch {}

@@ -128,6 +128,8 @@ api.interceptors.response.use(
       processQueue(refreshError);
       try {
         localStorage.removeItem('appframe_has_session');
+        localStorage.removeItem('appframe_remember_me');
+        sessionStorage.removeItem('appframe_has_session');
         sessionStorage.removeItem('appframe_last_active_route');
       } catch {
         // Fallback silencioso para ambientes com restrição de storage

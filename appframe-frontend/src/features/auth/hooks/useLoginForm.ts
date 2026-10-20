@@ -47,7 +47,7 @@ export const useLoginForm = (options?: UseLoginFormOptions) => {
         } catch {}
 
         if (data.requires2fa || data.require_2fa) {
-          navigate('2fa', { tempToken: data.tempToken || data.temp_token || '', email });
+          navigate('2fa', { tempToken: data.tempToken || data.temp_token || '', email, rememberMe });
           return;
         }
 
