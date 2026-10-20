@@ -80,7 +80,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             checked={rememberMe}
             onChange={(e) => onRememberMeChange(e.target.checked)}
             disabled={isLoading}
-            label="Lembrar deste dispositivo"
+            label="Lembrar de mim"
           />
 
           <button

@@ -54,7 +54,6 @@ export const RegisterPage: React.FC = () => {
       {/* Top Header com Logo e Ação */}
       <RegisterHeader
         onLogoClick={() => navigate('scraper')}
-        onNavigateLogin={() => navigate('login')}
       />
 
       {/* Conteúdo Central */}
