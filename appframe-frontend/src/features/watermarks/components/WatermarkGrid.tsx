@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card } from '../../../components/ui';
+import { Card, Button } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import type { WatermarkItem } from '../types';
 import { formatFileSize } from '../utils';
@@ -102,36 +102,43 @@ export const WatermarkGrid: React.FC<WatermarkGridProps> = ({
                 {/* Ações */}
                 <div className="flex items-center justify-between gap-2 pt-2">
                   {!isDefault ? (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => onSetDefault(wm.id)}
-                      className="text-label-sm font-label-sm text-amber-800 dark:text-primary hover:underline font-semibold cursor-pointer inline-flex items-center gap-1"
+                      className="text-label-sm font-label-sm text-amber-800 dark:text-primary hover:underline font-semibold h-auto p-1"
+                      leftIcon={<span className="material-symbols-outlined text-[16px]">star</span>}
                     >
-                      <span className="material-symbols-outlined text-[16px]">star</span>
-                      <span>Tornar Padrão</span>
-                    </button>
+                      Tornar Padrão
+                    </Button>
                   ) : (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => onRemoveDefault(wm.id)}
-                      className="text-label-sm font-label-sm text-neutral-500 hover:text-red-500 dark:text-neutral-400 dark:hover:text-red-400 hover:underline font-semibold cursor-pointer inline-flex items-center gap-1"
+                      className="text-label-sm font-label-sm text-neutral-500 hover:text-red-500 dark:text-neutral-400 dark:hover:text-red-400 hover:underline font-semibold h-auto p-1"
                       title="Remover como marca d'água padrão"
+                      leftIcon={<span className="material-symbols-outlined text-[16px]">star_half</span>}
                     >
-                      <span className="material-symbols-outlined text-[16px]">star_half</span>
-                      <span>Remover do Padrão</span>
-                    </button>
+                      Remover do Padrão
+                    </Button>
                   )}
 
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => onConfirmDelete(wm.id)}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                    className="w-8 h-8 text-neutral-400 hover:text-red-500 hover:bg-red-500/10"
                     title="Excluir marca d'água"
+                    aria-label="Excluir marca d'água"
                   >
                     <span className="material-symbols-outlined text-[18px]">
                       delete
                     </span>
-                  </button>
+                  </Button>
                 </div>
               </div>
             </Card>

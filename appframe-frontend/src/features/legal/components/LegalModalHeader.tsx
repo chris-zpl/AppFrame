@@ -1,5 +1,6 @@
 import React from 'react';
 import { Badge } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
 import { LegalTabSwitcher } from './LegalTabSwitcher';
 import type { LegalDocType } from '../types';
 
@@ -45,14 +46,17 @@ export const LegalModalHeader: React.FC<LegalModalHeaderProps> = ({
       <div className="flex items-center gap-2 self-end sm:self-auto">
         <LegalTabSwitcher activeDoc={activeDoc} onSelectDoc={onSelectDoc} />
 
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={onClose}
           aria-label="Fechar modal"
-          className="p-1.5 rounded-xl text-neutral-500 hover:text-neutral-900 dark:text-on-surface-variant dark:hover:text-on-surface hover:bg-neutral-200 dark:hover:bg-surface-container-highest transition-colors cursor-pointer"
+          title="Fechar modal"
+          className="text-neutral-500 hover:text-neutral-900 dark:text-on-surface-variant dark:hover:text-on-surface"
         >
           <span className="material-symbols-outlined text-[20px]">close</span>
-        </button>
+        </Button>
       </div>
     </div>
   );

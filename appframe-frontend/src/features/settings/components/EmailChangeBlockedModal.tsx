@@ -40,15 +40,17 @@ export const EmailChangeBlockedModal: React.FC<EmailChangeBlockedModalProps> = (
               Alteração Indisponível
             </h3>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             aria-label="Fechar"
             title="Fechar"
-            className="text-neutral-500 hover:text-neutral-900 dark:text-outline dark:hover:text-on-surface p-1 rounded-lg cursor-pointer shrink-0 transition-colors"
+            className="w-8 h-8 text-neutral-500 hover:text-neutral-900 dark:text-outline dark:hover:text-on-surface"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
+          </Button>
         </div>
 
         <div className="flex flex-col gap-3">

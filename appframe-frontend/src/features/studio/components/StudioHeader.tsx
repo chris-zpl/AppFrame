@@ -39,16 +39,18 @@ export const StudioHeader: React.FC<StudioHeaderProps> = (props) => {
   return (
     <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-space-md p-3.5 rounded-2xl bg-white dark:bg-surface-container-low border border-neutral-200 dark:border-surface-container-high/80 shadow-sm">
       <div className="flex items-center gap-3">
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="icon"
           onClick={onNavigateBack}
-          className="p-2 rounded-xl bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface transition-colors cursor-pointer border border-neutral-200 dark:border-outline/10"
           title="Voltar para Varredura"
+          aria-label="Voltar para Varredura"
         >
           <span className="material-symbols-outlined text-[20px]">
             arrow_back
           </span>
-        </button>
+        </Button>
 
         <div className="flex flex-col">
           <div className="flex items-center justify-center gap-2 flex-wrap">

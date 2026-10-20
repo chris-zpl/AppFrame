@@ -53,15 +53,17 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
               Ativação do Segundo Fator (2FA)
             </h3>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             aria-label="Fechar"
             title="Fechar"
-            className="text-neutral-500 hover:text-neutral-900 dark:text-outline dark:hover:text-on-surface p-1 rounded-lg cursor-pointer shrink-0 transition-colors"
+            className="w-8 h-8 text-neutral-500 hover:text-neutral-900 dark:text-outline dark:hover:text-on-surface"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
+          </Button>
         </div>
 
         {step === 1 ? (
@@ -92,8 +94,10 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
               </span>
               <div className="flex items-center justify-between p-2 rounded-xl bg-neutral-100 dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest font-mono text-label-md text-primary font-bold">
                 <span className="break-all">{secret}</span>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => {
                     if (!secret) return;
                     navigator.clipboard.writeText(secret);
@@ -101,14 +105,14 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
                     toast.info('Copiado para a área de transferência!');
                     setTimeout(() => setCopiedKey(false), 2000);
                   }}
-                  className="text-neutral-500 hover:text-primary dark:text-on-surface-variant dark:hover:text-primary transition-colors p-1 cursor-pointer shrink-0"
+                  className="w-7 h-7 text-neutral-500 hover:text-primary dark:text-on-surface-variant dark:hover:text-primary"
                   title="Copiar chave secreta"
                   aria-label="Copiar chave secreta"
                 >
                   <span className="material-symbols-outlined text-[16px]">
                     {copiedKey ? 'check' : 'content_copy'}
                   </span>
-                </button>
+                </Button>
               </div>
             </div>
 

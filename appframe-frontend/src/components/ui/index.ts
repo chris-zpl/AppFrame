@@ -8,3 +8,4 @@ export * from './Badge';
 export * from './EmptyState';
 export * from './ConfirmModal';
 export * from './VisibilityToggle';
+export * from './Tabs';

@@ -31,15 +31,17 @@ export const HistoryErrorModal: React.FC<HistoryErrorModalProps> = ({ job, onClo
             <span className="material-symbols-outlined text-[22px] shrink-0">error</span>
             <span id="job-failure-title" className="truncate">Detalhes da Falha no Job</span>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             aria-label="Fechar"
             title="Fechar"
-            className="text-neutral-400 hover:text-neutral-900 dark:hover:text-on-surface cursor-pointer p-1 rounded transition-colors shrink-0"
+            className="w-8 h-8 text-neutral-400 hover:text-neutral-900 dark:hover:text-on-surface"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
+          </Button>
         </div>
 
         <div className="flex flex-col gap-2">

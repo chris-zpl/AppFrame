@@ -4,7 +4,7 @@ import { cn } from '../../lib/utils';
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'google' | 'ghost' | 'outline' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
@@ -29,6 +29,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       sm: 'h-9 px-3 text-label-md rounded-lg',
       md: 'h-11 px-5 text-title-sm rounded-lg',
       lg: 'h-12 px-6 text-title-md rounded-xl',
+      icon: 'w-9 h-9 p-0 rounded-lg shrink-0',
     };
 
     if (variant === 'google') {
@@ -106,7 +107,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ) : (
           leftIcon
         )}
-        <span>{children}</span>
+        {children && (size === 'icon' ? children : <span>{children}</span>)}
         {!isLoading && rightIcon}
       </button>
     );

@@ -122,13 +122,15 @@ export const TwoFactorChallengeCard: React.FC<TwoFactorChallengeCardProps> = ({
             </span>
           </button>
 
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={onCancel}
-            className="text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface text-label-md font-label-md transition-colors cursor-pointer"
+            className="text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface text-label-md font-label-md transition-colors"
           >
             Cancelar e voltar ao Login
-          </button>
+          </Button>
         </div>
       </form>
     </Card>

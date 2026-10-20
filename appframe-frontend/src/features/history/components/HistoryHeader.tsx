@@ -27,16 +27,19 @@ export const HistoryHeader: React.FC<HistoryHeaderProps> = (props) => {
       </div>
 
       <div className="flex items-center gap-2 self-start md:self-auto">
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           onClick={onRefresh}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 dark:bg-surface-container dark:hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-label-md font-label-md transition-all shadow-sm cursor-pointer border border-neutral-200 dark:border-surface-container-highest/60"
+          leftIcon={
+            <span className="material-symbols-outlined text-[16px] text-amber-700 dark:text-primary">
+              refresh
+            </span>
+          }
         >
-          <span className="material-symbols-outlined text-[16px] text-amber-700 dark:text-primary">
-            refresh
-          </span>
-          <span>Atualizar</span>
-        </button>
+          Atualizar
+        </Button>
 
         <Button
           variant="primary"

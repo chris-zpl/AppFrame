@@ -47,16 +47,18 @@ export const EmailChangeModal: React.FC<EmailChangeModalProps> = ({
               Alteração de E-mail
             </h3>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             disabled={isSaving}
-            className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-on-surface cursor-pointer p-1 rounded transition-colors disabled:opacity-40 shrink-0"
+            className="w-8 h-8 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-on-surface"
             title="Fechar"
             aria-label="Fechar"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
+          </Button>
         </div>
 
         <div className="flex flex-col gap-3">

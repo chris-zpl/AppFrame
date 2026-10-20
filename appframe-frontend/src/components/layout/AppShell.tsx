@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { AppFrameLogo } from '../common/AppFrameLogo';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { Button } from '../ui';
 import { useAuth } from '../../features/auth';
 import { LegalModal, useLegalModal } from '../../features/legal';
 
@@ -153,14 +154,17 @@ export const AppShell: React.FC<AppShellProps> = ({
             </div>
 
             {/* Botão de Logout rápido */}
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={logout}
               title="Encerrar Sessão"
-              className="p-1.5 rounded-lg text-neutral-500 hover:text-red-500 hover:bg-neutral-100 dark:text-on-surface-variant dark:hover:text-red-400 dark:hover:bg-surface-container-high transition-colors cursor-pointer"
+              aria-label="Encerrar Sessão"
+              className="w-8 h-8 text-neutral-500 hover:text-red-500 hover:bg-neutral-100 dark:text-on-surface-variant dark:hover:text-red-400 dark:hover:bg-surface-container-high"
             >
               <span className="material-symbols-outlined text-[20px]">logout</span>
-            </button>
+            </Button>
           </div>
         </div>
       </header>

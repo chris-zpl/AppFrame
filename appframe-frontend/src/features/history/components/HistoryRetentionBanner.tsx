@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Button } from '../../../components/ui';
 
 export const HistoryRetentionBanner: React.FC = () => {
   const [isDismissed, setIsDismissed] = useState(false);
@@ -28,15 +29,17 @@ export const HistoryRetentionBanner: React.FC = () => {
         </div>
       </div>
 
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         onClick={() => setIsDismissed(true)}
-        className="text-on-surface-variant hover:text-on-surface hover:bg-neutral-200/50 dark:hover:bg-surface-container-high p-1 rounded-lg transition-colors cursor-pointer shrink-0"
+        className="w-7 h-7 text-on-surface-variant hover:text-on-surface"
         title="Fechar aviso"
         aria-label="Fechar aviso"
       >
         <span className="material-symbols-outlined text-[18px]">close</span>
-      </button>
+      </Button>
     </div>
   );
 };

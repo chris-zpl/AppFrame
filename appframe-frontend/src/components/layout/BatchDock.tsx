@@ -64,24 +64,28 @@ export const BatchDock: React.FC<BatchDockProps> = ({
             </div>
           </div>
 
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={onClearSelection}
-            className="sm:hidden text-label-sm font-label-sm text-neutral-500 hover:text-neutral-900 dark:text-outline dark:hover:text-on-surface underline shrink-0 cursor-pointer"
+            className="sm:hidden text-label-sm font-label-sm underline shrink-0 h-auto p-1 text-neutral-500 hover:text-neutral-900 dark:text-outline dark:hover:text-on-surface"
           >
             Desmarcar
-          </button>
+          </Button>
         </div>
 
         {/* Botões de Ação */}
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={onClearSelection}
-            className="hidden sm:inline-flex px-3.5 py-2 rounded-xl text-neutral-600 hover:text-neutral-950 hover:bg-neutral-100 dark:text-on-surface-variant dark:hover:text-on-surface dark:hover:bg-surface-container text-title-sm font-title-sm transition-colors cursor-pointer"
+            className="hidden sm:inline-flex px-3.5 text-neutral-600 hover:text-neutral-950 dark:text-on-surface-variant dark:hover:text-on-surface text-title-sm font-title-sm"
           >
             Desmarcar todos
-          </button>
+          </Button>
 
           {onDownloadSelected && (
             <Button

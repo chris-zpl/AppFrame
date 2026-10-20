@@ -75,16 +75,18 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             <span className="material-symbols-outlined text-[24px] shrink-0">{icon}</span>
             <span id="confirm-modal-title" className="font-title-sm text-title-sm text-neutral-900 dark:text-on-surface truncate">{title}</span>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             disabled={isLoading}
-            className="text-neutral-400 hover:text-neutral-900 dark:hover:text-on-surface cursor-pointer p-1 rounded transition-colors disabled:opacity-40 shrink-0"
+            className="w-8 h-8 text-neutral-400 hover:text-neutral-900 dark:hover:text-on-surface"
             title="Fechar"
             aria-label="Fechar confirmação"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
+          </Button>
         </div>
 
         {/* Corpo do Modal */}
