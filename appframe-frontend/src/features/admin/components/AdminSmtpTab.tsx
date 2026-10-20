@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Button, Input, VisibilityToggle } from '../../../components/ui';
+import { Card, Button, Input, Checkbox, VisibilityToggle } from '../../../components/ui';
 import type { SmtpConfig } from '../types';
 
 export interface AdminSmtpTabProps {
@@ -182,21 +182,14 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
             required
           />
 
-          <div className="md:col-span-2 flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
+          <div className="md:col-span-2 pt-1">
+            <Checkbox
               id="secure-toggle"
               name="secure"
+              label="Usar conexão SSL/TLS direta (Porta 465)"
               checked={smtpForm.secure}
               onChange={(e) => setSmtpForm({ ...smtpForm, secure: e.target.checked })}
-              className="w-4 h-4 accent-primary cursor-pointer"
             />
-            <label
-              htmlFor="secure-toggle"
-              className="text-body-sm text-neutral-800 dark:text-on-surface cursor-pointer"
-            >
-              Usar conexão SSL/TLS direta (Porta 465)
-            </label>
           </div>
 
           <div className="md:col-span-2 flex justify-end pt-2">

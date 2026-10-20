@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Textarea } from '../../../components/ui';
+import { Button, Textarea, Input, Select, Checkbox } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import { toast } from 'sonner';
 import type { FontFamily, SubtitleMode } from '../types';
@@ -255,26 +255,20 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
       )}
 
       {/* Seleção Tipográfica */}
-      <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor="subtitle-font-family"
-          className="text-label-sm font-label-sm text-neutral-500 dark:text-outline font-semibold"
-        >
-          Família Tipográfica
-        </label>
-        <select
-          id="subtitle-font-family"
-          name="fontFamily"
-          value={fontFamily}
-          onChange={(e) => setFontFamily(e.target.value as FontFamily)}
-          className="w-full bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest rounded-xl px-3 py-2.5 text-body-md text-neutral-900 dark:text-on-surface outline-none focus:border-primary/80 transition-all cursor-pointer shadow-2xs"
-        >
-          <option value="Plus Jakarta Sans">Plus Jakarta Sans (Padrão)</option>
-          <option value="Montserrat">Montserrat (Impactante)</option>
-          <option value="Bebas Neue">Bebas Neue (Condensada)</option>
-          <option value="Anton">Anton (Bold Pesado)</option>
-        </select>
-      </div>
+      <Select
+        id="subtitle-font-family"
+        name="fontFamily"
+        label="Família Tipográfica"
+        labelClassName="text-label-sm font-label-sm text-neutral-500 dark:text-outline font-semibold"
+        value={fontFamily}
+        onChange={(e) => setFontFamily(e.target.value as FontFamily)}
+        options={[
+          { value: "Plus Jakarta Sans", label: "Plus Jakarta Sans (Padrão)" },
+          { value: "Montserrat", label: "Montserrat (Impactante)" },
+          { value: "Bebas Neue", label: "Bebas Neue (Condensada)" },
+          { value: "Anton", label: "Anton (Bold Pesado)" },
+        ]}
+      />
 
       {/* Seletores Nativos de Cor Hexadecimal */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -286,23 +280,23 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
             Cor do Texto
           </label>
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest">
-            <input
+            <Input
               id="subtitle-text-color-picker"
               name="textColorPicker"
               type="color"
               aria-label="Paleta de cor do texto"
               value={textColor}
               onChange={(e) => setTextColor(e.target.value)}
-              className="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0 shrink-0"
             />
-            <input
+            <Input
               id="subtitle-text-color-hex"
               name="textColor"
               type="text"
               aria-label="Código hexadecimal da cor do texto"
               value={textColor}
               onChange={(e) => setTextColor(e.target.value)}
-              className="w-full bg-transparent text-[11px] font-mono outline-none text-neutral-900 dark:text-on-surface uppercase"
+              className="w-full bg-transparent text-[11px] font-mono outline-none border-0 text-neutral-900 dark:text-on-surface uppercase h-auto p-0 focus:ring-0 focus:border-0"
+              containerClassName="flex-1"
             />
           </div>
         </div>
@@ -315,23 +309,23 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
             Contorno
           </label>
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest">
-            <input
+            <Input
               id="subtitle-stroke-color-picker"
               name="strokeColorPicker"
               type="color"
               aria-label="Paleta de cor do contorno"
               value={strokeColor}
               onChange={(e) => setStrokeColor(e.target.value)}
-              className="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0 shrink-0"
             />
-            <input
+            <Input
               id="subtitle-stroke-color-hex"
               name="strokeColor"
               type="text"
               aria-label="Código hexadecimal da cor do contorno"
               value={strokeColor}
               onChange={(e) => setStrokeColor(e.target.value)}
-              className="w-full bg-transparent text-[11px] font-mono outline-none text-neutral-900 dark:text-on-surface uppercase"
+              className="w-full bg-transparent text-[11px] font-mono outline-none border-0 text-neutral-900 dark:text-on-surface uppercase h-auto p-0 focus:ring-0 focus:border-0"
+              containerClassName="flex-1"
             />
           </div>
         </div>
@@ -344,58 +338,51 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
             Cor do Fundo
           </label>
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest">
-            <input
+            <Input
               id="subtitle-bg-color-picker"
               name="bgColorPicker"
               type="color"
               aria-label="Paleta de cor do fundo"
               value={bgColor}
               onChange={(e) => setBgColor(e.target.value)}
-              className="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0 shrink-0"
             />
-            <input
+            <Input
               id="subtitle-bg-color-hex"
               name="bgColor"
               type="text"
               aria-label="Código hexadecimal da cor do fundo"
               value={bgColor}
               onChange={(e) => setBgColor(e.target.value)}
-              className="w-full bg-transparent text-[11px] font-mono outline-none text-neutral-900 dark:text-on-surface uppercase"
+              className="w-full bg-transparent text-[11px] font-mono outline-none border-0 text-neutral-900 dark:text-on-surface uppercase h-auto p-0 focus:ring-0 focus:border-0"
+              containerClassName="flex-1"
             />
           </div>
         </div>
       </div>
 
       {/* Slider de Tamanho da Fonte com Trilho Âmbar */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between text-label-sm font-label-sm">
-          <label htmlFor="subtitle-font-size" className="text-neutral-500 dark:text-outline font-semibold">Tamanho da Fonte</label>
-          <span className="text-amber-800 dark:text-primary font-bold font-mono">{fontSize}px</span>
-        </div>
-        <input
-          id="subtitle-font-size"
-          name="fontSize"
-          type="range"
-          min={18}
-          max={48}
-          value={fontSize}
-          onChange={(e) => setFontSize(Number(e.target.value))}
-          className="w-full accent-amber-400 h-2 bg-neutral-200 dark:bg-surface-container-highest rounded-lg cursor-pointer"
-        />
-      </div>
+      <Input
+        id="subtitle-font-size"
+        name="fontSize"
+        type="range"
+        min={18}
+        max={48}
+        value={fontSize}
+        onChange={(e) => setFontSize(Number(e.target.value))}
+        label="Tamanho da Fonte"
+        labelRight={<span className="text-amber-800 dark:text-primary font-bold font-mono">{fontSize}px</span>}
+      />
 
       {/* Toggle Caixa de Fundo vs Contorno */}
       <div className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-50 dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest">
         <label htmlFor="subtitle-use-background-box" className="text-body-sm font-body-sm text-neutral-800 dark:text-on-surface cursor-pointer">
           Caixa de fundo arredondada
         </label>
-        <input
+        <Checkbox
           id="subtitle-use-background-box"
           name="useBackgroundBox"
-          type="checkbox"
           checked={useBackgroundBox}
           onChange={(e) => setUseBackgroundBox(e.target.checked)}
-          className="w-4 h-4 accent-amber-400 rounded cursor-pointer"
         />
       </div>
 

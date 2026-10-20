@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Card, Button, Input } from "../../../components/ui";
+import { Card, Button, Input, Select } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
 import type { AdminAuditLog, AdminUser } from "../types";
 import { getAuditEventBadge, parseDevice } from "../constants";
@@ -329,13 +329,13 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
           />
 
           <div className="flex flex-1 items-center flex-wrap">
-            <select
+            <Select
               id="audit-action-filter"
               name="auditActionFilter"
               aria-label="Filtrar por tipo de ação"
               value={auditActionFilter}
               onChange={(e) => handleActionFilterChange(e.target.value)}
-              className="w-full bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest rounded-xl px-3 py-2 text-body-sm text-neutral-900 dark:text-on-surface outline-none focus:border-primary cursor-pointer shadow-2xs"
+              className="w-full"
             >
               <option value="ALL">Todas as Ações</option>
               <option value="USER_ROLE_CHANGED">
@@ -373,7 +373,7 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
               <option value="ALL_SESSIONS_REVOKED">
                 Todas Sessões Encerradas
               </option>
-            </select>
+            </Select>
           </div>
         </div>
 
@@ -538,19 +538,20 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
 
               <div className="flex items-center gap-1.5">
                 <label htmlFor="audit-page-size" className="text-xs">Exibir:</label>
-                <select
+                <Select
                   id="audit-page-size"
                   name="auditPageSize"
+                  size="sm"
                   aria-label="Quantidade de eventos por página"
                   value={auditPageSize}
                   onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  className="bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest rounded-lg px-2.5 py-1 text-xs text-neutral-900 dark:text-on-surface outline-none focus:border-primary cursor-pointer font-medium shadow-2xs"
+                  className="w-36 text-xs font-medium"
                 >
                   <option value={10}>10 por página</option>
                   <option value={25}>25 por página</option>
                   <option value={50}>50 por página</option>
                   <option value={100}>100 por página</option>
-                </select>
+                </Select>
               </div>
             </div>
           </div>

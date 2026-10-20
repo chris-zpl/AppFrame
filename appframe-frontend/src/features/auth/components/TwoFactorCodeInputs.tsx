@@ -1,4 +1,5 @@
 import React from 'react';
+import { Input } from '../../../components/ui';
 
 interface TwoFactorCodeInputsProps {
   digits: string[];
@@ -21,8 +22,9 @@ export const TwoFactorCodeInputs: React.FC<TwoFactorCodeInputsProps> = ({
     <div className="flex flex-col items-center gap-2">
       <div className="flex items-center justify-between gap-2 sm:gap-2.5 w-full">
         {digits.map((digit, idx) => (
-          <input
+          <Input
             key={idx}
+            variant="digit"
             id={`two-factor-digit-${idx + 1}`}
             name={`two_factor_digit_${idx + 1}`}
             aria-label={`Dígito ${idx + 1} do código 2FA`}
@@ -38,13 +40,6 @@ export const TwoFactorCodeInputs: React.FC<TwoFactorCodeInputsProps> = ({
             onChange={(e) => onChange(idx, e.target.value)}
             onKeyDown={(e) => onKeyDown(idx, e)}
             onPaste={onPaste}
-            className={`w-12 h-14 sm:w-13 sm:h-16 text-center text-[24px] sm:text-[28px] font-bold rounded-xl bg-white dark:bg-surface-container-lowest border transition-all duration-200 outline-none tabular-nums ${
-              disabled
-                ? 'opacity-50 cursor-not-allowed border-neutral-300 dark:border-surface-container-highest'
-                : digit
-                ? 'border-primary text-[#B8851B] dark:text-primary shadow-[0_0_12px_rgba(242,190,94,0.25)]'
-                : 'border-neutral-300 dark:border-surface-container-highest text-neutral-900 dark:text-on-surface focus:border-primary/80 dark:focus:border-primary focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20'
-            }`}
           />
         ))}
       </div>

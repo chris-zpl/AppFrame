@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Badge, Button } from '../../../components/ui';
+import { Card, Badge, Button, Select } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import type { AdminUser, AdminSession } from '../types';
 import { isSuperAdminUser } from '../../auth';
@@ -132,9 +132,10 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                           SUPER ADMIN
                         </Badge>
                       ) : canChangeRole ? (
-                        <select
+                        <Select
                           id={`user-role-${u.id}`}
                           name={`user_role_${u.id}`}
+                          size="sm"
                           aria-label={`Função do usuário ${u.name || u.email}`}
                           value={u.role}
                           onChange={(e) =>
@@ -143,11 +144,11 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                               e.target.value as 'SUPER_ADMIN' | 'ADMIN' | 'USER'
                             )
                           }
-                          className="bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest rounded-lg px-2 py-1 text-xs font-semibold text-neutral-900 dark:text-on-surface outline-none focus:border-primary cursor-pointer shadow-2xs"
+                          className="w-40 text-xs font-semibold"
                         >
                           <option value="USER">Usuário Comum</option>
                           <option value="ADMIN">Administrador</option>
-                        </select>
+                        </Select>
                       ) : (
                         <div className="flex items-center gap-1.5">
                           <Badge

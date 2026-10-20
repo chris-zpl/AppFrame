@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Badge, Button, Textarea } from '../../../components/ui';
+import { Card, Badge, Button, Textarea, Input } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import type { YouTubeCookiesStatus } from '../types';
 
@@ -122,7 +122,7 @@ export const AdminYoutubeTab: React.FC<AdminYoutubeTabProps> = ({
               <span className="truncate px-2.5 py-1.5 rounded-lg bg-white dark:bg-surface-container-highest hover:bg-neutral-200 dark:hover:bg-primary dark:hover:text-on-primary text-xs font-bold transition-colors border border-neutral-200 dark:border-transparent text-neutral-900 dark:text-on-surface">
                 Selecionar Arquivo
               </span>
-              <input
+              <Input
                 id="youtube-cookies-file"
                 name="cookiesFile"
                 type="file"

@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../../../lib/utils';
+import { Input } from '../../../components/ui';
 
 import { useWatermarksContext } from '../context';
 
@@ -30,7 +31,7 @@ export const WatermarkUploadDropzone: React.FC<WatermarkUploadDropzoneProps> = (
   return (
     <section className="mb-space-lg">
       {fileInputRef && (
-        <input
+        <Input
           id="watermark-file-input"
           name="watermarkFile"
           aria-label="Selecionar imagem da marca d'água"

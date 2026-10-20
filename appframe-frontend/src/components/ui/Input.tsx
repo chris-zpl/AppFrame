@@ -5,7 +5,8 @@ export interface InputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
   size?: 'sm' | 'md' | 'lg';
   inputSize?: 'sm' | 'md' | 'lg';
-  label?: string;
+  variant?: 'default' | 'digit';
+  label?: React.ReactNode;
   labelClassName?: string;
   labelRight?: React.ReactNode;
   containerClassName?: string;
@@ -21,6 +22,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       className,
       size,
       inputSize,
+      variant = 'default',
       label,
       labelClassName,
       labelRight,
@@ -39,12 +41,111 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const effectiveSize = inputSize || size || 'md';
     const inputId =
       id ||
-      (label
+      (typeof label === 'string'
         ? `input-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
         : props.name
         ? `input-${props.name}`
         : `input-${generatedId.replace(/:/g, '')}`);
     const inputName = props.name || inputId;
+
+    // Variante 1: Dígitos individuais para autenticação 2FA
+    if (variant === 'digit') {
+      return (
+        <input
+          id={inputId}
+          name={inputName}
+          ref={ref}
+          disabled={disabled}
+          className={cn(
+            'w-12 h-14 sm:w-13 sm:h-16 text-center text-[24px] sm:text-[28px] font-bold rounded-xl bg-white dark:bg-surface-container-lowest border transition-all duration-200 outline-none tabular-nums',
+            disabled
+              ? 'opacity-50 cursor-not-allowed border-neutral-300 dark:border-surface-container-highest'
+              : props.value
+              ? 'border-primary text-[#B8851B] dark:text-primary shadow-[0_0_12px_rgba(242,190,94,0.25)]'
+              : 'border-neutral-300 dark:border-surface-container-highest text-neutral-900 dark:text-on-surface focus:border-primary/80 dark:focus:border-primary focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20',
+            className,
+          )}
+          {...props}
+        />
+      );
+    }
+
+    // Variante 2: Seletor nativo de cor
+    if (props.type === 'color') {
+      return (
+        <input
+          id={inputId}
+          name={inputName}
+          ref={ref}
+          type="color"
+          disabled={disabled}
+          className={cn(
+            'w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0 shrink-0 outline-none',
+            className,
+          )}
+          {...props}
+        />
+      );
+    }
+
+    // Variante 3: Slider / Range (ex: tamanho de fonte, opacidade, escala)
+    if (props.type === 'range') {
+      return (
+        <div className={cn("flex flex-col gap-1.5 w-full", containerClassName)}>
+          {(label || labelRight) && (
+            <div className="flex items-center justify-between text-label-sm font-label-sm">
+              {label && (
+                <label
+                  htmlFor={inputId}
+                  className={cn("text-neutral-500 dark:text-outline font-semibold", labelClassName)}
+                >
+                  {label}
+                </label>
+              )}
+              {labelRight && <div>{labelRight}</div>}
+            </div>
+          )}
+          <input
+            id={inputId}
+            name={inputName}
+            ref={ref}
+            type="range"
+            disabled={disabled}
+            className={cn(
+              'w-full accent-amber-400 dark:accent-primary h-2 bg-neutral-200 dark:bg-surface-container-highest rounded-lg cursor-pointer outline-none transition-colors',
+              className,
+            )}
+            {...props}
+          />
+          {error && (
+            <span className="text-error font-body-sm text-body-sm flex items-center gap-1 mt-0.5">
+              <span className="material-symbols-outlined text-[14px]">error</span>
+              <span>{error}</span>
+            </span>
+          )}
+          {!error && helperText && (
+            <span className="text-neutral-600 dark:text-on-surface-variant font-body-sm text-body-sm mt-0.5">
+              {helperText}
+            </span>
+          )}
+        </div>
+      );
+    }
+
+    // Variante 4: Input de arquivo oculto (ex: upload de cookie ou watermark)
+    if (props.type === 'file' && className?.includes('hidden')) {
+      return (
+        <input
+          id={inputId}
+          name={inputName}
+          ref={ref}
+          type="file"
+          disabled={disabled}
+          className="hidden"
+          {...props}
+        />
+      );
+    }
 
     return (
       <div className={cn("flex flex-col gap-1.5 w-full", containerClassName)}>

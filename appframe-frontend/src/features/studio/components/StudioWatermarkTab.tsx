@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '../../../components/ui';
+import { Button, Input } from '../../../components/ui';
 import { cn } from '../../../lib/utils';
 import { API_BASE_URL } from '../../../lib/api';
 import type { WatermarkPosition } from '../types';
@@ -181,44 +181,30 @@ export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => 
       </div>
 
       {/* Slider de Opacidade (0% a 100%) */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between text-label-sm font-label-sm">
-          <label htmlFor="watermark-opacity" className="text-neutral-500 dark:text-outline font-semibold">
-            Opacidade da Marca
-          </label>
-          <span className="text-amber-800 dark:text-primary font-bold font-mono">{watermarkOpacity}%</span>
-        </div>
-        <input
-          id="watermark-opacity"
-          name="watermarkOpacity"
-          type="range"
-          min={0}
-          max={100}
-          value={watermarkOpacity}
-          onChange={(e) => setWatermarkOpacity(Number(e.target.value))}
-          className="w-full accent-amber-400 h-2 bg-neutral-200 dark:bg-surface-container-highest rounded-lg cursor-pointer"
-        />
-      </div>
+      <Input
+        id="watermark-opacity"
+        name="watermarkOpacity"
+        type="range"
+        min={0}
+        max={100}
+        value={watermarkOpacity}
+        onChange={(e) => setWatermarkOpacity(Number(e.target.value))}
+        label="Opacidade da Marca"
+        labelRight={<span className="text-amber-800 dark:text-primary font-bold font-mono">{watermarkOpacity}%</span>}
+      />
 
       {/* Slider de Escala da Marca */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between text-label-sm font-label-sm">
-          <label htmlFor="watermark-scale" className="text-neutral-500 dark:text-outline font-semibold">
-            Tamanho / Escala
-          </label>
-          <span className="text-amber-800 dark:text-primary font-bold font-mono">{watermarkScale}%</span>
-        </div>
-        <input
-          id="watermark-scale"
-          name="watermarkScale"
-          type="range"
-          min={50}
-          max={150}
-          value={watermarkScale}
-          onChange={(e) => setWatermarkScale(Number(e.target.value))}
-          className="w-full accent-amber-400 h-2 bg-neutral-200 dark:bg-surface-container-highest rounded-lg cursor-pointer"
-        />
-      </div>
+      <Input
+        id="watermark-scale"
+        name="watermarkScale"
+        type="range"
+        min={50}
+        max={150}
+        value={watermarkScale}
+        onChange={(e) => setWatermarkScale(Number(e.target.value))}
+        label="Tamanho / Escala"
+        labelRight={<span className="text-amber-800 dark:text-primary font-bold font-mono">{watermarkScale}%</span>}
+      />
     </div>
   );
 };
