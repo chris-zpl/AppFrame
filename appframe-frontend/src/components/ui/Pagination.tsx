@@ -29,7 +29,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   onPageSizeChange,
   itemsLabel = 'itens',
   className,
-  showFirstLast = true,
+  showFirstLast = false,
   extraSummary,
   startItemIndex,
   endItemIndex,
@@ -60,18 +60,44 @@ export const Pagination: React.FC<PaginationProps> = ({
 
   const pageNumbers = useMemo(() => {
     const pages: (number | 'ellipsis-start' | 'ellipsis-end')[] = [];
-    if (totalPages <= 7) {
+    if (totalPages <= 5) {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
       return pages;
     }
 
-    pages.push(1);
-    const start = Math.max(2, safePage - 1);
-    const end = Math.min(totalPages - 1, safePage + 1);
+    // Janela inicial: páginas 1, 2, 3 + reticências + última
+    if (safePage <= 2) {
+      pages.push(1, 2, 3);
+      if (totalPages > 4) pages.push('ellipsis-end');
+      pages.push(totalPages);
+      return pages;
+    }
 
-    if (start > 2) pages.push('ellipsis-start');
-    for (let i = start; i <= end; i++) pages.push(i);
-    if (end < totalPages - 1) pages.push('ellipsis-end');
+    // Janela final: primeira + reticências + últimas 3 páginas
+    if (safePage >= totalPages - 1) {
+      pages.push(1);
+      if (totalPages > 4) pages.push('ellipsis-start');
+      pages.push(totalPages - 2, totalPages - 1, totalPages);
+      return pages;
+    }
+
+    // Janela central: primeira + reticências + 3 páginas [safePage-1, safePage, safePage+1] + reticências + última
+    pages.push(1);
+    if (safePage - 1 > 2) {
+      pages.push('ellipsis-start');
+    }
+
+    const start = safePage - 1;
+    const end = safePage + 1;
+    for (let i = start; i <= end; i++) {
+      if (i > 1 && i < totalPages) {
+        pages.push(i);
+      }
+    }
+
+    if (totalPages - end > 1) {
+      pages.push('ellipsis-end');
+    }
 
     pages.push(totalPages);
     return pages;
@@ -87,7 +113,7 @@ export const Pagination: React.FC<PaginationProps> = ({
       )}
     >
       {/* Informações e Seletor de Itens por Página */}
-      <div className="flex flex-wrap items-center gap-3 text-body-sm text-neutral-600 dark:text-outline w-full sm:w-auto justify-between sm:justify-start">
+      <div className="flex items-center gap-3 text-body-sm text-neutral-600 dark:text-outline w-full sm:w-auto justify-between sm:justify-start">
         {totalItems !== undefined && (
           <span>
             Mostrando{' '}
@@ -133,7 +159,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
       {/* Controles de Navegação de Página */}
       {totalPages > 1 && (
-        <div className="flex items-center gap-1.5 flex-wrap justify-center shrink-0">
+        <div className="flex items-center gap-1.5 justify-center shrink-0">
           {showFirstLast && (
             <Button
               type="button"
