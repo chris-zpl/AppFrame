@@ -26,7 +26,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: 'varredura', label: 'Varredura', icon: 'radar' },
   { key: 'studio', label: 'Studio', icon: 'content_cut' },
-  { key: 'marcas-dagua', label: "Marcas d'Água", icon: 'branding_watermark' },
+  { key: 'marcas-dagua', label: "Marcas d'água", icon: 'branding_watermark' },
   { key: 'historico', label: 'Histórico', icon: 'history' },
 ];
 

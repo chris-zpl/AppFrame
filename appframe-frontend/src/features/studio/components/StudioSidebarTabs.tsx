@@ -36,7 +36,7 @@ export const StudioSidebarTabs: React.FC = () => {
           )}
         >
           <span className="material-symbols-outlined text-[18px]">branding_watermark</span>
-          <span>Marca d'Água</span>
+          <span>Marca d'água</span>
         </button>
       </div>
 
