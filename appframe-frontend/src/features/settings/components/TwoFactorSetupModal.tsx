@@ -114,6 +114,8 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({
 
             {/* 2. Confirmação com 6 Dígitos */}
             <Input
+              id="two-factor-setup-code"
+              name="code"
               label="2. Digite o código de 6 dígitos gerado no app:"
               labelClassName="text-label-sm font-label-sm text-neutral-900 dark:text-on-surface font-semibold"
               type="text"

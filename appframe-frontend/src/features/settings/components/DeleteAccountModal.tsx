@@ -65,6 +65,9 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
         </p>
 
         <Input
+          id="delete-account-password"
+          name="password"
+          autoComplete="current-password"
           label="Sua Senha de Acesso (se aplicável)"
           type={showPassword ? 'text' : 'password'}
           value={password}
@@ -84,6 +87,8 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
         />
 
         <Input
+          id="delete-account-confirmation"
+          name="confirmationText"
           label="Digite EXCLUIR para confirmar"
           value={confirmationText}
           onChange={(e) => setConfirmationText(e.target.value)}

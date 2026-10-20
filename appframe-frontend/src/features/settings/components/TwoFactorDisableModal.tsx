@@ -59,6 +59,9 @@ export const TwoFactorDisableModal: React.FC<TwoFactorDisableModalProps> = ({
           </p>
 
           <Input
+            id="disable-2fa-code"
+            name="code"
+            aria-label="Código de verificação em duas etapas"
             type="text"
             maxLength={6}
             value={code}

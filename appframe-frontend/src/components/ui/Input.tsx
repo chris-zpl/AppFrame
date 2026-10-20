@@ -35,8 +35,16 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     },
     ref,
   ) => {
+    const generatedId = React.useId();
     const effectiveSize = inputSize || size || 'md';
-    const inputId = id || (label ? `input-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
+    const inputId =
+      id ||
+      (label
+        ? `input-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+        : props.name
+        ? `input-${props.name}`
+        : `input-${generatedId.replace(/:/g, '')}`);
+    const inputName = props.name || inputId;
 
     return (
       <div className={cn("flex flex-col gap-1.5 w-full", containerClassName)}>
@@ -67,6 +75,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
           <input
             id={inputId}
+            name={inputName}
             ref={ref}
             disabled={disabled}
             className={cn(

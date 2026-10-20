@@ -107,6 +107,8 @@ export const AdminGeminiTab: React.FC<AdminGeminiTabProps> = ({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
+            id="gemini-api-key"
+            name="geminiApiKey"
             label="Chave de API do Gemini (AIzaSy...)"
             labelClassName="text-label-sm font-bold text-neutral-500 dark:text-outline uppercase tracking-wider"
             type={showGeminiKey ? "text" : "password"}

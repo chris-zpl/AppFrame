@@ -41,6 +41,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   return (
     <form className="flex flex-col gap-3.5 mt-space-md" onSubmit={onSubmit}>
       <Input
+        id="register-name"
+        name="name"
+        autoComplete="name"
         label="Nome Completo"
         placeholder="Seu nome e sobrenome"
         type="text"
@@ -56,6 +59,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       />
 
       <Input
+        id="register-email"
+        name="email"
+        autoComplete="email"
         label="E-mail Profissional"
         placeholder="nome@empresa.com"
         type="email"
@@ -72,6 +78,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
 
       <div className="flex flex-col gap-1.5">
         <Input
+          id="register-password"
+          name="password"
+          autoComplete="new-password"
           label="Senha de Acesso"
           placeholder="Mínimo de 8 caracteres"
           type={showPassword ? 'text' : 'password'}

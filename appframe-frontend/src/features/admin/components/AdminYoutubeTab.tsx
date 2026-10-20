@@ -118,11 +118,13 @@ export const AdminYoutubeTab: React.FC<AdminYoutubeTabProps> = ({
                 Carregar arquivo cookies.txt
               </span>
             </div>
-            <label className="cursor-pointer">
+            <label className="cursor-pointer" htmlFor="youtube-cookies-file">
               <span className="truncate px-2.5 py-1.5 rounded-lg bg-white dark:bg-surface-container-highest hover:bg-neutral-200 dark:hover:bg-primary dark:hover:text-on-primary text-xs font-bold transition-colors border border-neutral-200 dark:border-transparent text-neutral-900 dark:text-on-surface">
                 Selecionar Arquivo
               </span>
               <input
+                id="youtube-cookies-file"
+                name="cookiesFile"
                 type="file"
                 accept=".txt"
                 onChange={handleFileUpload}
@@ -132,6 +134,8 @@ export const AdminYoutubeTab: React.FC<AdminYoutubeTabProps> = ({
           </div>
 
           <Textarea
+            id="youtube-cookies-text"
+            name="cookiesText"
             label="Ou cole o texto dos Cookies (formato Netscape)"
             labelClassName="text-label-sm font-bold text-neutral-500 dark:text-outline uppercase tracking-wider"
             value={cookiesInput}

@@ -57,6 +57,9 @@ export const SettingsProfileSection: React.FC<SettingsProfileSectionProps> = (pr
 
         <form onSubmit={onSaveProfile} className="flex flex-col gap-4 max-w-xl">
           <Input
+            id="profile-name"
+            name="name"
+            autoComplete="name"
             label="Nome Completo"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -69,6 +72,9 @@ export const SettingsProfileSection: React.FC<SettingsProfileSectionProps> = (pr
 
           <div>
             <Input
+              id="profile-email"
+              name="email"
+              autoComplete="email"
               label="E-mail Profissional"
               type="email"
               value={email}

@@ -14,6 +14,8 @@ export const TwoFactorBackupInput: React.FC<TwoFactorBackupInputProps> = ({
 }) => {
   return (
     <Input
+      id="two-factor-backup-code"
+      name="backupCode"
       label="Código de Recuperação"
       placeholder="Ex: A8B2-9F1C-4D"
       type="text"

@@ -31,6 +31,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   return (
     <form className="flex flex-col gap-3.5 mt-space-md" onSubmit={onSubmit}>
       <Input
+        id="login-email"
+        name="email"
+        autoComplete="email"
         label="Seu E-mail"
         placeholder="nome@empresa.com"
         type="email"
@@ -47,6 +50,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
       <div className="flex flex-col gap-1.5">
         <Input
+          id="login-password"
+          name="password"
+          autoComplete="current-password"
           label="Senha de Acesso"
           placeholder="••••••••••••"
           type={showPassword ? 'text' : 'password'}

@@ -31,6 +31,9 @@ export const WatermarkUploadDropzone: React.FC<WatermarkUploadDropzoneProps> = (
     <section className="mb-space-lg">
       {fileInputRef && (
         <input
+          id="watermark-file-input"
+          name="watermarkFile"
+          aria-label="Selecionar imagem da marca d'água"
           ref={fileInputRef}
           type="file"
           accept="image/png"

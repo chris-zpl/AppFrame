@@ -133,6 +133,9 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                         </Badge>
                       ) : canChangeRole ? (
                         <select
+                          id={`user-role-${u.id}`}
+                          name={`user_role_${u.id}`}
+                          aria-label={`Função do usuário ${u.name || u.email}`}
                           value={u.role}
                           onChange={(e) =>
                             onRoleChange(

@@ -26,6 +26,9 @@ export const ScannerSearchBar: React.FC<ScannerSearchBarProps> = (props) => {
     <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
       <div className="flex-1">
         <Input
+          id="scanner-channel-url"
+          name="channelUrl"
+          aria-label="URL de vídeo ou canal do YouTube"
           value={channelUrl}
           disabled={isScanning}
           onChange={(e) => setChannelUrl(e.target.value)}

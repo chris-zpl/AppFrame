@@ -183,10 +183,14 @@ export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => 
       {/* Slider de Opacidade (0% a 100%) */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-label-sm font-label-sm">
-          <span className="text-neutral-500 dark:text-outline font-semibold">Opacidade da Marca</span>
+          <label htmlFor="watermark-opacity" className="text-neutral-500 dark:text-outline font-semibold">
+            Opacidade da Marca
+          </label>
           <span className="text-amber-800 dark:text-primary font-bold font-mono">{watermarkOpacity}%</span>
         </div>
         <input
+          id="watermark-opacity"
+          name="watermarkOpacity"
           type="range"
           min={0}
           max={100}
@@ -199,10 +203,14 @@ export const StudioWatermarkTab: React.FC<StudioWatermarkTabProps> = (props) => 
       {/* Slider de Escala da Marca */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-label-sm font-label-sm">
-          <span className="text-neutral-500 dark:text-outline font-semibold">Tamanho / Escala</span>
+          <label htmlFor="watermark-scale" className="text-neutral-500 dark:text-outline font-semibold">
+            Tamanho / Escala
+          </label>
           <span className="text-amber-800 dark:text-primary font-bold font-mono">{watermarkScale}%</span>
         </div>
         <input
+          id="watermark-scale"
+          name="watermarkScale"
           type="range"
           min={50}
           max={150}

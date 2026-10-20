@@ -28,7 +28,15 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     },
     ref,
   ) => {
-    const textareaId = id || (label ? `textarea-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
+    const generatedId = React.useId();
+    const textareaId =
+      id ||
+      (label
+        ? `textarea-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+        : props.name
+        ? `textarea-${props.name}`
+        : `textarea-${generatedId.replace(/:/g, '')}`);
+    const textareaName = props.name || textareaId;
 
     return (
       <div className={cn("flex flex-col gap-1.5 w-full", containerClassName)}>
@@ -47,6 +55,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 
         <textarea
           id={textareaId}
+          name={textareaName}
           ref={ref}
           rows={rows}
           disabled={disabled}

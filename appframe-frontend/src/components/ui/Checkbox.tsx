@@ -19,13 +19,22 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
     },
     ref,
   ) => {
-    const inputId = id || (typeof label === 'string' ? `chk-${label.slice(0, 10).replace(/\s+/g, '-')}` : undefined);
+    const generatedId = React.useId();
+    const inputId =
+      id ||
+      (typeof label === 'string'
+        ? `chk-${label.slice(0, 10).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+        : props.name
+        ? `chk-${props.name}`
+        : `chk-${generatedId.replace(/:/g, '')}`);
+    const inputName = props.name || inputId;
 
     if (variant === 'card-indicator') {
       return (
         <label className="relative flex items-center justify-center cursor-pointer select-none">
           <input
             id={inputId}
+            name={inputName}
             ref={ref}
             type="checkbox"
             checked={checked}
@@ -62,6 +71,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
         >
           <input
             id={inputId}
+            name={inputName}
             ref={ref}
             type="checkbox"
             checked={checked}

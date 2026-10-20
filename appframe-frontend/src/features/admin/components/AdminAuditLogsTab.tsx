@@ -297,6 +297,9 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
         {/* Barra de Filtros e Busca */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 pt-2">
           <Input
+            id="audit-search"
+            name="auditSearch"
+            aria-label="Buscar eventos de auditoria"
             size="sm"
             type="text"
             value={auditSearch}
@@ -327,6 +330,9 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
 
           <div className="flex flex-1 items-center flex-wrap">
             <select
+              id="audit-action-filter"
+              name="auditActionFilter"
+              aria-label="Filtrar por tipo de ação"
               value={auditActionFilter}
               onChange={(e) => handleActionFilterChange(e.target.value)}
               className="w-full bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest rounded-xl px-3 py-2 text-body-sm text-neutral-900 dark:text-on-surface outline-none focus:border-primary cursor-pointer shadow-2xs"
@@ -531,8 +537,11 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
               </span>
 
               <div className="flex items-center gap-1.5">
-                <span className="text-xs">Exibir:</span>
+                <label htmlFor="audit-page-size" className="text-xs">Exibir:</label>
                 <select
+                  id="audit-page-size"
+                  name="auditPageSize"
+                  aria-label="Quantidade de eventos por página"
                   value={auditPageSize}
                   onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                   className="bg-white dark:bg-surface-container border border-neutral-200 dark:border-surface-container-highest rounded-lg px-2.5 py-1 text-xs text-neutral-900 dark:text-on-surface outline-none focus:border-primary cursor-pointer font-medium shadow-2xs"

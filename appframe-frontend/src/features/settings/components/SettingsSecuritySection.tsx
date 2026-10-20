@@ -167,6 +167,9 @@ export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (
 
         <form onSubmit={onPasswordSubmit} className="flex flex-col gap-4 max-w-xl">
           <Input
+            id="current-password"
+            name="currentPassword"
+            autoComplete="current-password"
             label="Senha Atual (opcional se originada via Google)"
             type={showCurrentPassword ? 'text' : 'password'}
             value={currentPassword}
@@ -187,6 +190,9 @@ export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (
 
           <div className="flex flex-col gap-1.5">
             <Input
+              id="new-password"
+              name="newPassword"
+              autoComplete="new-password"
               label="Nova Senha"
               type={showNewPassword ? 'text' : 'password'}
               value={newPassword}
@@ -212,6 +218,9 @@ export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (
           </div>
 
           <Input
+            id="confirm-password"
+            name="confirmPassword"
+            autoComplete="new-password"
             label="Confirmar Nova Senha"
             type={showConfirmPassword ? 'text' : 'password'}
             value={confirmPassword}

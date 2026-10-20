@@ -62,6 +62,9 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <Input
+            id="reset-new-password"
+            name="newPassword"
+            autoComplete="new-password"
             label="Nova Senha"
             placeholder="Mínimo de 8 caracteres"
             type={showPassword ? 'text' : 'password'}
@@ -89,6 +92,9 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
         </div>
 
         <Input
+          id="reset-confirm-password"
+          name="confirmPassword"
+          autoComplete="new-password"
           label="Confirmar Nova Senha"
           placeholder="Repita a nova senha"
           type={showConfirmPassword ? 'text' : 'password'}

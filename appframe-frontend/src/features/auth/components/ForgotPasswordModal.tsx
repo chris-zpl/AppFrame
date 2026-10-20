@@ -127,6 +127,9 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
               </div>
             )}
             <Input
+              id="forgot-email"
+              name="email"
+              autoComplete="email"
               label="Seu E-mail"
               placeholder="nome@empresa.com"
               type="email"

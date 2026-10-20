@@ -102,6 +102,8 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
+            id="smtp-host"
+            name="host"
             size="sm"
             label="Servidor SMTP (Host)"
             labelClassName="font-bold text-neutral-500 dark:text-outline text-label-sm"
@@ -113,6 +115,8 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
           />
 
           <Input
+            id="smtp-port"
+            name="port"
             size="sm"
             label="Porta"
             labelClassName="font-bold text-neutral-500 dark:text-outline text-label-sm"
@@ -124,6 +128,8 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
           />
 
           <Input
+            id="smtp-user"
+            name="user"
             size="sm"
             label="Usuário SMTP"
             labelClassName="font-bold text-neutral-500 dark:text-outline text-label-sm"
@@ -134,6 +140,8 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
           />
 
           <Input
+            id="smtp-password"
+            name="password"
             size="sm"
             label="Senha SMTP"
             labelClassName="font-bold text-neutral-500 dark:text-outline text-label-sm"
@@ -150,6 +158,8 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
           />
 
           <Input
+            id="smtp-from-name"
+            name="fromName"
             size="sm"
             label="Nome do Remetente"
             labelClassName="font-bold text-neutral-500 dark:text-outline text-label-sm"
@@ -160,6 +170,8 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
           />
 
           <Input
+            id="smtp-from-email"
+            name="fromEmail"
             size="sm"
             label="E-mail do Remetente (From)"
             labelClassName="font-bold text-neutral-500 dark:text-outline text-label-sm"
@@ -174,6 +186,7 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
             <input
               type="checkbox"
               id="secure-toggle"
+              name="secure"
               checked={smtpForm.secure}
               onChange={(e) => setSmtpForm({ ...smtpForm, secure: e.target.checked })}
               className="w-4 h-4 accent-primary cursor-pointer"
@@ -212,6 +225,9 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
 
         <div className="flex flex-col md:flex-row items-center gap-3">
           <Input
+            id="smtp-test-email"
+            name="testEmail"
+            aria-label="E-mail de destino para envio de teste"
             size="sm"
             type="email"
             value={testEmailInput}

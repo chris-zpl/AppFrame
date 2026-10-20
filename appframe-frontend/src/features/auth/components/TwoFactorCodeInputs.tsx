@@ -23,6 +23,9 @@ export const TwoFactorCodeInputs: React.FC<TwoFactorCodeInputsProps> = ({
         {digits.map((digit, idx) => (
           <input
             key={idx}
+            id={`two-factor-digit-${idx + 1}`}
+            name={`two_factor_digit_${idx + 1}`}
+            aria-label={`Dígito ${idx + 1} do código 2FA`}
             ref={(el) => {
               inputRefs.current[idx] = el;
             }}

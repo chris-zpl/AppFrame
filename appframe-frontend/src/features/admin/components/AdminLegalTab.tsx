@@ -123,6 +123,8 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Input
+            id="legal-company-name"
+            name="companyName"
             size="sm"
             label="Razão Social / Nome do Desenvolvedor"
             type="text"
@@ -132,6 +134,8 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
           />
 
           <Input
+            id="legal-contact-email"
+            name="contactEmail"
             size="sm"
             label="E-mail de Suporte / Contato"
             type="email"
@@ -141,6 +145,8 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
           />
 
           <Input
+            id="legal-dpo-email"
+            name="dpoEmail"
             size="sm"
             label="Canal DPO / Encarregado de Privacidade"
             type="email"
@@ -150,6 +156,8 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
           />
 
           <Input
+            id="legal-forum-city"
+            name="forumCity"
             size="sm"
             label="Cidade / Foro de Eleição Jurídico"
             type="text"
@@ -159,6 +167,8 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
           />
 
           <Input
+            id="legal-retention-period"
+            name="retentionPeriod"
             size="sm"
             label="Tempo de Retenção de Mídias"
             type="text"
@@ -168,6 +178,8 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
           />
 
           <Input
+            id="legal-website-url"
+            name="websiteUrl"
             size="sm"
             label="URL Oficial da Plataforma"
             type="url"
@@ -277,6 +289,9 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
           activeTermsMode === 'edit' ? (
             <div className="flex flex-col gap-2">
               <Textarea
+                id="legal-terms-text"
+                name="termsOfService"
+                aria-label="Conteúdo dos Termos de Serviço"
                 value={legalForm.termsOfService || ''}
                 onChange={(e) => setLegalForm((prev) => ({ ...prev, termsOfService: e.target.value }))}
                 rows={24}
@@ -301,6 +316,9 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
         ) : activePrivacyMode === 'edit' ? (
           <div className="flex flex-col gap-2">
             <Textarea
+              id="legal-privacy-text"
+              name="privacyPolicy"
+              aria-label="Conteúdo da Política de Privacidade"
               value={legalForm.privacyPolicy || ''}
               onChange={(e) => setLegalForm((prev) => ({ ...prev, privacyPolicy: e.target.value }))}
               rows={24}
