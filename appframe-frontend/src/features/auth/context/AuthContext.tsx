@@ -423,6 +423,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profile = await refreshProfile(accessToken);
         if (profile && profile.id) {
           setUser(profile);
+        } else {
+          throw new Error('Falha ao autenticar sessão com o Google. Tente novamente.');
         }
       } finally {
         setIsLoading(false);

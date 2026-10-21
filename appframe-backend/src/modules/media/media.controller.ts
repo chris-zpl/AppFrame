@@ -43,7 +43,6 @@ export class MediaController {
   }
 
   @Get('preview/:previewId/stream')
-  @UseGuards(JwtAuthGuard)
   async streamPreview(
     @Param('previewId') previewId: string,
     @Req() req: Request,
@@ -78,6 +77,7 @@ export class MediaController {
         'Accept-Ranges': 'bytes',
         'Content-Length': chunkSize.toString(),
         'Content-Type': 'video/mp4',
+        'Cross-Origin-Resource-Policy': 'cross-origin',
       });
 
       req.on('close', () => {
@@ -90,6 +90,7 @@ export class MediaController {
         'Content-Length': fileSize.toString(),
         'Accept-Ranges': 'bytes',
         'Content-Type': 'video/mp4',
+        'Cross-Origin-Resource-Policy': 'cross-origin',
       });
       const file = fs.createReadStream(filePath);
       req.on('close', () => {

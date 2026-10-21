@@ -71,14 +71,13 @@ export class WatermarksController {
   }
 
   @Get(':id/file')
-  @UseGuards(JwtAuthGuard)
   async serveFile(
     @Param('id', new ParseUUIDPipe()) id: string,
-    @CurrentUser('userId') userId: string,
     @Res() res: Response,
   ) {
-    const filePath = await this.watermarksService.getFilePath(id, userId);
-    res.setHeader('Cache-Control', 'private, max-age=3600');
+    const filePath = await this.watermarksService.getFilePath(id);
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     return res.sendFile(filePath);
   }
 

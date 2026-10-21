@@ -49,7 +49,6 @@ export function mapScannedItems(items: any[], cleanUrl: string): MappedScanResul
       !it.isMembersOnly &&
       !it.isLive &&
       !it.isUpcoming &&
-      !it.wasLiveInput &&
       !/(?:só|so|exclusivo|apenas)\s+para\s+membros|^\[membros\]/i.test(it.title || '') &&
       !/(?:ao\s+vivo|transmitindo\s+ao\s+vivo|estreia\s+em|em\s+breve)/i.test(it.durationFormatted || '') &&
       !/^\[?(?:ao\s+vivo|live|estreia|premiere)\]?/i.test(it.title || ''),

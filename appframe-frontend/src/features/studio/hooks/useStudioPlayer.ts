@@ -120,13 +120,13 @@ export const useStudioPlayer = ({
     if (!videoEl || !previewStreamUrl) return;
 
     if (videoEl.paused) {
-      // Se estiver no fim do corte ou no fim do vídeo, reposiciona no início do corte (trimIn)
-      const isAtCutEnd =
-        trimOut > trimIn && Math.abs(videoEl.currentTime - trimOut) <= 0.2;
-      const isAtVideoEnd =
-        totalDuration > 0 && videoEl.currentTime >= totalDuration - 0.15;
+      // Se estiver fora da área amarela selecionada (antes de trimIn ou no fim/após trimOut), reposiciona no início do corte (trimIn)
+      const isOutsideCut =
+        videoEl.currentTime < trimIn ||
+        (trimOut > trimIn && videoEl.currentTime >= trimOut - 0.2) ||
+        (totalDuration > 0 && videoEl.currentTime >= totalDuration - 0.15);
 
-      if (isAtCutEnd || isAtVideoEnd) {
+      if (isOutsideCut) {
         videoEl.currentTime = trimIn;
         lastTimeRef.current = trimIn;
         setCurrentTime(trimIn);

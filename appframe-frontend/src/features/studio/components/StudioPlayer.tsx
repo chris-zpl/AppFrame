@@ -339,27 +339,15 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
               }
               const vid = e.currentTarget;
               const now = vid.currentTime;
-              const prevTime = lastTimeRef?.current ?? now;
               if (lastTimeRef) {
                 lastTimeRef.current = now;
               }
               setCurrentTime(now);
 
-              // Só interrompe o vídeo e reseta para trimIn se o vídeo estava de fato reproduzindo
-              // e cruzou a fronteira do final do corte (trimOut) vindo de dentro do corte ou do início.
-              // Se o usuário clicou ou posicionou a agulha manualmente na área cinza após trimOut,
-              // ele pode inspecionar e reproduzir livremente sem ser redirecionado para dentro.
-              if (
-                !vid.paused &&
-                trimOut > trimIn &&
-                prevTime < trimOut &&
-                now >= trimOut
-              ) {
+              if (!vid.paused && trimOut > trimIn && now >= trimOut) {
                 vid.pause();
                 vid.currentTime = trimIn;
-                if (lastTimeRef) {
-                  lastTimeRef.current = trimIn;
-                }
+                if (lastTimeRef) lastTimeRef.current = trimIn;
                 setIsPlaying(false);
                 setCurrentTime(trimIn);
               }

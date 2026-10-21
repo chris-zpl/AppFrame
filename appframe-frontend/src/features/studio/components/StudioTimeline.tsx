@@ -216,14 +216,20 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
             <div className="flex flex-row items-center justify-center gap-2 w-full">
               <button
                 type="button"
-                onClick={() => setTrimIn(currentTime)}
+                onClick={() => {
+                  const newIn = Math.min(currentTime, trimOut - 0.5);
+                  setTrimIn(Math.max(0, newIn));
+                }}
                 className="px-2.5 py-1 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer shrink-0"
               >
                 Definir In Aqui
               </button>
               <button
                 type="button"
-                onClick={() => setTrimOut(currentTime)}
+                onClick={() => {
+                  const newOut = Math.max(currentTime, trimIn + 0.5);
+                  setTrimOut(Math.min(totalDuration, newOut));
+                }}
                 className="px-2.5 py-1 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer shrink-0"
               >
                 Definir Out Aqui
@@ -293,7 +299,10 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
               </button>
               <button
                 type="button"
-                onClick={() => setTrimIn(currentTime)}
+                onClick={() => {
+                  const newIn = Math.min(currentTime, trimOut - 0.5);
+                  setTrimIn(Math.max(0, newIn));
+                }}
                 className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer"
               >
                 Definir In Aqui
@@ -304,7 +313,10 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setTrimOut(currentTime)}
+                onClick={() => {
+                  const newOut = Math.max(currentTime, trimIn + 0.5);
+                  setTrimOut(Math.min(totalDuration, newOut));
+                }}
                 className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer"
               >
                 Definir Out Aqui

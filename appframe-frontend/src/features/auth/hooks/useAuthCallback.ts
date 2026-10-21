@@ -62,14 +62,18 @@ export const useAuthCallback = (): UseAuthCallbackReturn => {
           return;
         }
 
-        // Processa o token recebido
+        // Processa o token recebido ou cookies HttpOnly
         setStatusText('Validando sessão segura com o AppFrame...');
         setProgress(50);
 
-        if (token) {
-          await handleOAuthCallback(token, refreshToken || undefined, rememberMe);
-        } else {
-          throw new Error('Nenhum token retornado pelo provedor de autenticação.');
+        try {
+          if (token) {
+            await handleOAuthCallback(token, refreshToken || undefined, rememberMe);
+          } else {
+            await handleOAuthCallback(undefined, undefined, rememberMe);
+          }
+        } catch {
+          throw new Error('Falha ao autenticar sessão com o Google. Tente novamente.');
         }
 
         setStatusText('Sessão estabelecida! Redirecionando para o Workspace...');
@@ -81,7 +85,7 @@ export const useAuthCallback = (): UseAuthCallbackReturn => {
           navigate(target, { replace: true });
         }, 300);
       } catch (err: any) {
-        setError(err.message || 'Ocorreu um erro ao sincronizar a conta do Google.');
+        setError(err.message || 'Falha ao autenticar sessão com o Google. Tente novamente.');
       }
     };
 
