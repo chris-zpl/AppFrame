@@ -188,7 +188,6 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
   // 5. Hook de Legendas e Transcrição Gemini
   const subtitles = useStudioSubtitles({
     isGeminiConnected,
-    videoTitle: params.videoTitle || queue.currentVideo?.title,
     currentVideoUrl: queue.currentVideo?.url || params.videoUrl || params.sourceUrl,
     currentPreviewId: player.currentPreviewId,
     trimIn: player.trimIn,
@@ -388,13 +387,9 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     isGeminiConnected,
     isLoadingGeminiStatus,
     isTranscribingAudio: subtitles.isTranscribingAudio,
-    isGeneratingSubtitles: subtitles.isGeneratingSubtitles,
-    showAdvancedGeminiOptions: subtitles.showAdvancedGeminiOptions,
-    setShowAdvancedGeminiOptions: subtitles.setShowAdvancedGeminiOptions,
     selectedMediaFile: subtitles.selectedMediaFile,
     setSelectedMediaFile: subtitles.setSelectedMediaFile,
     dynamicSegments: subtitles.dynamicSegments,
-    handleGenerateGeminiSubtitles: subtitles.handleGenerateGeminiSubtitles,
     handleTranscribeCurrentVideo: subtitles.handleTranscribeCurrentVideo,
 
     // Watermarks

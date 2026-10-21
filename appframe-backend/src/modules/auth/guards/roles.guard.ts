@@ -3,15 +3,20 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  Optional,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { UserRole } from '../../users/enums/user-role.enum';
 import { AuthenticatedUser } from '../interfaces/jwt-payload.interface';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    @Optional() private readonly configService?: ConfigService,
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
     const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
@@ -30,8 +35,11 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Usuário não autenticado.');
     }
 
-    // Regra estrita: christian.zimpel@gmail.com é sempre SUPER_ADMIN com acesso irrestrito
-    if (user.email && user.email.toLowerCase() === 'christian.zimpel@gmail.com') {
+    // Verificação dinâmica de SUPER_ADMIN via variável de ambiente
+    const superAdminEmail = this.configService
+      ?.get<string>('SUPER_ADMIN_EMAIL')
+      ?.toLowerCase();
+    if (superAdminEmail && user.email && user.email.toLowerCase() === superAdminEmail) {
       return true;
     }
 

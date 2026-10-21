@@ -10,7 +10,6 @@ import {
   ClassSerializerInterceptor,
   UploadedFile,
   BadRequestException,
-  ForbiddenException,
   Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -19,9 +18,10 @@ import { WatermarksService } from './watermarks.service';
 import { WatermarkResponseDto } from './dto/response/watermark-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
-import { UserRole } from '../users/enums/user-role.enum';
 
+const PNG_MAGIC_BYTES = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+]);
 
 @Controller('watermarks')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -38,7 +38,11 @@ export class WatermarksController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 10 * 1024 * 1024 },
+    }),
+  )
   async upload(
     @CurrentUser('userId') userId: string,
     @UploadedFile() file?: Express.Multer.File,
@@ -46,18 +50,35 @@ export class WatermarksController {
     if (!file) {
       throw new BadRequestException('Nenhum arquivo enviado.');
     }
-    if (file.mimetype !== 'image/png' && !file.originalname.toLowerCase().endsWith('.png')) {
-      throw new BadRequestException('Apenas arquivos PNG com canal alfa transparente são suportados.');
+    if (
+      file.mimetype !== 'image/png' ||
+      !file.originalname.toLowerCase().endsWith('.png')
+    ) {
+      throw new BadRequestException(
+        'Apenas arquivos PNG com canal alfa transparente são suportados.',
+      );
+    }
+    if (
+      !file.buffer ||
+      file.buffer.length < 8 ||
+      !file.buffer.subarray(0, 8).equals(PNG_MAGIC_BYTES)
+    ) {
+      throw new BadRequestException(
+        'O arquivo enviado não possui assinatura binária PNG válida.',
+      );
     }
     return this.watermarksService.upload(userId, file);
   }
 
   @Get(':id/file')
+  @UseGuards(JwtAuthGuard)
   async serveFile(
     @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser('userId') userId: string,
     @Res() res: Response,
   ) {
-    const filePath = await this.watermarksService.getFilePath(id);
+    const filePath = await this.watermarksService.getFilePath(id, userId);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
     return res.sendFile(filePath);
   }
 
@@ -76,51 +97,6 @@ export class WatermarksController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @CurrentUser('userId') userId: string,
   ): Promise<{ deleted: boolean }> {
-    const deleted = await this.watermarksService.delete(id, userId);
-    return { deleted };
-  }
-
-  @Get('user/:userId')
-  @UseGuards(JwtAuthGuard)
-  async listByUser(
-    @Param('userId', new ParseUUIDPipe()) userId: string,
-    @CurrentUser() currentUser: AuthenticatedUser,
-  ): Promise<WatermarkResponseDto[]> {
-    const isOwner = currentUser.userId === userId;
-    const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN;
-    if (!isOwner && !isSuperAdmin) {
-      throw new ForbiddenException('Acesso negado aos recursos de outro usuário.');
-    }
-    return this.watermarksService.findByUser(userId);
-  }
-
-  @Get(':id/user/:userId')
-  @UseGuards(JwtAuthGuard)
-  async getById(
-    @Param('id', new ParseUUIDPipe()) id: string,
-    @Param('userId', new ParseUUIDPipe()) userId: string,
-    @CurrentUser() currentUser: AuthenticatedUser,
-  ): Promise<WatermarkResponseDto> {
-    const isOwner = currentUser.userId === userId;
-    const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN;
-    if (!isOwner && !isSuperAdmin) {
-      throw new ForbiddenException('Acesso negado aos recursos de outro usuário.');
-    }
-    return this.watermarksService.findById(id, userId);
-  }
-
-  @Delete(':id/user/:userId')
-  @UseGuards(JwtAuthGuard)
-  async delete(
-    @Param('id', new ParseUUIDPipe()) id: string,
-    @Param('userId', new ParseUUIDPipe()) userId: string,
-    @CurrentUser() currentUser: AuthenticatedUser,
-  ): Promise<{ deleted: boolean }> {
-    const isOwner = currentUser.userId === userId;
-    const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN;
-    if (!isOwner && !isSuperAdmin) {
-      throw new ForbiddenException('Acesso negado para remover recursos de outro usuário.');
-    }
     const deleted = await this.watermarksService.delete(id, userId);
     return { deleted };
   }

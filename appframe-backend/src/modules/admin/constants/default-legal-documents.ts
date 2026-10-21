@@ -1,9 +1,9 @@
 export const DEFAULT_LEGAL_CONFIG = {
   companyName: 'AppFrame Tecnologia & Vídeo Digital',
-  contactEmail: 'contato@appframe.io',
-  dpoEmail: 'privacidade@appframe.io',
-  websiteUrl: 'https://appframe.io',
-  forumCity: 'Curitiba / PR',
+  contactEmail: 'contato@appframe.com.br',
+  dpoEmail: 'privacidade@appframe.com.br',
+  websiteUrl: 'https://appframe.com.br',
+  forumCity: 'Porto Alegre / RS',
   retentionPeriod: '24 horas',
 };
 

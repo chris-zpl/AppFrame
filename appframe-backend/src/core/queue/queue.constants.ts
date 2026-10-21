@@ -23,3 +23,10 @@ export interface RenderJobPayload {
   watermarkOpacity?: number | null;
   subtitleConfig?: SubtitleConfig | null;
 }
+
+export interface StorageCleanupJobPayload {
+  jobId?: string;
+  userId?: string;
+  filePath: string;
+  reason?: 'expired_24h' | 'cancelled' | 'temp_cleanup';
+}

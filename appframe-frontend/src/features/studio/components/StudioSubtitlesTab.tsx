@@ -15,7 +15,6 @@ export interface StudioSubtitlesTabProps {
   staticText?: string;
   setStaticText?: (val: string) => void;
   isTranscribingAudio?: boolean;
-  isGeneratingSubtitles?: boolean;
   hasCurrentVideo?: boolean;
   trimIn?: number;
   trimOut?: number;
@@ -48,7 +47,6 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
   const staticText = props.staticText ?? studio.staticText;
   const setStaticText = props.setStaticText ?? studio.setStaticText;
   const isTranscribingAudio = props.isTranscribingAudio ?? studio.isTranscribingAudio;
-  const isGeneratingSubtitles = props.isGeneratingSubtitles ?? studio.isGeneratingSubtitles;
   const hasCurrentVideo = props.hasCurrentVideo ?? Boolean(studio.currentVideo);
   const trimIn = props.trimIn ?? studio.trimIn;
   const trimOut = props.trimOut ?? studio.trimOut;
@@ -180,7 +178,6 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
               disabled={
                 !isGeminiConnected ||
                 isTranscribingAudio ||
-                isGeneratingSubtitles ||
                 !hasCurrentVideo
               }
               isLoading={isTranscribingAudio}

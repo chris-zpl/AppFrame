@@ -8,7 +8,7 @@ import {
   IsNumber,
   Min,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { VideoPlatform } from '../../enums/video-platform.enum';
 import { SubtitleConfig } from '../../interfaces/subtitle-config.interface';
 
@@ -38,11 +38,13 @@ export class CreateVideoJobDto {
   original_title?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   trim_start?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   trim_end?: number;
@@ -56,10 +58,12 @@ export class CreateVideoJobDto {
   watermark_position?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   watermark_scale?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   watermark_opacity?: number;
 

@@ -94,7 +94,9 @@ export class WatermarksService {
       if (fs.existsSync(alt)) return alt;
     }
 
-    return resolvedPath;
+    throw new NotFoundException(
+      'O ficheiro físico da marca d’água não foi encontrado no servidor.',
+    );
   }
 
   async delete(id: string, userId: string): Promise<boolean> {

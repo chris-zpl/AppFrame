@@ -1,10 +1,7 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class TranscribeAudioDto {
-  @IsOptional()
-  @IsString({ message: 'O caminho do arquivo de áudio deve ser uma string válida.' })
-  audioPath?: string;
-
   @IsOptional()
   @IsString({ message: 'O conteúdo em base64 deve ser uma string válida.' })
   audioBase64?: string;
@@ -16,4 +13,22 @@ export class TranscribeAudioDto {
   @IsOptional()
   @IsString()
   language?: string;
+
+  @IsOptional()
+  @IsString()
+  previewId?: string;
+
+  @IsOptional()
+  @IsString()
+  sourceUrl?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  trimStart?: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  trimEnd?: number;
 }

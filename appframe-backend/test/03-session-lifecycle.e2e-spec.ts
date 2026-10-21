@@ -172,12 +172,14 @@ describe('3. Ciclo de Vida de Sessões e Autenticação (E2E)', () => {
       sub: testUserId,
       email: 'user@appframe.io',
       sessionId: currentSessionId,
+      purpose: 'access',
     });
 
     const otherToken = jwtService.sign({
       sub: testUserId,
       email: 'user@appframe.io',
       sessionId: otherSessionId,
+      purpose: 'access',
     });
 
     // 1. Ambas funcionavam antes
@@ -241,7 +243,7 @@ describe('3. Ciclo de Vida de Sessões e Autenticação (E2E)', () => {
       .set('Authorization', `Bearer ${tempChallengeToken}`)
       .expect(401);
 
-    expect(res.body.message).toContain('desafio de 2FA primeiro');
+    expect(res.body.message).toContain('Tipo de token inválido para autenticação.');
   });
 
   it('3.7 Logout - deve revogar a sessão no banco e limpar cookies', async () => {

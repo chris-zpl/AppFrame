@@ -39,7 +39,12 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
 
   beforeEach(() => {
     reflector = new Reflector();
-    rolesGuard = new RolesGuard(reflector);
+    const mockConfigService = {
+      get: jest.fn((key: string) =>
+        key === 'SUPER_ADMIN_EMAIL' ? 'christian.zimpel@gmail.com' : undefined,
+      ),
+    } as unknown as ConfigService;
+    rolesGuard = new RolesGuard(reflector, mockConfigService);
   });
 
   const createMockContext = (user: any): ExecutionContext =>
@@ -142,6 +147,13 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
           { provide: getRepositoryToken(UserSession), useValue: mockSessionRepo },
           { provide: getRepositoryToken(VideoJob), useValue: mockJobRepo },
           { provide: SecurityAuditService, useValue: mockAuditService },
+          {
+            provide: ConfigService,
+            useValue: {
+              get: (k: string, def?: any) =>
+                k === 'SUPER_ADMIN_EMAIL' ? 'christian.zimpel@gmail.com' : def,
+            },
+          },
         ],
       }).compile();
 

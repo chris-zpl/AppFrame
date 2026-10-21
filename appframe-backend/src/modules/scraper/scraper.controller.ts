@@ -30,14 +30,6 @@ export class ScraperController {
     return this.scraperService.scanChannel(dto.channelUrl);
   }
 
-  @Post('channel')
-  @HttpCode(HttpStatus.OK)
-  async scanChannel(
-    @Body() dto: ScanChannelDto,
-  ): Promise<ScrapedMediaItem[]> {
-    return this.scraperService.scanChannel(dto.channelUrl);
-  }
-
   @Post('more')
   @HttpCode(HttpStatus.OK)
   async fetchMore(

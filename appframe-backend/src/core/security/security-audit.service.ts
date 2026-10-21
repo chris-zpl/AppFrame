@@ -17,24 +17,57 @@ export interface LogSecurityEventOptions {
 @Injectable()
 export class SecurityAuditService {
   private readonly logger = new Logger('SecurityAudit');
+  private static readonly SENSITIVE_KEYS = new Set([
+    'password',
+    'currentpassword',
+    'newpassword',
+    'token',
+    'refreshtoken',
+    'secret',
+    'totp_secret',
+    'authorization',
+  ]);
 
   constructor(
     @InjectRepository(SecurityAuditLog)
     private readonly auditRepository: Repository<SecurityAuditLog>,
   ) {}
 
+  private sanitizeMetadata(
+    metadata?: Record<string, any> | null,
+  ): Record<string, any> | null {
+    if (!metadata || typeof metadata !== 'object') {
+      return null;
+    }
+
+    const sanitized: Record<string, any> = Array.isArray(metadata) ? [] : {};
+
+    for (const [key, value] of Object.entries(metadata)) {
+      if (SecurityAuditService.SENSITIVE_KEYS.has(key.toLowerCase())) {
+        sanitized[key] = '[REDACTED]';
+      } else if (value && typeof value === 'object') {
+        sanitized[key] = this.sanitizeMetadata(value);
+      } else {
+        sanitized[key] = value;
+      }
+    }
+
+    return sanitized;
+  }
+
   /**
    * Registra um evento de auditoria no log estruturado e na tabela persistente de auditoria (PostgreSQL).
    */
   async logEvent(options: LogSecurityEventOptions): Promise<SecurityAuditLog> {
     const { userId, action, ipAddress, userAgent, metadata } = options;
+    const sanitizedMetadata = this.sanitizeMetadata(metadata);
 
     // 1. Emite log estruturado no console / stdout (para captura via Docker / APM)
     const logDetails = {
       action,
       userId: userId || 'anonymous',
       ip: ipAddress || 'unknown',
-      ...(metadata ? { metadata } : {}),
+      ...(sanitizedMetadata ? { metadata: sanitizedMetadata } : {}),
     };
     this.logger.log(`[AUDIT] ${JSON.stringify(logDetails)}`);
 
@@ -44,7 +77,7 @@ export class SecurityAuditService {
       action,
       ip_address: ipAddress || null,
       user_agent: userAgent || null,
-      metadata: metadata || null,
+      metadata: sanitizedMetadata,
     });
 
     try {
@@ -63,10 +96,11 @@ export class SecurityAuditService {
    */
   async findLogs(userId?: string, limit: number = 500): Promise<SecurityAuditLog[]> {
     const where = userId ? { user_id: userId } : {};
+    const safeLimit = Math.min(limit, 1000);
     return this.auditRepository.find({
       where,
       order: { created_at: 'DESC' },
-      take: limit,
+      take: safeLimit,
     });
   }
 }

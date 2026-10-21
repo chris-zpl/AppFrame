@@ -17,6 +17,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+    if (response.headersSent) {
+      return;
+    }
     const request = ctx.getRequest<Request>();
     const isProduction = process.env.NODE_ENV === 'production';
     const errorId = crypto.randomUUID();
@@ -42,6 +45,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message = exceptionResponse;
         errorType = exception.name;
       }
+
+      if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+        this.logger.error(
+          `[${errorId}] HttpException (${status}): ${exception.message}`,
+          exception.stack,
+        );
+      }
     } else if (exception instanceof QueryFailedError) {
       // Tratamento defensivo de erros SQL/TypeORM
       const driverError = (exception as any).driverError;
@@ -57,6 +67,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
         status = HttpStatus.BAD_REQUEST;
         message = 'Registro relacionado não encontrado ou inválido.';
         errorType = 'ForeignKeyConstraintError';
+      } else if (code === '23502') {
+        // PostgreSQL: not_null_violation
+        status = HttpStatus.BAD_REQUEST;
+        message = 'Dados incompletos: campo obrigatório não informado.';
+        errorType = 'NotNullConstraintError';
       } else {
         status = HttpStatus.INTERNAL_SERVER_ERROR;
         message = isProduction
@@ -99,7 +114,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     // Se o erro ocorreu durante o callback OAuth do Google, redireciona amigavelmente para o frontend
     if (request.url?.includes('/auth/google/callback')) {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
       const state = request.query?.state as string;
       const target = state ? `${frontendUrl}/settings` : `${frontendUrl}/login`;
       const errText = encodeURIComponent(
@@ -112,6 +127,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     // Resposta sanitizada entregue ao cliente HTTP
     const responsePayload: Record<string, any> = {
+      success: false,
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,

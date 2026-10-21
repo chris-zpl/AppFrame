@@ -5,8 +5,6 @@ const request = require('supertest');
 import { QueryFailedError } from 'typeorm';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { AuthService } from '../src/modules/auth/auth.service';
-import { UsersController } from '../src/modules/users/users.controller';
-import { UsersService } from '../src/modules/users/users.service';
 import { AllExceptionsFilter } from '../src/core/filters/all-exceptions.filter';
 import { ConfigService } from '@nestjs/config';
 
@@ -85,17 +83,11 @@ describe('1. Auditoria de Vazamento de Dados Sensíveis nos Endpoints (E2E)', ()
     ]),
   };
 
-  const mockUsersService = {
-    getUserProfile: jest.fn().mockImplementation(() => mockAuthService.getProfile(mockUser.id)),
-    getUserSessions: jest.fn().mockImplementation(() => mockAuthService.getSessions(mockUser.id)),
-  };
-
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
-      controllers: [AuthController, UsersController],
+      controllers: [AuthController],
       providers: [
         { provide: AuthService, useValue: mockAuthService },
-        { provide: UsersService, useValue: mockUsersService },
         {
           provide: ConfigService,
           useValue: {
@@ -196,23 +188,6 @@ describe('1. Auditoria de Vazamento de Dados Sensíveis nos Endpoints (E2E)', ()
     expect(bodyStr).not.toContain('refresh_token_hash');
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body[0].refresh_token_hash).toBeUndefined();
-  });
-
-  it('1.5 POST /users/register - dados confidenciais não devem vazar no endpoint legado', async () => {
-    const res = await request(app.getHttpServer())
-      .post('/users/register')
-      .send({
-        name: 'Christian User Alias',
-        email: 'alias@appframe.io',
-        password: 'Password$2026!',
-      })
-      .expect(201);
-
-    const bodyStr = JSON.stringify(res.body);
-    expect(bodyStr).not.toContain('password_hash');
-    expect(bodyStr).not.toContain('totp_secret');
-    expect(bodyStr).not.toContain('recovery_codes');
-    expect(bodyStr).not.toContain('refresh_token_hash');
   });
 
   it('1.6 AllExceptionsFilter - em ambiente de produção, oculta queries SQL, credenciais e stack traces', async () => {

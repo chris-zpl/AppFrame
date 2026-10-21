@@ -14,9 +14,10 @@ import {
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
+        prefix: 'bull_appframe',
         connection: {
           host: configService.get<string>('REDIS_HOST', 'localhost'),
-          port: configService.get<number>('REDIS_PORT', 6379),
+          port: Number(configService.get('REDIS_PORT', 6379)),
           password: configService.get<string>('REDIS_PASSWORD') || undefined,
           maxRetriesPerRequest: null, // Obrigatório para BullMQ
           enableReadyCheck: false,
@@ -34,6 +35,7 @@ import {
           removeOnFail: {
             age: 3600 * 48, // 48 horas para auditoria
           },
+          lockDuration: 300000,
         },
       }),
     }),

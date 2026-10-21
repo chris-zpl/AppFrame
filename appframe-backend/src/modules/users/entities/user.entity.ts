@@ -68,10 +68,6 @@ export class User {
   @Column({ type: 'jsonb', nullable: true })
   recovery_codes: string[] | null;
 
-  @Exclude()
-  @Column({ type: 'text', nullable: true })
-  gemini_api_key: string | null;
-
   @OneToMany(() => UserSession, (session) => session.user, { cascade: true })
   sessions: UserSession[];
 

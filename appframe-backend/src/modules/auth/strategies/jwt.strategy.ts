@@ -12,7 +12,7 @@ import { UserRole } from '../../users/enums/user-role.enum';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    configService: ConfigService,
+    private readonly configService: ConfigService,
     @InjectRepository(UserSession)
     private readonly sessionRepository: Repository<UserSession>,
     @InjectRepository(User)
@@ -37,8 +37,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
-    if (payload.purpose === '2fa_challenge') {
-      throw new UnauthorizedException('Token temporário. Conclua o desafio de 2FA primeiro.');
+    if (payload.purpose !== 'access') {
+      throw new UnauthorizedException('Tipo de token inválido para autenticação.');
     }
 
     if (payload.sessionId) {
@@ -71,7 +71,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     let role = user.role || UserRole.USER;
-    if (user.email && user.email.toLowerCase() === 'christian.zimpel@gmail.com') {
+    const superAdmin = this.configService.get<string>('SUPER_ADMIN_EMAIL')?.toLowerCase();
+    if (superAdmin && user.email && user.email.toLowerCase() === superAdmin) {
       role = UserRole.SUPER_ADMIN;
       if (user.role !== UserRole.SUPER_ADMIN) {
         user.role = UserRole.SUPER_ADMIN;

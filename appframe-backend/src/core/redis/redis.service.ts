@@ -9,13 +9,19 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private isConnected = false;
   // Fallback em memória para ambientes de testes unitários ou caso o Redis esteja temporariamente indisponível
   private inMemoryFallback = new Map<string, { value: string; expiresAt?: number }>();
+  private cleanupTimer: NodeJS.Timeout | null = null;
 
   constructor(private readonly configService: ConfigService) {}
 
   async onModuleInit() {
     const host = this.configService.get<string>('REDIS_HOST', 'localhost');
-    const port = this.configService.get<number>('REDIS_PORT', 6379);
+    const port = Number(this.configService.get('REDIS_PORT', 6379));
     const password = this.configService.get<string>('REDIS_PASSWORD') || undefined;
+
+    this.cleanupTimer = setInterval(() => {
+      this.evictExpiredMemoryKeys();
+    }, 5 * 60 * 1000);
+    this.cleanupTimer.unref?.();
 
     try {
       this.client = new Redis({
@@ -34,9 +40,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      this.client.on('connect', () => {
+      this.client.on('ready', () => {
         this.isConnected = true;
         this.logger.log(`Conectado ao Redis em ${host}:${port}`);
+      });
+
+      this.client.on('close', () => {
+        this.isConnected = false;
+      });
+
+      this.client.on('reconnecting', () => {
+        this.isConnected = false;
       });
 
       this.client.on('error', (err) => {
@@ -45,6 +59,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       });
 
       await this.client.connect().catch((err) => {
+        this.isConnected = false;
         this.logger.warn(`Conexão inicial com Redis em ${host}:${port} não concluída: ${err.message}. Ativando fallback em memória.`);
       });
     } catch (err: any) {
@@ -54,10 +69,26 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+
     if (this.client) {
       try {
         await this.client.quit();
-      } catch {}
+      } catch {
+        this.client.disconnect();
+      }
+    }
+  }
+
+  private evictExpiredMemoryKeys(): void {
+    const now = Date.now();
+    for (const [key, item] of this.inMemoryFallback.entries()) {
+      if (item.expiresAt && now > item.expiresAt) {
+        this.inMemoryFallback.delete(key);
+      }
     }
   }
 
@@ -79,11 +110,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return item.value;
   }
 
-  async set(key: string, value: string, mode?: 'EX', ttlSeconds?: number): Promise<'OK'> {
+  async set(key: string, value: string, mode?: 'EX' | 'PX', duration?: number): Promise<'OK'> {
     if (this.isConnected && this.client) {
       try {
-        if (mode === 'EX' && ttlSeconds) {
-          await this.client.set(key, value, 'EX', ttlSeconds);
+        if (mode === 'EX' && duration) {
+          await this.client.set(key, value, 'EX', duration);
+        } else if (mode === 'PX' && duration) {
+          await this.client.set(key, value, 'PX', duration);
         } else {
           await this.client.set(key, value);
         }
@@ -93,7 +126,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    const expiresAt = mode === 'EX' && ttlSeconds ? Date.now() + ttlSeconds * 1000 : undefined;
+    let expiresAt: number | undefined;
+    if (mode === 'EX' && duration) {
+      expiresAt = Date.now() + duration * 1000;
+    } else if (mode === 'PX' && duration) {
+      expiresAt = Date.now() + duration;
+    }
+
     this.inMemoryFallback.set(key, { value, expiresAt });
     return 'OK';
   }

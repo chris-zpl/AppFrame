@@ -8,8 +8,6 @@ import { MediaController } from '../src/modules/media/media.controller';
 import { MediaService } from '../src/modules/media/media.service';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { AuthService } from '../src/modules/auth/auth.service';
-import { UsersController } from '../src/modules/users/users.controller';
-import { UsersService } from '../src/modules/users/users.service';
 import { AllExceptionsFilter } from '../src/core/filters/all-exceptions.filter';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../src/modules/auth/guards/jwt-auth.guard';
@@ -108,35 +106,13 @@ describe('2. Testes de Controle de Acesso e IDOR (E2E)', () => {
     }),
   };
 
-  const mockUsersService = {
-    getUserProfile: jest.fn().mockImplementation((id: string) => {
-      if (id === userA.id) {
-        return { id: userA.id, email: userA.email, name: 'User A', role: UserRole.USER };
-      }
-      return { id: userB.id, email: userB.email, name: 'User B', role: UserRole.USER };
-    }),
-    getUserSessions: jest.fn().mockImplementation((id: string) => {
-      if (id === userA.id) {
-        return [{ id: userA.sessionId, user_id: userA.id, ip_address: '1.2.3.4' }];
-      }
-      return [{ id: userB.sessionId, user_id: userB.id, ip_address: '5.6.7.8' }];
-    }),
-    revokeSession: jest.fn().mockImplementation((sessionId: string, userId: string) => {
-      if (sessionId === userA.sessionId && userId !== userA.id) {
-        throw new NotFoundException('Sessão não encontrada.');
-      }
-      return true;
-    }),
-  };
-
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
-      controllers: [WatermarksController, MediaController, AuthController, UsersController],
+      controllers: [WatermarksController, MediaController, AuthController],
       providers: [
         { provide: WatermarksService, useValue: mockWatermarksService },
         { provide: MediaService, useValue: mockMediaService },
         { provide: AuthService, useValue: mockAuthService },
-        { provide: UsersService, useValue: mockUsersService },
         {
           provide: ConfigService,
           useValue: { get: jest.fn().mockReturnValue('http://localhost:5173') },
@@ -287,59 +263,6 @@ describe('2. Testes de Controle de Acesso e IDOR (E2E)', () => {
         .expect(404);
 
       expect(res.body.message).toContain('Sessão não encontrada');
-    });
-  });
-
-  describe('2.4 IDOR em Usuários (UsersController)', () => {
-    it('User B não deve conseguir visualizar perfil de User A via GET /users/:id/profile (403)', async () => {
-      currentUserContext = userB;
-
-      const res = await request(app.getHttpServer())
-        .get(`/users/${userA.id}/profile`)
-        .expect(403);
-
-      expect(res.body.message).toContain('Acesso negado aos dados de outro usuário');
-    });
-
-    it('User B não deve conseguir listar sessões de User A via GET /users/:id/sessions (403)', async () => {
-      currentUserContext = userB;
-
-      const res = await request(app.getHttpServer())
-        .get(`/users/${userA.id}/sessions`)
-        .expect(403);
-
-      expect(res.body.message).toContain('Acesso negado às sessões de outro usuário');
-    });
-
-    it('User B não deve conseguir revogar sessão de User A via DELETE /users/:userId/sessions/:sessionId (403)', async () => {
-      currentUserContext = userB;
-
-      const res = await request(app.getHttpServer())
-        .delete(`/users/${userA.id}/sessions/${userA.sessionId}`)
-        .expect(403);
-
-      expect(res.body.message).toContain('Acesso negado para revogar sessões de outro usuário');
-    });
-
-    it('User A consegue consultar seu próprio perfil via GET /users/:id/profile (200)', async () => {
-      currentUserContext = userA;
-
-      const res = await request(app.getHttpServer())
-        .get(`/users/${userA.id}/profile`)
-        .expect(200);
-
-      expect(res.body.id).toBe(userA.id);
-      expect(res.body.email).toBe(userA.email);
-    });
-
-    it('Super Admin consegue consultar perfil de outro usuário via GET /users/:id/profile (200)', async () => {
-      currentUserContext = adminUser;
-
-      const res = await request(app.getHttpServer())
-        .get(`/users/${userA.id}/profile`)
-        .expect(200);
-
-      expect(res.body.id).toBe(userA.id);
     });
   });
 

@@ -14,9 +14,13 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { UserRole } from '../../users/enums/user-role.enum';
 import {
   AdminSettingsService,
-  SmtpConfigDto,
   LegalDocumentsDto,
 } from '../services/admin-settings.service';
+import {
+  SaveGeminiKeyDto,
+  SaveSmtpDto,
+  TestSmtpDto,
+} from '../dto/admin.dto';
 
 @Controller('admin/settings')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -70,12 +74,12 @@ export class AdminSettingsController {
 
   @Post('gemini')
   async saveGeminiApiKey(
-    @Body() body: { apiKey: string; model?: string },
+    @Body() dto: SaveGeminiKeyDto,
     @Req() req: Request,
   ) {
     return this.settingsService.saveGeminiApiKey(
-      body?.apiKey,
-      body?.model,
+      dto.apiKey,
+      dto.model,
       this.getAuditContext(req),
     );
   }
@@ -98,13 +102,13 @@ export class AdminSettingsController {
   }
 
   @Post('smtp')
-  async saveSmtpConfig(@Body() dto: SmtpConfigDto) {
+  async saveSmtpConfig(@Body() dto: SaveSmtpDto) {
     return this.settingsService.saveSmtpConfig(dto);
   }
 
   @Post('smtp/test')
-  async testSmtp(@Body() body: { toEmail: string }) {
-    return this.settingsService.testSmtp(body?.toEmail);
+  async testSmtp(@Body() dto: TestSmtpDto) {
+    return this.settingsService.testSmtp(dto.toEmail);
   }
 
   // --- Documentos Legais (Termos de Serviço e Política de Privacidade) ---

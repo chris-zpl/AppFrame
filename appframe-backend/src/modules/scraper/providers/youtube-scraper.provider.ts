@@ -7,6 +7,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { IVideoScraperProvider } from '../interfaces/video-scraper-provider.interface';
 import { ScrapedMediaItem } from '../interfaces/scraped-media-item.interface';
 import { RedisService } from '../../../core/redis/redis.service';
@@ -21,14 +22,24 @@ export interface ChannelMediaCounts {
 export class YouTubeScraperProvider implements IVideoScraperProvider {
   readonly providerName = 'youtube';
   private readonly logger = new Logger(YouTubeScraperProvider.name);
+  private static readonly MAX_MEMORY_TOKENS = 200;
   private memoryTokens = new Map<string, any>();
 
   constructor(
     @Optional() private readonly redisService?: RedisService,
+    @Optional() private readonly configService?: ConfigService,
   ) {}
 
   private async saveTokens(channelUrl: string, data: any): Promise<void> {
     const key = `channel_tokens:${channelUrl}`;
+    if (this.memoryTokens.has(key)) {
+      this.memoryTokens.delete(key);
+    } else if (this.memoryTokens.size >= YouTubeScraperProvider.MAX_MEMORY_TOKENS) {
+      const oldestKey = this.memoryTokens.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.memoryTokens.delete(oldestKey);
+      }
+    }
     this.memoryTokens.set(key, data);
     if (this.redisService) {
       try {
@@ -349,8 +360,9 @@ export class YouTubeScraperProvider implements IVideoScraperProvider {
    */
   private getCookiesHeader(): string | undefined {
     try {
+      const configuredCookiesPath = this.configService?.get<string>('YTDLP_COOKIES_PATH');
       const candidates = [
-        process.env.YTDLP_COOKIES_PATH,
+        configuredCookiesPath,
         path.resolve(process.cwd(), 'storage/cookies.txt'),
         path.resolve(process.cwd(), 'cookies.txt'),
       ].filter(Boolean) as string[];

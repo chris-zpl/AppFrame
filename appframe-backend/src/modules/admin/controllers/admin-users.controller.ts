@@ -18,6 +18,7 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../auth/interfaces/jwt-payload.interface';
 import { UserRole } from '../../users/enums/user-role.enum';
 import { AdminUsersService } from '../services/admin-users.service';
+import { UpdateUserStatusDto } from '../dto/admin.dto';
 
 @Controller('admin/users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -60,13 +61,13 @@ export class AdminUsersController {
   async updateUserStatus(
     @CurrentUser() adminUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) targetUserId: string,
-    @Body() body: any,
+    @Body() dto: UpdateUserStatusDto,
     @Req() req: Request,
   ) {
     const isActive =
-      body?.is_active !== undefined
-        ? Boolean(body.is_active)
-        : Boolean(body?.isActive);
+      dto.isActive !== undefined
+        ? Boolean(dto.isActive)
+        : Boolean(dto.is_active);
     const ip = (req.headers['x-forwarded-for'] as string) || req.ip || req.socket?.remoteAddress || undefined;
     const userAgent = (req.headers['user-agent'] as string) || undefined;
     return this.usersService.updateUserStatus(adminUser, targetUserId, isActive, {

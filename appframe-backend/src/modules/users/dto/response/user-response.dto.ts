@@ -39,11 +39,7 @@ export class UserResponseDto {
   is_two_factor_enabled: boolean;
 
   @Expose()
-  has_gemini_key: boolean;
-
-  @Expose()
   created_at: Date;
-
   @Expose()
   updated_at: Date;
 
@@ -56,18 +52,13 @@ export class UserResponseDto {
     const dto = plainToInstance(UserResponseDto, user, {
       excludeExtraneousValues: true,
     });
-    // Garantia de segurança da plataforma: christian.zimpel@gmail.com é sempre SUPER_ADMIN
-    if (user.email && user.email.toLowerCase() === 'christian.zimpel@gmail.com') {
-      dto.role = UserRole.SUPER_ADMIN;
-    } else {
-      dto.role = user.role || UserRole.USER;
-    }
+    // Garantia de segurança da plataforma
+    dto.role = user.role || UserRole.USER;
     dto.is_active = user.is_active !== undefined ? user.is_active : true;
     dto.is_google_linked = Boolean(user.google_id || user.auth_provider === AuthProvider.GOOGLE);
     dto.google_id = null; // Higienizado: ID numérico interno do Google não deve vazar para a interface
     dto.google_email = user.google_email || null;
     dto.email_changed_at = user.email_changed_at || null;
-    dto.has_gemini_key = false;
     return dto;
   }
 

@@ -50,7 +50,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   const routerNavigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.email === 'christian.zimpel@gmail.com';
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isAdmin = isSuperAdmin || user?.role === 'ADMIN';
 
   const navItems = [

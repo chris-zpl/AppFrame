@@ -48,6 +48,14 @@ export class DownloadProcessor extends WorkerHost {
       // 3. Busca detalhes complementares do job (cortes, legendas, marca d'água)
       const currentJob = await this.mediaService.getRawJobById(jobId);
 
+      if (!currentJob) {
+        this.logger.warn(
+          `[Job ${jobId}] Job foi excluído durante o download. Limpando arquivo temporário e abortando renderização.`,
+        );
+        await this.downloadService.cleanupFile(localSourcePath);
+        return { localSourcePath };
+      }
+
       // 4. Despacha o job para a fila isolada de renderização com FFmpeg
       await this.renderQueue.add(
         'render-video',

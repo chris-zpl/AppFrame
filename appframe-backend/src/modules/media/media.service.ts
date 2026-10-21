@@ -149,34 +149,27 @@ export class MediaService {
   async clearPreviews(
     previewIdsOrUrls?: string[],
   ): Promise<{ success: boolean; cleared: number }> {
-    if (previewIdsOrUrls && previewIdsOrUrls.length > 0) {
-      for (const item of previewIdsOrUrls) {
-        if (!item || typeof item !== 'string') continue;
-        const trimmed = item.trim();
-        const previewId = /^[a-f0-9]{24}$/i.test(trimmed)
-          ? trimmed
-          : this.downloadService.getPreviewId(trimmed);
-        this.evictPreviewCache(previewId);
-      }
-    } else {
-      this.previewCache.clear();
-      this.inFlightPreviews.clear();
+    const validItems = Array.isArray(previewIdsOrUrls)
+      ? previewIdsOrUrls
+          .filter((item) => typeof item === 'string' && item.trim().length > 0)
+          .map((item) => item.trim())
+      : [];
+
+    if (validItems.length === 0) {
+      throw new BadRequestException(
+        'Informe os identificadores de preview a serem removidos.',
+      );
     }
 
-    const cleared = await this.downloadService.clearAllPreviewFiles(previewIdsOrUrls);
+    for (const trimmed of validItems) {
+      const previewId = /^[a-f0-9]{24}$/i.test(trimmed)
+        ? trimmed
+        : this.downloadService.getPreviewId(trimmed);
+      this.evictPreviewCache(previewId);
+    }
+
+    const cleared = await this.downloadService.clearAllPreviewFiles(validItems);
     return { success: true, cleared };
-  }
-
-  getYouTubeCookiesStatus() {
-    return this.downloadService.getCookiesStatus();
-  }
-
-  saveYouTubeCookies(cookies: any) {
-    return this.downloadService.saveCookies(cookies);
-  }
-
-  deleteYouTubeCookies() {
-    return this.downloadService.deleteCookies();
   }
 
   /**

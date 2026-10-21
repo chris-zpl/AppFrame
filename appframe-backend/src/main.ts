@@ -1,31 +1,28 @@
-import { NestFactory, Reflector } from '@nestjs/core';
-import {
-  ValidationPipe,
-  ClassSerializerInterceptor,
-  Logger,
-} from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './core/filters/all-exceptions.filter';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  app.set('trust proxy', 1);
+  app.use(helmet());
+  app.enableShutdownHooks();
 
   // Parser de Cookies para autenticação segura via HttpOnly
-  const cookieMiddleware =
-    typeof cookieParser === 'function'
-      ? cookieParser
-      : (cookieParser as any).default || require('cookie-parser');
-  app.use(cookieMiddleware());
+  app.use(cookieParser());
 
   // Suporte a payloads de imagens pré-renderizadas de alta resolução (PNG transparentes do Canvas)
-  const express = require('express');
-  app.use(express.json({ limit: '25mb' }));
-  app.use(express.urlencoded({ limit: '25mb', extended: true }));
+  app.use(json({ limit: '25mb' }));
+  app.use(urlencoded({ limit: '25mb', extended: true }));
 
   // Configuração global de CORS com origem explícita para suporte a credentials: true
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
   const allowedOrigins = Array.from(
     new Set([
       frontendUrl,
@@ -54,12 +51,6 @@ async function bootstrap() {
       },
     }),
   );
-
-  // Blindagem de Saída: Oculta campos com @Exclude() e filtra serialização
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-
-  // Blindagem de Infraestrutura: Captura e sanitiza todas as exceções (SQL, TypeORM, 500)
-  app.useGlobalFilters(new AllExceptionsFilter());
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

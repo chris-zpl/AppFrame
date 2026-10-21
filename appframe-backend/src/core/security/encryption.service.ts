@@ -1,15 +1,25 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class EncryptionService {
+  private readonly logger = new Logger(EncryptionService.name);
   private readonly algorithm = 'aes-256-gcm';
   private readonly key: Buffer;
 
   constructor(private readonly configService: ConfigService) {
     const rawKey = this.configService.get<string>('ENCRYPTION_KEY');
+    const isProduction =
+      this.configService.get<string>('NODE_ENV') === 'production' ||
+      process.env.NODE_ENV === 'production';
+
     if (!rawKey) {
+      if (isProduction) {
+        throw new Error(
+          'FATAL: Variável de ambiente ENCRYPTION_KEY não configurada em produção.',
+        );
+      }
       // Chave padrão para desenvolvimento caso não esteja definida em .env
       this.key = crypto.scryptSync('appframe-default-secret-salt-2026', 'salt', 32);
     } else if (rawKey.length === 64) {
@@ -32,7 +42,11 @@ export class EncryptionService {
       encrypted += cipher.final('hex');
       const authTag = cipher.getAuthTag().toString('hex');
       return `${iv.toString('hex')}:${authTag}:${encrypted}`;
-    } catch (error) {
+    } catch (error: any) {
+      this.logger.error(
+        `Falha ao criptografar payload sensível: ${error?.message || error}`,
+        error?.stack,
+      );
       throw new InternalServerErrorException('Falha na criptografia de dados sensíveis.');
     }
   }
@@ -55,7 +69,11 @@ export class EncryptionService {
       let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
       return decrypted;
-    } catch (error) {
+    } catch (error: any) {
+      this.logger.error(
+        `Falha ao descriptografar payload sensível: ${error?.message || error}`,
+        error?.stack,
+      );
       throw new InternalServerErrorException('Falha na descriptografia de dados sensíveis.');
     }
   }
@@ -71,9 +89,17 @@ export class EncryptionService {
   /**
    * Descriptografa string cifrada para objeto JSON tipado.
    */
-  decryptJson<T>(ciphertext: string): T {
+  decryptJson<T>(ciphertext: string): T | null {
     if (!ciphertext) return null;
     const jsonStr = this.decrypt(ciphertext);
-    return JSON.parse(jsonStr) as T;
+    try {
+      return JSON.parse(jsonStr) as T;
+    } catch (error: any) {
+      this.logger.error(
+        `Falha ao fazer parse do JSON descriptografado: ${error?.message || error}`,
+        error?.stack,
+      );
+      return null;
+    }
   }
 }

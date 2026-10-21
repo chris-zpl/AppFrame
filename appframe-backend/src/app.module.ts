@@ -4,6 +4,7 @@ import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 
 // Core
 import { CoreModule } from './core/core.module';
+import { envValidationSchema } from './core/config/env.schema';
 import { AllExceptionsFilter } from './core/filters/all-exceptions.filter';
 import { TransformResponseInterceptor } from './core/interceptors/transform-response.interceptor';
 
@@ -16,7 +17,6 @@ import { AuthModule } from './modules/auth/auth.module';
 import { MediaModule } from './modules/media/media.module';
 import { WatermarksModule } from './modules/watermarks/watermarks.module';
 import { ScraperModule } from './modules/scraper/scraper.module';
-import { SubtitlesModule } from './modules/subtitles/subtitles.module';
 import { GeminiModule } from './modules/gemini/gemini.module';
 import { AdminModule } from './modules/admin/admin.module';
 
@@ -25,6 +25,11 @@ import { AdminModule } from './modules/admin/admin.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env', '.env.local'],
+      validationSchema: envValidationSchema,
+      validationOptions: {
+        allowUnknown: true,
+        abortEarly: false,
+      },
     }),
     CoreModule,
     SharedModule,
@@ -33,7 +38,6 @@ import { AdminModule } from './modules/admin/admin.module';
     MediaModule,
     WatermarksModule,
     ScraperModule,
-    SubtitlesModule,
     GeminiModule,
     AdminModule,
   ],

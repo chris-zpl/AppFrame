@@ -538,6 +538,25 @@ export class DownloadService {
     destinationPath: string,
     onProgress?: (progressPercent: number) => Promise<void> | void,
   ): Promise<void> {
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(sourceUrl);
+    } catch {
+      throw new BadRequestException('URL de origem inválida.');
+    }
+
+    const hostname = parsedUrl.hostname.toLowerCase();
+    const blockedHosts = ['localhost', '127.0.0.1', '169.254.169.254', '0.0.0.0', '::1', '[::1]'];
+    const isClassA = hostname.startsWith('10.');
+    const isClassC = hostname.startsWith('192.168.');
+    const isClassB = /^172\.(1[6-9]|2\d|3[01])\./.test(hostname);
+
+    if (blockedHosts.includes(hostname) || isClassA || isClassC || isClassB) {
+      throw new BadRequestException(
+        'URL de origem não permitida por políticas de segurança (SSRF).',
+      );
+    }
+
     const response = await fetch(sourceUrl);
     if (!response.ok) {
       throw new BadRequestException(

@@ -186,9 +186,8 @@ export class AuthController {
       );
     }
 
-    // Redirecionamento seguro para a aplicação cliente apenas com o access_token e rememberMe
+    // Redirecionamento seguro para a aplicação cliente apenas com rememberMe (autenticação via cookies HttpOnly)
     const redirectUrl = new URL(`${this.frontendUrl}/auth/callback`);
-    redirectUrl.searchParams.set('token', authResult.access_token || '');
     redirectUrl.searchParams.set('rememberMe', String(rememberMe));
 
     return res.redirect(redirectUrl.toString());
@@ -196,22 +195,12 @@ export class AuthController {
 
   // --- Autenticação Local e Rotação ---
 
-  @Get('register')
-  getRegisterRedirect(@Res() res: Response) {
-    return res.redirect(`${this.frontendUrl}/register`);
-  }
-
   @Post('register')
   async register(
     @Body() dto: RegisterDto,
     @Req() req: Request,
   ): Promise<AuthResponseDto> {
     return this.authService.register(dto, this.extractMeta(req));
-  }
-
-  @Get('login')
-  getLoginRedirect(@Res() res: Response) {
-    return res.redirect(`${this.frontendUrl}/login`);
   }
 
   @Post('login')
@@ -258,25 +247,12 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
   async logout(
-    @Req() req: Request,
+    @CurrentUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) res: Response,
-    @Body('sessionId') bodySessionId?: string,
   ): Promise<{ success: boolean; message: string }> {
-    const accessToken =
-      (req as any)?.cookies?.['access_token'] ||
-      (req.headers['authorization'] as string)?.replace(/^Bearer\s+/i, '');
-
-    const refreshToken = (req as any)?.cookies?.['refresh_token'];
-
-    if (bodySessionId) {
-      await this.authService.logout(bodySessionId);
-    } else if (accessToken) {
-      await this.authService.logout(accessToken);
-    } else if (refreshToken) {
-      await this.authService.logout(refreshToken);
-    }
-
+    await this.authService.logout(user);
     this.clearAuthCookies(res);
     return { success: true, message: 'Sessão encerrada e removida com sucesso.' };
   }

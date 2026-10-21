@@ -10,6 +10,9 @@ export interface ScrapedVideoMetadata {
   title: string;
   durationSeconds: number;
   thumbnailUrl?: string;
+  channelTitle?: string;
+  channelAvatarUrl?: string;
+  channelUrl?: string;
 }
 
 @Injectable()
@@ -80,23 +83,51 @@ export class ScraperService {
     this.logger.log(`Extraindo metadados para URL da plataforma ${platform}: ${url}`);
 
     if (platform === VideoPlatform.YOUTUBE) {
-      const match = url.match(/(?:watch\?v=|shorts\/|youtu\.be\/)([\w-]{11})/);
-      if (match && match[1]) {
-        const id = match[1];
+      const id = this.youtubeProvider.extractVideoId(url);
+      if (id) {
+        let title = `Vídeo do YouTube (${id})`;
         let durationSeconds = 60;
+        let thumbnailUrl = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+        let channelTitle: string | undefined;
+        let channelAvatarUrl: string | undefined;
+        let channelUrl: string | undefined;
+
         try {
-          const realDuration = await this.youtubeProvider.fetchVideoRealDuration(id);
-          if (realDuration > 0) {
-            durationSeconds = realDuration;
+          const resolved = await this.youtubeProvider.resolveChannelFromVideo(id);
+          if (resolved) {
+            if (resolved.video?.title) {
+              title = resolved.video.title;
+            }
+            if (resolved.video?.durationSeconds && resolved.video.durationSeconds > 0) {
+              durationSeconds = resolved.video.durationSeconds;
+            }
+            if (resolved.video?.thumbnailUrl) {
+              thumbnailUrl = resolved.video.thumbnailUrl;
+            }
+            channelTitle = resolved.channelTitle;
+            channelAvatarUrl = resolved.channelAvatarUrl;
+            channelUrl = resolved.channelUrl;
           }
         } catch {}
+
+        if (durationSeconds === 60) {
+          try {
+            const realDuration = await this.youtubeProvider.fetchVideoRealDuration(id);
+            if (realDuration > 0) {
+              durationSeconds = realDuration;
+            }
+          } catch {}
+        }
 
         return {
           url,
           platform,
-          title: `Vídeo do YouTube (${id})`,
+          title,
           durationSeconds,
-          thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+          thumbnailUrl,
+          channelTitle,
+          channelAvatarUrl,
+          channelUrl,
         };
       }
     }

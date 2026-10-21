@@ -11,63 +11,27 @@ import {
   ParseUUIDPipe,
   UseInterceptors,
   ClassSerializerInterceptor,
-  ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import * as fs from 'fs';
 import { MediaService } from './media.service';
 import { CreateVideoJobDto } from './dto/request/create-video-job.dto';
 import { DownloadBatchDto } from './dto/request/download-batch.dto';
+import { PreparePreviewDto } from './dto/request/prepare-preview.dto';
 import { VideoJobResponseDto } from './dto/response/video-job-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
-import { UserRole } from '../users/enums/user-role.enum';
-
-
 
 @Controller('media')
 @UseInterceptors(ClassSerializerInterceptor)
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
-  @Get('youtube-cookies')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN)
-  async getYouTubeCookiesStatus(): Promise<{
-    configured: boolean;
-    updatedAt: string | null;
-  }> {
-    const status = this.mediaService.getYouTubeCookiesStatus();
-    return {
-      configured: status.configured,
-      updatedAt: status.updatedAt,
-    };
-  }
-
-  @Post('youtube-cookies')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN)
-  async saveYouTubeCookies(
-    @Body() body: { cookies?: any; content?: any },
-  ): Promise<{ success: boolean; message: string }> {
-    const rawCookies = body?.cookies !== undefined ? body.cookies : body?.content;
-    return this.mediaService.saveYouTubeCookies(rawCookies);
-  }
-
-  @Delete('youtube-cookies')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN)
-  async deleteYouTubeCookies(): Promise<{ success: boolean; message: string }> {
-    return this.mediaService.deleteYouTubeCookies();
-  }
-
   @Post('preview')
   @UseGuards(JwtAuthGuard)
   async preparePreview(
-    @Body() body: { source_url: string },
+    @Body() dto: PreparePreviewDto,
   ): Promise<{
     previewId: string;
     streamUrl: string;
@@ -75,10 +39,11 @@ export class MediaController {
     width: number;
     height: number;
   }> {
-    return this.mediaService.prepareStudioPreview(body?.source_url);
+    return this.mediaService.prepareStudioPreview(dto.source_url);
   }
 
   @Get('preview/:previewId/stream')
+  @UseGuards(JwtAuthGuard)
   async streamPreview(
     @Param('previewId') previewId: string,
     @Req() req: Request,
@@ -139,6 +104,7 @@ export class MediaController {
   async downloadCompletedJob(
     @Param('id', new ParseUUIDPipe()) id: string,
     @CurrentUser('userId') userId: string,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
     const { filePath, fileName } = await this.mediaService.getCompletedJobFile(
@@ -152,33 +118,10 @@ export class MediaController {
       'Content-Length': stat.size,
       'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
     });
-    fs.createReadStream(filePath).pipe(res);
-  }
 
-  @Get('jobs')
-  @UseGuards(JwtAuthGuard)
-  async listJobsDirect(
-    @CurrentUser('userId') userId: string,
-  ): Promise<VideoJobResponseDto[]> {
-    return this.mediaService.listUserJobs(userId);
-  }
-
-  @Get('jobs/:id')
-  @UseGuards(JwtAuthGuard)
-  async getJobByIdDirect(
-    @Param('id', new ParseUUIDPipe()) id: string,
-    @CurrentUser('userId') userId: string,
-  ): Promise<VideoJobResponseDto> {
-    return this.mediaService.getJobById(id, userId);
-  }
-
-  @Delete('jobs/:id')
-  @UseGuards(JwtAuthGuard)
-  async deleteJobDirect(
-    @Param('id', new ParseUUIDPipe()) id: string,
-    @CurrentUser('userId') userId: string,
-  ): Promise<{ success: boolean }> {
-    return this.mediaService.deleteJob(id, userId);
+    const fileStream = fs.createReadStream(filePath);
+    req.on('close', () => fileStream.destroy());
+    fileStream.pipe(res);
   }
 
   @Delete('previews')
@@ -186,6 +129,11 @@ export class MediaController {
   async clearPreviews(
     @Body('previewIds') previewIds?: string[],
   ): Promise<{ success: boolean; cleared: number }> {
+    if (!Array.isArray(previewIds) || previewIds.length === 0) {
+      throw new BadRequestException(
+        'Informe os identificadores de preview a serem removidos.',
+      );
+    }
     return this.mediaService.clearPreviews(previewIds);
   }
 
@@ -222,55 +170,5 @@ export class MediaController {
     @Body() dto: DownloadBatchDto,
   ): Promise<VideoJobResponseDto[]> {
     return this.mediaService.createDownloadBatch(userId, dto);
-  }
-
-  @Post('users/:userId/jobs')
-  @UseGuards(JwtAuthGuard)
-  async createJob(
-    @Param('userId', new ParseUUIDPipe()) userId: string,
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() dto: CreateVideoJobDto,
-  ): Promise<VideoJobResponseDto> {
-    const isOwner = currentUser.userId === userId;
-    const isAdmin =
-      currentUser.role === UserRole.SUPER_ADMIN ||
-      currentUser.role === UserRole.ADMIN;
-    if (!isOwner && !isAdmin) {
-      throw new ForbiddenException('Acesso negado para criar jobs em nome de outro usuário.');
-    }
-    return this.mediaService.createJob(userId, dto);
-  }
-
-  @Get('users/:userId/jobs')
-  @UseGuards(JwtAuthGuard)
-  async listUserJobs(
-    @Param('userId', new ParseUUIDPipe()) userId: string,
-    @CurrentUser() currentUser: AuthenticatedUser,
-  ): Promise<VideoJobResponseDto[]> {
-    const isOwner = currentUser.userId === userId;
-    const isAdmin =
-      currentUser.role === UserRole.SUPER_ADMIN ||
-      currentUser.role === UserRole.ADMIN;
-    if (!isOwner && !isAdmin) {
-      throw new ForbiddenException('Acesso negado aos jobs de outro usuário.');
-    }
-    return this.mediaService.listUserJobs(userId);
-  }
-
-  @Get('users/:userId/jobs/:id')
-  @UseGuards(JwtAuthGuard)
-  async getJobById(
-    @Param('userId', new ParseUUIDPipe()) userId: string,
-    @Param('id', new ParseUUIDPipe()) id: string,
-    @CurrentUser() currentUser: AuthenticatedUser,
-  ): Promise<VideoJobResponseDto> {
-    const isOwner = currentUser.userId === userId;
-    const isAdmin =
-      currentUser.role === UserRole.SUPER_ADMIN ||
-      currentUser.role === UserRole.ADMIN;
-    if (!isOwner && !isAdmin) {
-      throw new ForbiddenException('Acesso negado ao job de outro usuário.');
-    }
-    return this.mediaService.getJobById(id, userId);
   }
 }

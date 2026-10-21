@@ -3,16 +3,18 @@ import {
   ForbiddenException,
   NotFoundException,
   BadRequestException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
-import { UserSession } from '../../users/entities/user-session.entity';
-import { VideoJob } from '../../media/entities/video-job.entity';
-import { UserRole } from '../../users/enums/user-role.enum';
-import { AuthenticatedUser } from '../../auth/interfaces/jwt-payload.interface';
-import { SecurityAuditService } from '../../../core/security/security-audit.service';
-import { SecurityAuditEvent } from '../../../core/security/entities/security-audit-log.entity';
+  Optional,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, MoreThan } from "typeorm";
+import { ConfigService } from "@nestjs/config";
+import { User } from "../../users/entities/user.entity";
+import { UserSession } from "../../users/entities/user-session.entity";
+import { VideoJob } from "../../media/entities/video-job.entity";
+import { UserRole } from "../../users/enums/user-role.enum";
+import { AuthenticatedUser } from "../../auth/interfaces/jwt-payload.interface";
+import { SecurityAuditService } from "../../../core/security/security-audit.service";
+import { SecurityAuditEvent } from "../../../core/security/entities/security-audit-log.entity";
 
 export interface UserManagementItem {
   id: string;
@@ -43,6 +45,8 @@ export interface ActiveSessionItem {
 
 @Injectable()
 export class AdminUsersService {
+  private readonly superAdminEmail: string;
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -51,7 +55,30 @@ export class AdminUsersService {
     @InjectRepository(VideoJob)
     private readonly videoJobRepository: Repository<VideoJob>,
     private readonly auditService: SecurityAuditService,
-  ) {}
+    @Optional() private readonly configService?: ConfigService,
+  ) {
+    this.superAdminEmail = this.configService
+      .get<string>("SUPER_ADMIN_EMAIL", "")
+      .trim()
+      .toLowerCase();
+  }
+
+  private isSuperAdminUser(
+    email?: string | null,
+    role?: UserRole | null,
+  ): boolean {
+    if (role === UserRole.SUPER_ADMIN) {
+      return true;
+    }
+    if (
+      this.superAdminEmail &&
+      email &&
+      email.trim().toLowerCase() === this.superAdminEmail
+    ) {
+      return true;
+    }
+    return false;
+  }
 
   /**
    * Obtém o histórico de logs de auditoria de segurança.
@@ -61,55 +88,69 @@ export class AdminUsersService {
   }
 
   /**
-   * Lista todos os usuários cadastrados com suas respectivas métricas.
+   * Lista todos os usuários cadastrados com suas respectivas métricas via consulta SQL única.
    */
   async listUsers(): Promise<UserManagementItem[]> {
-    const users = await this.userRepository.find({
-      order: { created_at: 'DESC' },
-    });
-
     const now = new Date();
-    const result: UserManagementItem[] = [];
 
-    for (const u of users) {
-      let role = u.role || UserRole.USER;
-      if (u.email && u.email.toLowerCase() === 'christian.zimpel@gmail.com') {
-        role = UserRole.SUPER_ADMIN;
-      }
+    const rows = await this.userRepository
+      .createQueryBuilder("user")
+      .select([
+        "user.id AS id",
+        "user.name AS name",
+        "user.email AS email",
+        "user.role AS role",
+        "user.is_active AS is_active",
+        "user.created_at AS created_at",
+      ])
+      .addSelect(
+        (subQuery) =>
+          subQuery
+            .select("COUNT(session.id)", "cnt")
+            .from(UserSession, "session")
+            .where("session.user_id = user.id")
+            .andWhere("session.is_revoked = false")
+            .andWhere("session.expires_at > :now", { now }),
+        "active_sessions_count",
+      )
+      .addSelect(
+        (subQuery) =>
+          subQuery
+            .select("COUNT(job.id)", "cnt")
+            .from(VideoJob, "job")
+            .where("job.user_id = user.id"),
+        "video_jobs_count",
+      )
+      .orderBy("user.created_at", "DESC")
+      .getRawMany();
 
-      const [activeSessionsCount, videoJobsCount] = await Promise.all([
-        this.sessionRepository.count({
-          where: {
-            user_id: u.id,
-            is_revoked: false,
-            expires_at: MoreThan(now),
-          },
-        }),
-        this.videoJobRepository.count({
-          where: { user_id: u.id },
-        }),
-      ]);
+    return rows.map((row) => {
+      const activeSessionsCount = Number(row.active_sessions_count || 0);
+      const videoJobsCount = Number(row.video_jobs_count || 0);
+      const role = this.isSuperAdminUser(row.email, row.role)
+        ? UserRole.SUPER_ADMIN
+        : row.role || UserRole.USER;
 
-      result.push({
-        id: u.id,
-        name: u.name,
-        email: u.email,
+      return {
+        id: row.id,
+        name: row.name,
+        email: row.email,
         role,
-        is_active: u.is_active !== undefined ? u.is_active : true,
+        is_active:
+          row.is_active !== undefined && row.is_active !== null
+            ? Boolean(row.is_active)
+            : true,
         active_sessions_count: activeSessionsCount,
         video_jobs_count: videoJobsCount,
         total_renders: videoJobsCount,
-        created_at: u.created_at,
-      });
-    }
-
-    return result;
+        created_at: row.created_at,
+      };
+    });
   }
 
   /**
    * Atualiza a função (role) de um usuário.
    * Regra estrita: Somente o Super Admin pode alterar funções.
-   * christian.zimpel@gmail.com é protegido contra alterações.
    */
   async updateUserRole(
     adminUser: AuthenticatedUser,
@@ -117,37 +158,41 @@ export class AdminUsersService {
     newRole: UserRole,
     auditContext?: { ipAddress?: string; userAgent?: string },
   ): Promise<{ success: boolean; message: string; role: UserRole }> {
-    const isSuperAdmin =
-      adminUser.role === UserRole.SUPER_ADMIN ||
-      adminUser.email.toLowerCase() === 'christian.zimpel@gmail.com';
+    const isSuperAdmin = this.isSuperAdminUser(adminUser.email, adminUser.role);
 
     if (!isSuperAdmin) {
       throw new ForbiddenException(
-        'Apenas o Super Admin pode alterar permissões e níveis de acesso de usuários.',
+        "Apenas o Super Admin pode alterar permissões e níveis de acesso de usuários.",
       );
     }
 
-    const targetUser = await this.userRepository.findOne({ where: { id: targetUserId } });
+    const targetUser = await this.userRepository.findOne({
+      where: { id: targetUserId },
+    });
     if (!targetUser) {
-      throw new NotFoundException('Usuário não encontrado.');
+      throw new NotFoundException("Usuário não encontrado.");
     }
 
-    if (
-      (targetUser.email && targetUser.email.toLowerCase() === 'christian.zimpel@gmail.com') ||
-      targetUser.role === UserRole.SUPER_ADMIN
-    ) {
-      throw new ForbiddenException('O perfil do Super Admin da plataforma não pode ser alterado.');
+    if (this.isSuperAdminUser(targetUser.email, targetUser.role)) {
+      throw new ForbiddenException(
+        "O perfil do Super Admin da plataforma não pode ser alterado.",
+      );
     }
 
     if (
       targetUserId === adminUser.userId ||
-      (targetUser.email && targetUser.email.toLowerCase() === adminUser.email.toLowerCase())
+      (targetUser.email &&
+        targetUser.email.toLowerCase() === adminUser.email.toLowerCase())
     ) {
-      throw new ForbiddenException('Você não pode alterar seu próprio perfil de acesso.');
+      throw new ForbiddenException(
+        "Você não pode alterar seu próprio perfil de acesso.",
+      );
     }
 
     if (newRole === UserRole.SUPER_ADMIN) {
-      throw new BadRequestException('Apenas christian.zimpel@gmail.com pode deter o perfil Super Admin.');
+      throw new BadRequestException(
+        `Apenas ${this.superAdminEmail} pode deter o perfil Super Admin.`,
+      );
     }
 
     const previousRole = targetUser.role || UserRole.USER;
@@ -189,29 +234,34 @@ export class AdminUsersService {
     isActive: boolean,
     auditContext?: { ipAddress?: string; userAgent?: string },
   ): Promise<{ success: boolean; message: string }> {
-    const targetUser = await this.userRepository.findOne({ where: { id: targetUserId } });
+    const targetUser = await this.userRepository.findOne({
+      where: { id: targetUserId },
+    });
     if (!targetUser) {
-      throw new NotFoundException('Usuário não encontrado.');
+      throw new NotFoundException("Usuário não encontrado.");
     }
 
-    if (targetUser.email && targetUser.email.toLowerCase() === 'christian.zimpel@gmail.com') {
-      throw new ForbiddenException('O Super Admin não pode ser desativado.');
+    if (this.isSuperAdminUser(targetUser.email, targetUser.role)) {
+      throw new ForbiddenException("O Super Admin não pode ser desativado.");
     }
 
     if (
       targetUserId === adminUser.userId ||
-      (targetUser.email && targetUser.email.toLowerCase() === adminUser.email.toLowerCase())
+      (targetUser.email &&
+        targetUser.email.toLowerCase() === adminUser.email.toLowerCase())
     ) {
-      throw new ForbiddenException('Você não pode alterar o status da sua própria conta de administrador.');
+      throw new ForbiddenException(
+        "Você não pode alterar o status da sua própria conta de administrador.",
+      );
     }
 
-    const isSuperAdmin =
-      adminUser.role === UserRole.SUPER_ADMIN ||
-      adminUser.email.toLowerCase() === 'christian.zimpel@gmail.com';
+    const isSuperAdmin = this.isSuperAdminUser(adminUser.email, adminUser.role);
 
     // Admins não podem desativar outros Admins
     if (!isSuperAdmin && targetUser.role === UserRole.ADMIN) {
-      throw new ForbiddenException('Admins não podem desativar contas de outros administradores.');
+      throw new ForbiddenException(
+        "Admins não podem desativar contas de outros administradores.",
+      );
     }
 
     targetUser.is_active = Boolean(isActive);
@@ -229,13 +279,15 @@ export class AdminUsersService {
     if (this.auditService) {
       await this.auditService.logEvent({
         userId: targetUserId,
-        action: isActive ? SecurityAuditEvent.USER_UNBLOCKED : SecurityAuditEvent.USER_BLOCKED,
+        action: isActive
+          ? SecurityAuditEvent.USER_UNBLOCKED
+          : SecurityAuditEvent.USER_BLOCKED,
         ipAddress: auditContext?.ipAddress,
         userAgent: auditContext?.userAgent,
         metadata: {
           targetUserEmail: targetUser.email,
           targetUserName: targetUser.name,
-          status: isActive ? 'unblocked' : 'blocked',
+          status: isActive ? "unblocked" : "blocked",
           performedBy: adminUser.email,
           adminId: adminUser.userId,
         },
@@ -245,30 +297,31 @@ export class AdminUsersService {
     return {
       success: true,
       message: isActive
-        ? 'Conta de usuário ativada com sucesso.'
-        : 'Conta desativada e todas as sessões ativas foram desconectadas.',
+        ? "Conta de usuário ativada com sucesso."
+        : "Conta desativada e todas as sessões ativas foram desconectadas.",
     };
   }
 
   /**
    * Lista todas as sessões ativas (logadas) na plataforma, identificando a sessão atual do administrador.
    */
-  async listActiveSessions(currentAdmin?: AuthenticatedUser): Promise<ActiveSessionItem[]> {
+  async listActiveSessions(
+    currentAdmin?: AuthenticatedUser,
+  ): Promise<ActiveSessionItem[]> {
     const now = new Date();
     const sessions = await this.sessionRepository.find({
       where: {
         is_revoked: false,
         expires_at: MoreThan(now),
       },
-      relations: ['user'],
-      order: { last_active_at: 'DESC' },
+      relations: ["user"],
+      order: { last_active_at: "DESC" },
     });
 
     return sessions.map((s) => {
-      let role = s.user?.role || UserRole.USER;
-      if (s.user?.email && s.user.email.toLowerCase() === 'christian.zimpel@gmail.com') {
-        role = UserRole.SUPER_ADMIN;
-      }
+      const role = this.isSuperAdminUser(s.user?.email, s.user?.role)
+        ? UserRole.SUPER_ADMIN
+        : s.user?.role || UserRole.USER;
 
       const isCurrent = Boolean(
         currentAdmin?.sessionId && s.id === currentAdmin.sessionId,
@@ -277,8 +330,8 @@ export class AdminUsersService {
       return {
         id: s.id,
         user_id: s.user_id,
-        user_name: s.user?.name || 'Desconhecido',
-        user_email: s.user?.email || 'Sem email',
+        user_name: s.user?.name || "Desconhecido",
+        user_email: s.user?.email || "Sem email",
         user_role: role,
         ip_address: s.ip_address,
         user_agent: s.user_agent,
@@ -301,25 +354,27 @@ export class AdminUsersService {
   ): Promise<{ success: boolean; message: string }> {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId },
-      relations: ['user'],
+      relations: ["user"],
     });
 
     if (!session) {
-      throw new NotFoundException('Sessão não encontrada ou já expirada.');
+      throw new NotFoundException("Sessão não encontrada ou já expirada.");
     }
 
-    const isSuperAdmin =
-      adminUser.role === UserRole.SUPER_ADMIN ||
-      adminUser.email.toLowerCase() === 'christian.zimpel@gmail.com';
+    const isSuperAdmin = this.isSuperAdminUser(adminUser.email, adminUser.role);
 
-    if (session.user?.email && session.user.email.toLowerCase() === 'christian.zimpel@gmail.com') {
+    if (this.isSuperAdminUser(session.user?.email, session.user?.role)) {
       if (!isSuperAdmin) {
-        throw new ForbiddenException('Você não tem permissão para revogar a sessão do Super Admin.');
+        throw new ForbiddenException(
+          "Você não tem permissão para revogar a sessão do Super Admin.",
+        );
       }
     }
 
     if (!isSuperAdmin && session.user?.role === UserRole.ADMIN) {
-      throw new ForbiddenException('Admins só podem desconectar sessões de usuários comuns.');
+      throw new ForbiddenException(
+        "Admins só podem desconectar sessões de usuários comuns.",
+      );
     }
 
     session.is_revoked = true;

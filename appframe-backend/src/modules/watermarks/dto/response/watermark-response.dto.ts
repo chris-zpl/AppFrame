@@ -1,4 +1,4 @@
-import { Exclude, Expose, plainToInstance } from 'class-transformer';
+import { Exclude, Expose, Type, plainToInstance } from 'class-transformer';
 import { Watermark } from '../../entities/watermark.entity';
 
 @Exclude()
@@ -19,6 +19,7 @@ export class WatermarkResponseDto {
   mime_type: string;
 
   @Expose()
+  @Type(() => Number)
   file_size: number;
 
   @Expose()

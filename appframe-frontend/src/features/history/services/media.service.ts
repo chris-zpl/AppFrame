@@ -200,49 +200,30 @@ export const mediaService = {
     return res.data?.data || res.data;
   },
 
-  async connectGeminiAccount(apiKey: string): Promise<{ connected: boolean }> {
-    const res = await api.post<any>('/gemini/connect', { apiKey });
-    return res.data?.data || res.data;
-  },
-
-  async disconnectGeminiAccount(): Promise<{ connected: boolean }> {
-    const res = await api.delete<any>('/gemini/disconnect');
-    return res.data?.data || res.data;
-  },
-
-  async generateGeminiSubtitles(params: {
+  async transcribeVideoAudio(params: {
     file?: File | null;
     previewId?: string;
     sourceUrl?: string;
     trimStart?: number;
     trimEnd?: number;
-    title?: string;
-    context?: string;
-    durationSeconds?: number;
     language?: string;
   }): Promise<GeminiSubtitlesResponse> {
     if (params.file) {
       const formData = new FormData();
       formData.append('file', params.file);
-      if (params.title) formData.append('title', params.title);
-      if (params.context) formData.append('context', params.context);
-      if (params.durationSeconds) formData.append('durationSeconds', String(params.durationSeconds));
       if (params.language) formData.append('language', params.language);
       if (params.previewId) formData.append('previewId', params.previewId);
       if (params.sourceUrl) formData.append('sourceUrl', params.sourceUrl);
       if (typeof params.trimStart === 'number') formData.append('trimStart', String(params.trimStart));
       if (typeof params.trimEnd === 'number') formData.append('trimEnd', String(params.trimEnd));
 
-      const res = await api.post<any>('/gemini/subtitles', formData, {
+      const res = await api.post<any>('/gemini/transcribe', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       return res.data?.data || res.data;
     }
 
-    const res = await api.post<any>('/gemini/subtitles', {
-      title: params.title,
-      context: params.context,
-      durationSeconds: params.durationSeconds,
+    const res = await api.post<any>('/gemini/transcribe', {
       language: params.language,
       previewId: params.previewId,
       sourceUrl: params.sourceUrl,

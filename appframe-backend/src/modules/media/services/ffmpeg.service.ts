@@ -526,7 +526,7 @@ export class FFmpegService {
         let effectiveEnd = segEnd - (trimStart || 0);
 
         if (effectiveEnd <= 0) continue;
-        if (trimEnd && trimStart && segStart >= trimEnd) continue;
+        if (typeof trimEnd === 'number' && trimEnd > 0 && segStart >= trimEnd) continue;
 
         effectiveStart = Math.max(0, effectiveStart);
         if (effectiveStart < lastEffectiveEnd) {
@@ -804,7 +804,7 @@ ${events.join('\n')}
         let effectiveEnd = segEnd - (trimStart || 0);
 
         if (effectiveEnd <= 0) continue;
-        if (trimEnd && trimStart && segStart >= trimEnd) continue;
+        if (typeof trimEnd === 'number' && trimEnd > 0 && segStart >= trimEnd) continue;
 
         effectiveStart = Math.max(0, effectiveStart);
         effectiveEnd = Math.max(effectiveStart + 0.1, effectiveEnd);

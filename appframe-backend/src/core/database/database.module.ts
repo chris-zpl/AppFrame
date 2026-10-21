@@ -12,6 +12,7 @@ import { AddUserRoleAndStatus1740000000001 } from './migrations/1740000000001-Ad
 import { AddGoogleEmailAndEmailChangedAt1740000000002 } from './migrations/1740000000002-AddGoogleEmailAndEmailChangedAt';
 import { CreateSecurityAuditLogsTable1740000000003 } from './migrations/1740000000003-CreateSecurityAuditLogsTable';
 import { AddExpiredStatusToVideoJob1740000000004 } from './migrations/1740000000004-AddExpiredStatusToVideoJob';
+import { RemoveGeminiApiKeyFromUsers1740000000005 } from './migrations/1740000000005-RemoveGeminiApiKeyFromUsers';
 
 @Module({
   imports: [
@@ -21,12 +22,12 @@ import { AddExpiredStatusToVideoJob1740000000004 } from './migrations/1740000000
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         host: configService.get<string>('DB_HOST', 'localhost'),
-        port: configService.get<number>('DB_PORT', 5432),
+        port: Number(configService.get('DB_PORT', 5432)),
         username: configService.get<string>('DB_USERNAME', 'postgres'),
         password: configService.get<string>('DB_PASSWORD', 'postgres'),
         database: configService.get<string>('DB_DATABASE', 'appframe'),
         entities: [User, UserSession, Watermark, VideoJob, SystemSetting, SecurityAuditLog],
-        synchronize: configService.get<string>('DB_SYNCHRONIZE', 'true') === 'true',
+        synchronize: configService.get<string>('DB_SYNCHRONIZE', 'false') === 'true',
         migrationsRun: configService.get<string>('DB_MIGRATIONS_RUN', 'true') === 'true',
         migrations: [
           InitialAppFrameSchema1740000000000,
@@ -34,6 +35,7 @@ import { AddExpiredStatusToVideoJob1740000000004 } from './migrations/1740000000
           AddGoogleEmailAndEmailChangedAt1740000000002,
           CreateSecurityAuditLogsTable1740000000003,
           AddExpiredStatusToVideoJob1740000000004,
+          RemoveGeminiApiKeyFromUsers1740000000005,
         ],
         logging: configService.get<string>('NODE_ENV') !== 'production',
         ssl:

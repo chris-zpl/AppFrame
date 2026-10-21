@@ -300,9 +300,18 @@ export class AuthService {
       throw new UnauthorizedException('Sessão expirada.');
     }
 
-    // Detecção de Reuso de Refresh Token
+    // Detecção de Reuso de Refresh Token (com grace period de 15s para requisições concorrentes)
     const incomingTokenHash = this.hashToken(dto.refreshToken);
     if (session.refresh_token_hash !== incomingTokenHash) {
+      const graceCached = await this.redisService.get(`grace_refresh:${incomingTokenHash}`);
+      if (graceCached) {
+        try {
+          return JSON.parse(graceCached) as AuthResponseDto;
+        } catch {
+          // Segue para revogação se o payload em cache estiver corrompido
+        }
+      }
+
       // Violação de segurança: invalida a sessão imediatamente
       session.is_revoked = true;
       await this.sessionRepository.save(session);
@@ -344,12 +353,21 @@ export class AuthService {
 
     await this.sessionRepository.save(session);
 
-    return {
+    const responsePayload: AuthResponseDto = {
       access_token: newAccessToken,
       refresh_token: newRefreshToken,
       remember_me: rememberMe,
       user: UserResponseDto.fromEntity(user)!,
     };
+
+    await this.redisService.set(
+      `grace_refresh:${incomingTokenHash}`,
+      JSON.stringify(responsePayload),
+      'PX',
+      15000,
+    );
+
+    return responsePayload;
   }
 
   // --- Google OAuth 2.0 ---
@@ -361,7 +379,11 @@ export class AuthService {
   ): Promise<AuthResponseDto> {
     const emailNormalized = profile.email.trim().toLowerCase();
 
-    const isFounder = emailNormalized === 'christian.zimpel@gmail.com';
+    const superAdminEmail = this.configService
+      .get<string>('SUPER_ADMIN_EMAIL')
+      ?.trim()
+      .toLowerCase();
+    const isFounder = Boolean(superAdminEmail && emailNormalized === superAdminEmail);
 
     // 1. Procura usuário existente pelo Google ID
     let user = await this.userRepository.findOne({
@@ -648,39 +670,22 @@ export class AuthService {
   }
 
   /**
-   * Encerra a sessão do usuário revogando-a no banco de dados.
-   * Suporta UUID direto da sessão ou token JWT (access/refresh) contendo sessionId.
+   * Encerra exclusivamente a sessão ativa do usuário autenticado revogando-a no banco de dados.
    */
-  async logout(tokenOrSessionId?: string): Promise<{ loggedOut: boolean }> {
-    if (!tokenOrSessionId) {
+  async logout(user: {
+    userId: string;
+    sessionId: string;
+  }): Promise<{ loggedOut: boolean }> {
+    if (!user?.sessionId || !user?.userId) {
       return { loggedOut: false };
     }
 
-    let sessionId: string | null = null;
-    const clean = tokenOrSessionId.trim();
-
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (uuidRegex.test(clean)) {
-      sessionId = clean;
-    } else {
-      try {
-        const decoded = this.jwtService.decode(clean) as JwtPayload;
-        if (decoded?.sessionId) {
-          sessionId = decoded.sessionId;
-        }
-      } catch (err: any) {
-        this.logger.warn(`Falha ao extrair sessionId no logout: ${err.message}`);
-      }
-    }
-
-    if (sessionId) {
-      await this.sessionRepository.delete({ id: sessionId });
-      this.logger.log(`Sessão ${sessionId} encerrada e removida com sucesso.`);
-      return { loggedOut: true };
-    }
-
-    return { loggedOut: false };
+    await this.sessionRepository.update(
+      { id: user.sessionId, user_id: user.userId },
+      { is_revoked: true },
+    );
+    this.logger.log(`Sessão ${user.sessionId} encerrada e revogada com sucesso.`);
+    return { loggedOut: true };
   }
 
   // --- Perfil e Ciclo de Vida ---
@@ -1052,7 +1057,11 @@ export class AuthService {
     user.google_email = emailNormalized;
     user.auth_provider = AuthProvider.GOOGLE;
 
-    const isFounder = emailNormalized === 'christian.zimpel@gmail.com';
+    const superAdminEmail = this.configService
+      .get<string>('SUPER_ADMIN_EMAIL')
+      ?.trim()
+      .toLowerCase();
+    const isFounder = Boolean(superAdminEmail && emailNormalized === superAdminEmail);
     if (isFounder && user.role !== UserRole.SUPER_ADMIN) {
       user.role = UserRole.SUPER_ADMIN;
     }

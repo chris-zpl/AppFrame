@@ -12,7 +12,6 @@ export interface UserProfile {
   role?: 'SUPER_ADMIN' | 'ADMIN' | 'USER';
   is_active?: boolean;
   is_two_factor_enabled: boolean;
-  has_gemini_key?: boolean;
   created_at: string;
   updated_at?: string;
 }
