@@ -87,9 +87,9 @@ export const AdminSessionsList: React.FC<AdminSessionsListProps> = ({
                   </div>
 
                   <div className="text-[11px] text-neutral-600 dark:text-on-surface-variant flex flex-col gap-1 pt-1 border-t border-neutral-200 dark:border-surface-container-highest/60">
-                    <div className="flex items-center justify-between">
-                      <span className="text-neutral-500 dark:text-outline">IP:</span>
-                      <span className="font-mono text-neutral-900 dark:text-on-surface">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-neutral-500 dark:text-outline shrink-0">IP:</span>
+                      <span className="font-mono text-neutral-900 dark:text-on-surface truncate text-right" title={sess.ip_address || 'Desconhecido'}>
                         {sess.ip_address || 'Desconhecido'}
                       </span>
                     </div>

@@ -1,11 +1,15 @@
+# ==============================================================================
+# Docker Compose - Ambiente de Desenvolvimento (AppFrame)
+# Execução: docker compose -f docker-compose.dev.yml --env-file .env.development up -d
+# ==============================================================================
 services:
-  # ==============================================================================
   # 1. Banco de Dados Relacional - PostgreSQL 16
-  # ==============================================================================
   postgres:
     image: postgres:16-alpine
     container_name: appframe-postgres
     restart: unless-stopped
+    env_file:
+      - ./.env.development
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -22,13 +26,13 @@ services:
     networks:
       - appframe-network
 
-  # ==============================================================================
   # 2. Broker de Mensageria e Cache - Redis 7
-  # ==============================================================================
   redis:
     image: redis:7-alpine
     container_name: appframe-redis
     restart: unless-stopped
+    env_file:
+      - ./.env.development
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -41,9 +45,7 @@ services:
     networks:
       - appframe-network
 
-  # ==============================================================================
-  # 3. Backend API & Workers - NestJS, FFmpeg, BullMQ
-  # ==============================================================================
+  # 3. Backend API & Workers - NestJS, FFmpeg, BullMQ (Desenvolvimento)
   backend:
     build:
       context: ./appframe-backend
@@ -55,46 +57,35 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    env_file:
+      - ./.env.development
+      - ./appframe-backend/.env.development
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3000
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
 
-      # Conexão com containers internos via rede Docker
+      # Conexão interna com os containers na rede Docker
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USERNAME: ${POSTGRES_USER:-postgres}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      DB_DATABASE: ${POSTGRES_DB:-appframe}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_DATABASE: ${DB_DATABASE:-appframe}
       DB_SSL: "false"
       DB_LOGGING: "false"
       DB_SYNCHRONIZE: "true"
       DB_MIGRATIONS_RUN: "true"
 
-      # Redis / BullMQ
+      # Redis / BullMQ interno na rede Docker
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ""
-
-      # Segurança & Criptografia
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
-      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-replace-in-production}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
-      REFRESH_TOKEN_EXPIRES_IN: ${REFRESH_TOKEN_EXPIRES_IN:-30d}
-
-      # Google OAuth 2.0
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/api/v1/auth/google/callback}
-
-      # Gemini AI
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
 
       # Processamento de Mídia & FFmpeg
       FFMPEG_PATH: ffmpeg
       FFPROBE_PATH: ffprobe
+      YTDLP_PATH: yt-dlp
       TEMP_DIR: storage/temp
     ports:
       - "${BACKEND_PORT:-3000}:3000"
@@ -109,9 +100,7 @@ services:
     networks:
       - appframe-network
 
-  # ==============================================================================
-  # 4. Frontend Web - React 19, Vite, Tailwind CSS, Nginx
-  # ==============================================================================
+  # 4. Frontend Web - React 19, Vite, Tailwind CSS, Nginx (Desenvolvimento)
   frontend:
     build:
       context: ./appframe-frontend
@@ -123,6 +112,9 @@ services:
     depends_on:
       backend:
         condition: service_started
+    env_file:
+      - ./.env.development
+      - ./appframe-frontend/.env.development
     ports:
       - "${FRONTEND_PORT:-5173}:80"
     healthcheck:
@@ -133,9 +125,6 @@ services:
     networks:
       - appframe-network
 
-# ==============================================================================
-# Volumes Persistentes & Redes
-# ==============================================================================
 volumes:
   postgres_data:
   redis_data:

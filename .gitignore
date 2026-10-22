@@ -14,7 +14,11 @@ build/
 **/.env
 **/.env.local
 **/.env.*.local
+**/.env.development
+**/.env.production
 .env
+.env.development
+.env.production
 
 # Logs
 **/logs/

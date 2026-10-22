@@ -13,6 +13,7 @@ import { AddGoogleEmailAndEmailChangedAt1740000000002 } from './migrations/17400
 import { CreateSecurityAuditLogsTable1740000000003 } from './migrations/1740000000003-CreateSecurityAuditLogsTable';
 import { AddExpiredStatusToVideoJob1740000000004 } from './migrations/1740000000004-AddExpiredStatusToVideoJob';
 import { RemoveGeminiApiKeyFromUsers1740000000005 } from './migrations/1740000000005-RemoveGeminiApiKeyFromUsers';
+import { CreateSystemSettingsTable1740000000006 } from './migrations/1740000000006-CreateSystemSettingsTable';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { RemoveGeminiApiKeyFromUsers1740000000005 } from './migrations/174000000
           CreateSecurityAuditLogsTable1740000000003,
           AddExpiredStatusToVideoJob1740000000004,
           RemoveGeminiApiKeyFromUsers1740000000005,
+          CreateSystemSettingsTable1740000000006,
         ],
         logging: configService.get<string>('NODE_ENV') !== 'production',
         ssl:

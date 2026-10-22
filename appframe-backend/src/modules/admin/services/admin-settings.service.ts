@@ -48,7 +48,13 @@ export class AdminSettingsService {
   // --- Helper genérico de configurações ---
 
   async getSetting(key: string): Promise<string | null> {
-    const record = await this.settingRepository.findOne({ where: { key } });
+    let record: SystemSetting | null = null;
+    try {
+      record = await this.settingRepository.findOne({ where: { key } });
+    } catch (err: any) {
+      this.logger.warn(`Falha ao ler configuração "${key}" do banco (usando padrão): ${err.message}`);
+      return null;
+    }
     if (!record) return null;
     if (record.is_encrypted) {
       try {
@@ -495,12 +501,19 @@ export class AdminSettingsService {
     const retentionPeriod = (await this.getSetting('LEGAL_RETENTION_PERIOD')) || DEFAULT_LEGAL_CONFIG.retentionPeriod;
 
     // Termos de Serviço
-    const termsSetting = await this.settingRepository.findOne({ where: { key: 'LEGAL_TERMS_OF_SERVICE' } });
+    let termsSetting: SystemSetting | null = null;
+    let privacySetting: SystemSetting | null = null;
+    try {
+      termsSetting = await this.settingRepository.findOne({ where: { key: 'LEGAL_TERMS_OF_SERVICE' } });
+      privacySetting = await this.settingRepository.findOne({ where: { key: 'LEGAL_PRIVACY_POLICY' } });
+    } catch (err: any) {
+      this.logger.warn(`Falha ao ler documentos legais customizados do banco (usando minuta padrão): ${err.message}`);
+    }
+
     const rawTerms = termsSetting?.value || DEFAULT_TERMS_OF_SERVICE;
     const termsUpdatedAt = (await this.getSetting('LEGAL_TERMS_UPDATED_AT')) || this.formatDatePtBr(termsSetting?.updated_at);
 
     // Política de Privacidade
-    const privacySetting = await this.settingRepository.findOne({ where: { key: 'LEGAL_PRIVACY_POLICY' } });
     const rawPrivacy = privacySetting?.value || DEFAULT_PRIVACY_POLICY;
     const privacyUpdatedAt = (await this.getSetting('LEGAL_PRIVACY_UPDATED_AT')) || this.formatDatePtBr(privacySetting?.updated_at);
 

@@ -72,15 +72,15 @@ export const SettingsSessionsSection: React.FC<SettingsSessionsSectionProps> = (
                     : 'bg-neutral-50 dark:bg-surface-container-lowest border-neutral-200 dark:border-surface-container-highest'
                 )}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
                   <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-surface-container flex items-center justify-center text-primary shrink-0 border border-neutral-200 dark:border-outline/10">
                     <span className="material-symbols-outlined text-[24px]">
                       {sess.icon}
                     </span>
                   </div>
 
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-title-sm text-title-sm font-bold text-neutral-900 dark:text-on-surface">
                         {sess.deviceName}
                       </span>
@@ -90,12 +90,14 @@ export const SettingsSessionsSection: React.FC<SettingsSessionsSectionProps> = (
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant font-mono tabular-nums flex-wrap">
+                    <div className="flex items-center gap-2 text-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant font-mono tabular-nums flex-wrap mt-0.5">
                       <span>{sess.browser}</span>
                       <span className="text-neutral-400 dark:text-outline">•</span>
-                      <span>IP: {sess.ipAddress}</span>
+                      <span className="break-all" title={sess.ipAddress}>
+                        IP: {sess.ipAddress}
+                      </span>
                       <span className="text-neutral-400 dark:text-outline">•</span>
-                      <span className="text-neutral-500 dark:text-outline">{sess.lastActiveAt}</span>
+                      <span className="text-neutral-500 dark:text-outline shrink-0">{sess.lastActiveAt}</span>
                     </div>
                   </div>
                 </div>
