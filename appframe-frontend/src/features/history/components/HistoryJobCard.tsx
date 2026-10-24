@@ -193,13 +193,20 @@ export const HistoryJobCard: React.FC<HistoryJobCardProps> = ({
           )}
 
           {isExpired && (
-            <span
-              className="text-body-sm text-[11px] sm:text-[12px] text-neutral-500 dark:text-neutral-400 italic px-1 flex items-center gap-1"
-              title="Arquivo expurgado após 24h. O download não está mais disponível."
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled
+              title="Arquivo expurgado automaticamente após 24h conforme política de retenção."
+              className="opacity-50 cursor-not-allowed text-neutral-500 dark:text-neutral-400"
+              leftIcon={
+                <span className="material-symbols-outlined text-[16px]">
+                  timer_off
+                </span>
+              }
             >
-              <span className="material-symbols-outlined text-[14px]">timer_off</span>
-              <span>Expirado (24h)</span>
-            </span>
+              Expirado (24h)
+            </Button>
           )}
 
           {isFailed && job.error_log && (

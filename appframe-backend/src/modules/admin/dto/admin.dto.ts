@@ -24,10 +24,11 @@ export class SaveSmtpDto {
   @IsNotEmpty()
   host: string;
 
+  @IsOptional()
   @IsInt()
   @Min(1)
   @Max(65535)
-  port: number;
+  port?: number;
 
   @IsString()
   @IsOptional()

@@ -1,5 +1,6 @@
 import React from "react";
 import { Button } from "../../../components/ui";
+import { cn } from "../../../lib/utils";
 import type { AspectRatio } from "../types";
 
 import { useStudioContext } from "../context";
@@ -12,7 +13,9 @@ export interface StudioHeaderProps {
   activeQueueIndex?: number;
   hasCurrentVideo?: boolean;
   isPreparingPreview?: boolean;
+  previewStatus?: 'IDLE' | 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   isGenerating?: boolean;
+  isStudioBusy?: boolean;
   renderProgress?: number;
   onNavigateBack?: () => void;
   onResetStudio?: () => void;
@@ -28,7 +31,18 @@ export const StudioHeader: React.FC<StudioHeaderProps> = (props) => {
   const hasCurrentVideo = props.hasCurrentVideo ?? Boolean(studio.currentVideo);
   const isPreparingPreview =
     props.isPreparingPreview ?? studio.isPreparingPreview;
+  const previewStatus =
+    props.previewStatus ?? studio.previewStatus ?? 'IDLE';
   const isGenerating = props.isGenerating ?? studio.isGenerating;
+  const isStudioBusy =
+    props.isStudioBusy ??
+    studio.isStudioBusy ??
+    (isPreparingPreview ||
+      previewStatus === 'PROCESSING' ||
+      previewStatus === 'PENDING' ||
+      isGenerating);
+  const isActionBlocked = !hasCurrentVideo || isStudioBusy;
+
   const renderProgress = props.renderProgress ?? studio.renderProgress;
   const onNavigateBack =
     props.onNavigateBack ?? (() => studio.navigate("varredura"));
@@ -36,6 +50,25 @@ export const StudioHeader: React.FC<StudioHeaderProps> = (props) => {
   const onOpenDeleteModal =
     props.onOpenDeleteModal ?? (() => studio.setIsDeleteStudioModalOpen(true));
   const onGenerateVideo = props.onGenerateVideo ?? studio.handleGenerateVideo;
+
+  const handleResetClick = () => {
+    if (isActionBlocked) return;
+    onResetStudio();
+  };
+
+  const handleDeleteClick = () => {
+    if (isActionBlocked) return;
+    onOpenDeleteModal();
+  };
+
+  const handleGenerateClick = () => {
+    if (isActionBlocked) {
+      console.warn('Operação bloqueada: o Studio está ocupado processando.');
+      return;
+    }
+    onGenerateVideo();
+  };
+
   return (
     <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-space-md p-3.5 rounded-2xl bg-white dark:bg-surface-container-low border border-neutral-200 dark:border-surface-container-high/80 shadow-sm">
       <div className="flex items-center justify-center gap-3">
@@ -71,15 +104,18 @@ export const StudioHeader: React.FC<StudioHeaderProps> = (props) => {
           <Button
             variant="ghost"
             size="md"
-            disabled={!hasCurrentVideo || isPreparingPreview || isGenerating}
-            onClick={onResetStudio}
+            disabled={isActionBlocked}
+            onClick={handleResetClick}
             title="Restaurar configurações para o padrão de fábrica"
             leftIcon={
               <span className="material-symbols-outlined text-[18px]">
                 restart_alt
               </span>
             }
-            className="text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high cursor-pointer px-2 sm:px-3 shrink-0"
+            className={cn(
+              "text-neutral-700 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high cursor-pointer px-2 sm:px-3 shrink-0",
+              isActionBlocked && "cursor-not-allowed opacity-50 pointer-events-none"
+            )}
           >
             <span className="hidden sm:inline">Resetar</span>
           </Button>
@@ -88,15 +124,18 @@ export const StudioHeader: React.FC<StudioHeaderProps> = (props) => {
           <Button
             variant="ghost"
             size="md"
-            disabled={!hasCurrentVideo || isPreparingPreview || isGenerating}
-            onClick={onOpenDeleteModal}
+            disabled={isActionBlocked}
+            onClick={handleDeleteClick}
             title="Remover vídeo e excluir arquivo temporário do Studio"
             leftIcon={
               <span className="material-symbols-outlined text-[18px]">
                 delete_outline
               </span>
             }
-            className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer px-2 sm:px-3 shrink-0"
+            className={cn(
+              "text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer px-2 sm:px-3 shrink-0",
+              isActionBlocked && "cursor-not-allowed opacity-50 pointer-events-none"
+            )}
           >
             <span className="hidden md:inline">Excluir do Studio</span>
             <span className="hidden sm:inline md:hidden">Excluir</span>
@@ -107,14 +146,17 @@ export const StudioHeader: React.FC<StudioHeaderProps> = (props) => {
             variant="primary"
             size="md"
             isLoading={isGenerating}
-            disabled={!hasCurrentVideo || isPreparingPreview || isGenerating}
-            onClick={onGenerateVideo}
+            disabled={isActionBlocked}
+            onClick={handleGenerateClick}
             leftIcon={
               <span className="material-symbols-outlined text-[18px] sm:text-[20px]">
                 movie_edit
               </span>
             }
-            className="px-3 sm:px-5 text-xs sm:text-sm font-bold shadow-[0_0_15px_rgba(212,163,70,0.3)] cursor-pointer shrink-0"
+            className={cn(
+              "px-3 sm:px-5 text-xs sm:text-sm font-bold shadow-[0_0_15px_rgba(212,163,70,0.3)] cursor-pointer shrink-0",
+              isActionBlocked && "cursor-not-allowed opacity-50 pointer-events-none"
+            )}
           >
             <span>
               {isGenerating ? `Gerando (${renderProgress}%)...` : "Gerar Vídeo"}

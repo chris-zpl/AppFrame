@@ -1132,9 +1132,9 @@ describe('7. Admin RBAC, Gestão de Usuários, Configurações Globais e Tratame
       const docs = await settingsService.getLegalDocuments();
       expect(docs.terms.rendered).toContain('Termos de Serviço — AppFrame');
       expect(docs.terms.rendered).toContain('AppFrame Tecnologia & Vídeo Digital');
-      expect(docs.terms.rendered).toContain('contato@appframe.io');
+      expect(docs.terms.rendered).toContain('contato@appframe.com.br');
       expect(docs.privacy.rendered).toContain('Política de Privacidade — AppFrame');
-      expect(docs.privacy.rendered).toContain('privacidade@appframe.io');
+      expect(docs.privacy.rendered).toContain('privacidade@appframe.com.br');
       expect(docs.terms.rendered).not.toContain('{{company_name}}');
       expect(docs.privacy.rendered).not.toContain('{{dpo_email}}');
 

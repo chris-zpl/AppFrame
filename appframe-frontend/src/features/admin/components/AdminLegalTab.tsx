@@ -140,7 +140,7 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
             type="email"
             value={legalForm.contactEmail || ''}
             onChange={(e) => setLegalForm((prev) => ({ ...prev, contactEmail: e.target.value }))}
-            placeholder="Ex: contato@appframe.io"
+            placeholder="Ex: contato@appframe.com.br"
           />
 
           <Input
@@ -151,7 +151,7 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
             type="email"
             value={legalForm.dpoEmail || ''}
             onChange={(e) => setLegalForm((prev) => ({ ...prev, dpoEmail: e.target.value }))}
-            placeholder="Ex: privacidade@appframe.io"
+            placeholder="Ex: privacidade@appframe.com.br"
           />
 
           <Input
@@ -162,7 +162,7 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
             type="text"
             value={legalForm.forumCity || ''}
             onChange={(e) => setLegalForm((prev) => ({ ...prev, forumCity: e.target.value }))}
-            placeholder="Ex: Curitiba / PR"
+            placeholder="Ex: Porto Alegre / RS"
           />
 
           <Input
@@ -184,7 +184,7 @@ export const AdminLegalTab: React.FC<AdminLegalTabProps> = ({
             type="url"
             value={legalForm.websiteUrl || ''}
             onChange={(e) => setLegalForm((prev) => ({ ...prev, websiteUrl: e.target.value }))}
-            placeholder="Ex: https://appframe.io"
+            placeholder="Ex: https://appframe.com.br"
           />
         </div>
         <div className="flex justify-end gap-2 flex-col sm:flex-row self-auto">

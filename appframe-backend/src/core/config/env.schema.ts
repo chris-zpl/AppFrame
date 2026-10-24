@@ -5,8 +5,8 @@ export const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
     .default('development'),
-  PORT: Joi.number().default(3000),
-  FRONTEND_URL: Joi.string().uri().default('http://localhost:5173'),
+  PORT: Joi.number().default(3001),
+  FRONTEND_URL: Joi.string().uri().default('http://localhost:5174'),
 
   // Banco de Dados (PostgreSQL)
   DB_HOST: Joi.string().default('localhost'),

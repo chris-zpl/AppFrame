@@ -1,9 +1,9 @@
-import React from 'react';
-import { Card, Button } from '../../../components/ui';
-import { cn } from '../../../lib/utils';
-import type { UserSessionItem } from '../types';
+import React from "react";
+import { Card, Button } from "../../../components/ui";
+import { cn } from "../../../lib/utils";
+import type { UserSessionItem } from "../types";
 
-import { useSettingsContext } from '../context';
+import { useSettingsContext } from "../context";
 
 export interface SettingsSessionsSectionProps {
   sessions?: UserSessionItem[];
@@ -13,13 +13,20 @@ export interface SettingsSessionsSectionProps {
   onRevokeSession?: (sessionId: string) => void;
 }
 
-export const SettingsSessionsSection: React.FC<SettingsSessionsSectionProps> = (props) => {
+export const SettingsSessionsSection: React.FC<SettingsSessionsSectionProps> = (
+  props,
+) => {
   const settings = useSettingsContext();
 
   const sessions = props.sessions ?? settings.sessions;
-  const isLoadingSessions = props.isLoadingSessions ?? settings.isLoadingSessions;
-  const revokingSessionId = props.revokingSessionId !== undefined ? props.revokingSessionId : settings.revokingSessionId;
-  const onOpenRevokeAllModal = props.onOpenRevokeAllModal ?? (() => settings.setRevokeAllModal(true));
+  const isLoadingSessions =
+    props.isLoadingSessions ?? settings.isLoadingSessions;
+  const revokingSessionId =
+    props.revokingSessionId !== undefined
+      ? props.revokingSessionId
+      : settings.revokingSessionId;
+  const onOpenRevokeAllModal =
+    props.onOpenRevokeAllModal ?? (() => settings.setRevokeAllModal(true));
   const onRevokeSession = props.onRevokeSession ?? settings.handleRevokeSession;
   return (
     <div className="flex flex-col gap-space-md animate-in fade-in duration-200">
@@ -30,17 +37,21 @@ export const SettingsSessionsSection: React.FC<SettingsSessionsSectionProps> = (
               Sessões e Dispositivos Ativos
             </h3>
             <p className="font-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant">
-              Dispositivos conectados à sua conta via token JWT com rotação periódica
+              Dispositivos conectados à sua conta via token JWT com rotação
+              periódica
             </p>
           </div>
 
           {sessions.length > 1 && (
             <Button
+              className="text-[12px] shrink-0"
               variant="outline"
               size="sm"
               onClick={onOpenRevokeAllModal}
               leftIcon={
-                <span className="material-symbols-outlined text-[16px] text-error">logout</span>
+                <span className="material-symbols-outlined text-[16px] text-error">
+                  logout
+                </span>
               }
             >
               Desconectar todos os outros dispositivos
@@ -66,10 +77,10 @@ export const SettingsSessionsSection: React.FC<SettingsSessionsSectionProps> = (
               <div
                 key={sess.id}
                 className={cn(
-                  'p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-colors',
+                  "p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-colors",
                   sess.isCurrent
-                    ? 'bg-primary/5 border-primary/40 shadow-[0_0_12px_rgba(212,163,70,0.1)]'
-                    : 'bg-neutral-50 dark:bg-surface-container-lowest border-neutral-200 dark:border-surface-container-highest'
+                    ? "bg-primary/5 border-primary/40 shadow-[0_0_12px_rgba(212,163,70,0.1)]"
+                    : "bg-neutral-50 dark:bg-surface-container-lowest border-neutral-200 dark:border-surface-container-highest",
                 )}
               >
                 <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
@@ -92,12 +103,18 @@ export const SettingsSessionsSection: React.FC<SettingsSessionsSectionProps> = (
                     </div>
                     <div className="flex items-center gap-2 text-body-sm text-body-sm text-neutral-600 dark:text-on-surface-variant font-mono tabular-nums flex-wrap mt-0.5">
                       <span>{sess.browser}</span>
-                      <span className="text-neutral-400 dark:text-outline">•</span>
+                      <span className="text-neutral-400 dark:text-outline">
+                        •
+                      </span>
                       <span className="break-all" title={sess.ipAddress}>
                         IP: {sess.ipAddress}
                       </span>
-                      <span className="text-neutral-400 dark:text-outline">•</span>
-                      <span className="text-neutral-500 dark:text-outline shrink-0">{sess.lastActiveAt}</span>
+                      <span className="text-neutral-400 dark:text-outline">
+                        •
+                      </span>
+                      <span className="text-neutral-500 dark:text-outline shrink-0">
+                        {sess.lastActiveAt}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -111,7 +128,9 @@ export const SettingsSessionsSection: React.FC<SettingsSessionsSectionProps> = (
                     onClick={() => onRevokeSession(sess.id)}
                     className="text-error hover:text-error hover:bg-error-container/20 self-end sm:self-auto"
                     leftIcon={
-                      <span className="material-symbols-outlined text-[16px]">close</span>
+                      <span className="material-symbols-outlined text-[16px]">
+                        close
+                      </span>
                     }
                   >
                     Revogar Sessão

@@ -189,29 +189,33 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                       {u.email}
                     </td>
 
-                    <td className="p-3">
+                    <td className="p-3 align-middle">
                       {isTargetSuper ? (
-                        <Badge variant="primary" className="font-extrabold text-[10px]">
-                          SUPER ADMIN
-                        </Badge>
+                        <div className="flex items-center">
+                          <Badge variant="primary" className="font-extrabold text-[10px]">
+                            SUPER ADMIN
+                          </Badge>
+                        </div>
                       ) : canChangeRole ? (
-                        <Select
-                          id={`user-role-${u.id}`}
-                          name={`user_role_${u.id}`}
-                          size="sm"
-                          aria-label={`Função do usuário ${u.name || u.email}`}
-                          value={u.role}
-                          onChange={(e) =>
-                            onRoleChange(
-                              u,
-                              e.target.value as 'SUPER_ADMIN' | 'ADMIN' | 'USER'
-                            )
-                          }
-                          className="w-40 text-xs font-semibold"
-                        >
-                          <option value="USER">Usuário Comum</option>
-                          <option value="ADMIN">Administrador</option>
-                        </Select>
+                        <div className="flex items-center">
+                          <Select
+                            id={`user-role-${u.id}`}
+                            name={`user_role_${u.id}`}
+                            size="sm"
+                            aria-label={`Função do usuário ${u.name || u.email}`}
+                            value={u.role}
+                            onChange={(e) =>
+                              onRoleChange(
+                                u,
+                                e.target.value as 'SUPER_ADMIN' | 'ADMIN' | 'USER'
+                              )
+                            }
+                            className="w-36 text-xs font-medium"
+                          >
+                            <option value="USER">Usuário Comum</option>
+                            <option value="ADMIN">Administrador</option>
+                          </Select>
+                        </div>
                       ) : (
                         <div className="flex items-center gap-1.5">
                           <Badge

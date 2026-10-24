@@ -94,13 +94,19 @@ export interface StudioVideoQueueItem {
   isShort?: boolean;
 }
 
+export type StudioPreviewStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
 export interface StudioPreviewResponse {
   previewId: string;
+  status?: StudioPreviewStatus;
+  progress?: number;
   streamUrl: string;
-  durationSeconds: number;
-  width: number;
-  height: number;
+  durationSeconds?: number;
+  width?: number;
+  height?: number;
   waveformPeaks?: number[];
+  error?: string;
+  message?: string;
 }
 
 const normalizeJob = (job: any): VideoJobItem => {
@@ -146,7 +152,8 @@ export const mediaService = {
 
   async prepareStudioPreview(
     sourceUrl: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onProgress?: (state: StudioPreviewResponse) => void
   ): Promise<StudioPreviewResponse> {
     const res = await api.post<any>(
       '/media/preview',
@@ -156,7 +163,81 @@ export const mediaService = {
         signal,
       }
     );
+    const data = res.data?.data || res.data;
+
+    // Se a resposta retornou imediatamente como PROCESSING (202 Accepted),
+    // realiza polling resiliente no endpoint de status até a conclusão do job no BullMQ
+    if (data && (data.status === 'PROCESSING' || data.status === 'PENDING') && data.previewId) {
+      if (onProgress) {
+        onProgress(data);
+      }
+      return this.pollPreviewStatus(data.previewId, signal, onProgress);
+    }
+
+    return data;
+  },
+
+  async getPreviewStatus(
+    previewId: string,
+    signal?: AbortSignal,
+  ): Promise<StudioPreviewResponse> {
+    const res = await api.get<any>(`/media/preview/${previewId}/status`, { signal });
     return res.data?.data || res.data;
+  },
+
+  async pollPreviewStatus(
+    previewId: string,
+    signal?: AbortSignal,
+    onProgress?: (state: StudioPreviewResponse) => void
+  ): Promise<StudioPreviewResponse> {
+    const startTime = Date.now();
+    const timeoutMs = 300000; // 5 minutos de timeout
+    const intervalMs = 1200; // intervalo de polling entre 1 e 1.5s
+
+    while (Date.now() - startTime < timeoutMs) {
+      if (signal?.aborted) {
+        throw new Error('Operação cancelada pelo usuário.');
+      }
+
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          signal?.removeEventListener('abort', onAbort);
+          resolve();
+        }, intervalMs);
+        const onAbort = () => {
+          clearTimeout(timer);
+          resolve();
+        };
+        signal?.addEventListener('abort', onAbort, { once: true });
+      });
+
+      if (signal?.aborted) {
+        throw new Error('Operação cancelada pelo usuário.');
+      }
+
+      try {
+        const state = await this.getPreviewStatus(previewId, signal);
+        if (onProgress) {
+          onProgress(state);
+        }
+
+        if (state.status === 'COMPLETED') {
+          return state;
+        }
+        if (state.status === 'FAILED') {
+          throw new Error(state.error || 'Falha durante o processamento do preview.');
+        }
+      } catch (err: any) {
+        if (signal?.aborted) throw err;
+        if (err?.response?.status === 404) {
+          // Continua aguardando caso o worker ainda esteja registrando o preview no Redis
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    throw new Error('Tempo limite excedido ao aguardar o processamento do preview.');
   },
 
   async deleteStudioPreview(previewId: string): Promise<{ success: boolean }> {
@@ -172,27 +253,42 @@ export const mediaService = {
   },
 
   async downloadJobFile(jobId: string, title?: string | null): Promise<void> {
-    const res = await api.get(`/media/jobs/${jobId}/download`, {
-      responseType: 'blob',
-    });
+    try {
+      const res = await api.get(`/media/jobs/${jobId}/download`, {
+        responseType: 'blob',
+      });
 
-    const blob = new Blob([res.data], { type: 'video/mp4' });
-    const objectUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const safeTitle = (title || `video_${jobId.substring(0, 8)}`)
-      .replace(/[^a-zA-Z0-9_\-\u00C0-\u017F\s]/g, '')
-      .trim()
-      .replace(/\s+/g, '_')
-      .substring(0, 80);
+      const blob = new Blob([res.data], { type: 'video/mp4' });
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const safeTitle = (title || `video_${jobId.substring(0, 8)}`)
+        .replace(/[^a-zA-Z0-9_\-\u00C0-\u017F\s]/g, '')
+        .trim()
+        .replace(/\s+/g, '_')
+        .substring(0, 80);
 
-    link.href = objectUrl;
-    link.setAttribute('download', `${safeTitle || 'video_appframe'}.mp4`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => {
-      window.URL.revokeObjectURL(objectUrl);
-    }, 10000);
+      link.href = objectUrl;
+      link.setAttribute('download', `${safeTitle || 'video_appframe'}.mp4`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => {
+        window.URL.revokeObjectURL(objectUrl);
+      }, 10000);
+    } catch (err: any) {
+      // Se a resposta for um Blob contendo JSON de erro (ex: 400 Bad Request - Vídeo Expirado)
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const json = JSON.parse(text);
+          if (json?.message) {
+            err.message = Array.isArray(json.message) ? json.message[0] : json.message;
+            err.response.data = json;
+          }
+        } catch {}
+      }
+      throw err;
+    }
   },
 
   async getGeminiStatus(): Promise<{ connected: boolean }> {

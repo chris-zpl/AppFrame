@@ -12,10 +12,15 @@ import {
   UseInterceptors,
   ClassSerializerInterceptor,
   BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import * as fs from 'fs';
-import { MediaService } from './media.service';
+import * as fsPromises from 'fs/promises';
+import { MediaService, StudioPreviewState } from './media.service';
 import { CreateVideoJobDto } from './dto/request/create-video-job.dto';
 import { DownloadBatchDto } from './dto/request/download-batch.dto';
 import { PreparePreviewDto } from './dto/request/prepare-preview.dto';
@@ -29,17 +34,29 @@ export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
   @Post('preview')
+  @HttpCode(HttpStatus.ACCEPTED)
   @UseGuards(JwtAuthGuard)
   async preparePreview(
     @Body() dto: PreparePreviewDto,
-  ): Promise<{
-    previewId: string;
-    streamUrl: string;
-    durationSeconds: number;
-    width: number;
-    height: number;
-  }> {
-    return this.mediaService.prepareStudioPreview(dto.source_url);
+    @CurrentUser('userId') userId: string,
+  ): Promise<StudioPreviewState> {
+    return this.mediaService.prepareStudioPreview(dto.source_url, userId);
+  }
+
+  @Get('preview/:previewId/status')
+  @UseGuards(JwtAuthGuard)
+  async getPreviewStatus(
+    @Param('previewId') previewId: string,
+  ): Promise<StudioPreviewState> {
+    return this.mediaService.getPreviewStatus(previewId);
+  }
+
+  @Get('preview/:previewId')
+  @UseGuards(JwtAuthGuard)
+  async getPreviewDirect(
+    @Param('previewId') previewId: string,
+  ): Promise<StudioPreviewState> {
+    return this.mediaService.getPreviewStatus(previewId);
   }
 
   @Get('preview/:previewId/stream')
@@ -49,7 +66,15 @@ export class MediaController {
     @Res() res: Response,
   ): Promise<void> {
     const filePath = this.mediaService.getPreviewFilePath(previewId);
-    const stat = fs.statSync(filePath);
+    let stat: fs.Stats;
+    try {
+      stat = await fsPromises.stat(filePath);
+    } catch (err: any) {
+      if (err?.code === 'ENOENT') {
+        throw new NotFoundException('Arquivo de preview do vídeo não encontrado.');
+      }
+      throw err;
+    }
     const fileSize = stat.size;
     const range = req.headers.range;
 
@@ -112,7 +137,7 @@ export class MediaController {
       id,
       userId,
     );
-    const stat = fs.statSync(filePath);
+    const stat = await fsPromises.stat(filePath);
 
     res.writeHead(200, {
       'Content-Type': 'video/mp4',
@@ -144,6 +169,53 @@ export class MediaController {
     @Param('previewId') previewId: string,
   ): Promise<{ success: boolean }> {
     return this.mediaService.deleteStudioPreview(previewId);
+  }
+
+  @Post('users/:userId/jobs')
+  @UseGuards(JwtAuthGuard)
+  async createJobForUser(
+    @Param('userId', new ParseUUIDPipe()) targetUserId: string,
+    @CurrentUser('userId') currentUserId: string,
+    @Body() dto: CreateVideoJobDto,
+  ): Promise<VideoJobResponseDto> {
+    if (targetUserId !== currentUserId) {
+      throw new ForbiddenException('Acesso negado: você não pode criar jobs para outro usuário.');
+    }
+    return this.mediaService.createJob(currentUserId, dto);
+  }
+
+  @Get('users/:userId/jobs')
+  @UseGuards(JwtAuthGuard)
+  async listJobsForUser(
+    @Param('userId', new ParseUUIDPipe()) targetUserId: string,
+    @CurrentUser('userId') currentUserId: string,
+  ): Promise<VideoJobResponseDto[]> {
+    if (targetUserId !== currentUserId) {
+      throw new ForbiddenException('Acesso negado: você não pode listar jobs de outro usuário.');
+    }
+    return this.mediaService.listUserJobs(currentUserId);
+  }
+
+  @Get('users/:userId/jobs/:id')
+  @UseGuards(JwtAuthGuard)
+  async getJobForUser(
+    @Param('userId', new ParseUUIDPipe()) targetUserId: string,
+    @Param('id', new ParseUUIDPipe()) jobId: string,
+    @CurrentUser('userId') currentUserId: string,
+  ): Promise<VideoJobResponseDto> {
+    if (targetUserId !== currentUserId) {
+      throw new ForbiddenException('Acesso negado: você não pode acessar jobs de outro usuário.');
+    }
+    return this.mediaService.getJobById(jobId, currentUserId);
+  }
+
+  @Get('jobs/:id')
+  @UseGuards(JwtAuthGuard)
+  async getJobByIdDirect(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser('userId') userId: string,
+  ): Promise<VideoJobResponseDto> {
+    return this.mediaService.getJobById(id, userId);
   }
 
   @Post('jobs')

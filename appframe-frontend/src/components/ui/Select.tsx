@@ -16,7 +16,7 @@ export interface SelectProps
   labelRight?: React.ReactNode;
   containerClassName?: string;
   leftIcon?: React.ReactNode;
-  error?: string;
+  error?: string | boolean;
   helperText?: string;
   options?: SelectOption[];
 }
@@ -54,8 +54,10 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         : `select-${generatedId.replace(/:/g, '')}`);
     const selectName = name || selectId;
 
+    const hasExplicitWidth = Boolean(className && /\bw-(?:full|auto|fit|\d+|\[[^\]]+\])/.test(className));
+
     return (
-      <div className={cn("flex flex-col gap-1.5 w-full", containerClassName)}>
+      <div className={cn("flex flex-col gap-1.5", hasExplicitWidth ? "w-fit" : "w-full", containerClassName)}>
         {(label || labelRight) && (
           <div className="flex items-center justify-between">
             {label && (
@@ -73,12 +75,12 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           </div>
         )}
 
-        <div className="relative flex items-center w-full">
+        <div className={cn("relative inline-flex items-center", hasExplicitWidth ? "w-fit" : "w-full")}>
           {leftIcon && (
             <div
               className={cn(
-                "absolute text-neutral-500 dark:text-on-surface-variant flex items-center justify-center pointer-events-none z-10",
-                effectiveSize === 'sm' ? "left-2.5 text-[16px]" : effectiveSize === 'lg' ? "left-3.5 text-[20px]" : "left-3 text-[18px]"
+                "pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center text-neutral-500 dark:text-on-surface-variant z-10",
+                effectiveSize === 'sm' ? "pl-2.5 text-[16px]" : effectiveSize === 'lg' ? "pl-3.5 text-[20px]" : "pl-3 text-[18px]"
               )}
             >
               {leftIcon}
@@ -91,21 +93,22 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             disabled={disabled}
             className={cn(
-              'w-full appearance-none rounded-lg bg-white dark:bg-surface-container-lowest text-neutral-900 dark:text-on-surface',
-              'border border-neutral-300 dark:border-surface-container-highest cursor-pointer',
-              'outline-none focus:outline-none focus-visible:outline-none',
-              'transition-colors duration-150 shadow-2xs',
+              'appearance-none w-full rounded-lg',
+              'border border-neutral-300 dark:border-surface-container-highest',
+              'bg-white dark:bg-surface-container-lowest text-neutral-900 dark:text-on-surface',
+              'cursor-pointer outline-none focus:outline-none focus-visible:outline-none',
               'focus:bg-white dark:focus:bg-surface-container-low focus:border-primary/80 dark:focus:border-primary focus:ring-1 focus:ring-primary/40 dark:focus:ring-primary/40 focus:ring-offset-0 focus:ring-offset-transparent',
               'disabled:opacity-50 disabled:cursor-not-allowed',
-              effectiveSize === 'sm' && 'h-9 text-body-sm rounded-lg',
-              effectiveSize === 'md' && 'h-11 text-body-md rounded-lg',
-              effectiveSize === 'lg' && 'h-12 text-body-lg rounded-xl',
+              'transition-colors duration-150 shadow-2xs',
+              effectiveSize === 'sm' && 'h-9 py-1.5 text-xs font-semibold rounded-lg',
+              effectiveSize === 'md' && 'h-11 py-2 text-sm rounded-lg',
+              effectiveSize === 'lg' && 'h-12 py-2.5 text-base rounded-xl',
               effectiveSize === 'sm'
                 ? leftIcon ? 'pl-8 pr-8' : 'pl-3 pr-8'
                 : effectiveSize === 'lg'
                 ? leftIcon ? 'pl-11 pr-10' : 'pl-4 pr-10'
                 : leftIcon ? 'pl-10 pr-9' : 'pl-3.5 pr-9',
-              error && 'border-error dark:border-error focus:border-error dark:focus:border-error focus:ring-error/40 dark:focus:ring-error/40',
+              Boolean(error) && 'border-error dark:border-error focus:border-error dark:focus:border-error focus:ring-error/40 dark:focus:ring-error/40',
               className,
             )}
             {...props}
@@ -124,15 +127,15 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               : children}
           </select>
 
-          {/* Seta seletora elegante */}
-          <div className="absolute right-2.5 pointer-events-none text-neutral-500 dark:text-on-surface-variant flex items-center justify-center">
-            <span className="material-symbols-outlined text-[18px]">
-              expand_more
-            </span>
+          {/* Chevron perfeitamente centrado de forma à prova de falhas */}
+          <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 right-2.5 flex items-center text-neutral-400 dark:text-neutral-500">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
           </div>
         </div>
 
-        {error && (
+        {typeof error === 'string' && error && (
           <span className="text-error font-body-sm text-body-sm flex items-center gap-1 mt-0.5">
             <span className="material-symbols-outlined text-[14px]">error</span>
             <span>{error}</span>

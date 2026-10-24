@@ -7,7 +7,9 @@ import {
   StorageCleanupSummary,
 } from '../services/storage-cleanup.service';
 
-@Processor(STORAGE_CLEANUP_QUEUE)
+@Processor(STORAGE_CLEANUP_QUEUE, {
+  concurrency: 1,
+})
 export class StorageCleanupProcessor extends WorkerHost {
   private readonly logger = new Logger(StorageCleanupProcessor.name);
 

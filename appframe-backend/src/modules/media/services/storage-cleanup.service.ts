@@ -63,12 +63,12 @@ export class StorageCleanupService
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
-    // 1. Configura job repetível no BullMQ (execução a cada 15 minutos)
+    // 1. Configura job repetível no BullMQ (execução a cada 15 minutos para expurgo pontual de itens > 1h)
     try {
       if (typeof (this.cleanupQueue as any).upsertJobScheduler === 'function') {
         await (this.cleanupQueue as any).upsertJobScheduler(
           'storage-cleanup-periodic',
-          { every: 15 * 60 * 1000 },
+          { pattern: '*/15 * * * *' },
           { name: 'storage-cleanup-job', opts: { removeOnComplete: true } },
         );
       } else {
@@ -77,7 +77,7 @@ export class StorageCleanupService
           {},
           {
             repeat: {
-              every: 15 * 60 * 1000,
+              pattern: '*/15 * * * *',
             },
             jobId: 'storage-cleanup-periodic',
             removeOnComplete: true,
@@ -86,7 +86,7 @@ export class StorageCleanupService
         );
       }
       this.logger.log(
-        'Job agendado de limpeza periódica de storage registrado no BullMQ (intervalo: 15min).',
+        'Job agendado de limpeza periódica de storage registrado no BullMQ (cron: */15 * * * *).',
       );
     } catch (err: any) {
       this.logger.warn(
@@ -94,7 +94,7 @@ export class StorageCleanupService
       );
     }
 
-    // 2. Schedule Fallback: setInterval como rede de segurança caso o Redis/BullMQ esteja reiniciando
+    // 2. Schedule Fallback: setInterval a cada 15 minutos como rede de segurança caso o Redis esteja reiniciando
     this.intervalRef = setInterval(() => {
       this.runCleanupSafe('interval-fallback').catch((err) => {
         this.logger.error(`Erro no fallback de limpeza de storage: ${err.message}`);
@@ -204,13 +204,20 @@ export class StorageCleanupService
     }
 
     // 5. Auditoria no Banco de Dados: localiza jobs COMPLETED criados/finalizados há mais de 24h
+    // (created_at < NOW() - INTERVAL '24 HOURS')
     try {
       const cutoff = new Date(Date.now() - this.FINAL_TTL_MS);
       const staleCompletedJobs = await this.videoJobRepository.find({
-        where: {
-          status: VideoJobStatus.COMPLETED,
-          updated_at: LessThan(cutoff),
-        },
+        where: [
+          {
+            status: VideoJobStatus.COMPLETED,
+            created_at: LessThan(cutoff),
+          },
+          {
+            status: VideoJobStatus.COMPLETED,
+            updated_at: LessThan(cutoff),
+          },
+        ],
       });
 
       for (const job of staleCompletedJobs) {
@@ -218,11 +225,13 @@ export class StorageCleanupService
           const resolved = path.isAbsolute(job.final_video_path)
             ? job.final_video_path
             : path.resolve(process.cwd(), job.final_video_path);
-          if (fs.existsSync(resolved)) {
-            try {
-              await fsPromises.unlink(resolved);
-              cleanedFinalVideos++;
-            } catch {}
+          try {
+            await fsPromises.unlink(resolved);
+            cleanedFinalVideos++;
+          } catch (unlinkErr: any) {
+            if (unlinkErr?.code !== 'ENOENT') {
+              this.logger.warn(`Erro ao excluir arquivo de vídeo final expirado ${resolved}: ${unlinkErr.message}`);
+            }
           }
         }
         job.status = VideoJobStatus.EXPIRED;
@@ -254,14 +263,20 @@ export class StorageCleanupService
 
   /**
    * Varre um diretório e remove arquivos cuja última modificação exceda o TTL em milissegundos.
+   * Totalmente assíncrono com tratamento de erro ENOENT.
    */
   private async cleanDirectoryFiles(
     dirPath: string,
     ttlMs: number,
     onFileDeleted?: (fileName: string) => Promise<void> | void,
   ): Promise<number> {
-    if (!fs.existsSync(dirPath)) {
-      return 0;
+    try {
+      await fsPromises.access(dirPath, fs.constants.F_OK);
+    } catch (err: any) {
+      if (err?.code === 'ENOENT') {
+        return 0;
+      }
+      throw err;
     }
 
     const files = await fsPromises.readdir(dirPath);
@@ -278,15 +293,23 @@ export class StorageCleanupService
         if (stat.isFile()) {
           const ageMs = now - stat.mtimeMs;
           if (ageMs > ttlMs) {
-            await fsPromises.unlink(fullPath);
-            count++;
-            if (onFileDeleted) {
-              await Promise.resolve(onFileDeleted(file));
+            try {
+              await fsPromises.unlink(fullPath);
+              count++;
+              if (onFileDeleted) {
+                await Promise.resolve(onFileDeleted(file));
+              }
+            } catch (unlinkErr: any) {
+              if (unlinkErr?.code !== 'ENOENT') {
+                this.logger.debug(`Erro ao remover arquivo temporário ${fullPath}: ${unlinkErr.message}`);
+              }
             }
           }
         }
       } catch (fileErr: any) {
-        this.logger.debug(`Ignorando arquivo inacessível ${fullPath}: ${fileErr.message}`);
+        if (fileErr?.code !== 'ENOENT') {
+          this.logger.debug(`Ignorando arquivo inacessível ${fullPath}: ${fileErr.message}`);
+        }
       }
     }
 

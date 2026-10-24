@@ -12,7 +12,11 @@ export interface StudioTimelineProps {
   totalDuration?: number;
   waveformPeaks?: number[];
   isPreparingPreview?: boolean;
+  previewStatus?: 'IDLE' | 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  previewProgress?: number;
   previewError?: string | null;
+  isGenerating?: boolean;
+  isStudioBusy?: boolean;
   timelineRef?: React.RefObject<HTMLDivElement | null>;
   handleTimelineClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
   handleTimelineMouseDown?: (
@@ -33,7 +37,19 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
   const waveformPeaks = props.waveformPeaks ?? studio.waveformPeaks;
   const isPreparingPreview =
     props.isPreparingPreview ?? studio.isPreparingPreview;
+  const previewStatus =
+    props.previewStatus ?? (studio as any).previewStatus ?? 'IDLE';
+  const previewProgress =
+    props.previewProgress ?? (studio as any).previewProgress ?? 0;
   const previewError = props.previewError ?? studio.previewError;
+  const isGenerating = props.isGenerating ?? studio.isGenerating ?? false;
+  const isStudioBusy =
+    props.isStudioBusy ??
+    (studio as any).isStudioBusy ??
+    (isPreparingPreview ||
+      previewStatus === 'PROCESSING' ||
+      previewStatus === 'PENDING' ||
+      isGenerating);
   const timelineRef = props.timelineRef ?? studio.timelineRef;
   const handleTimelineClick =
     props.handleTimelineClick ?? studio.handleTimelineClick;
@@ -41,6 +57,8 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
     props.handleTimelineMouseDown ?? studio.handleTimelineMouseDown;
   const setTrimIn = props.setTrimIn ?? studio.setTrimIn;
   const setTrimOut = props.setTrimOut ?? studio.setTrimOut;
+
+  const isTimelineDisabled = isStudioBusy || totalDuration <= 0;
   return (
     <Card className="relative isolate bg-white dark:bg-surface-container-low border border-neutral-200 dark:border-surface-container-high/90 p-4 flex flex-col gap-3 shadow-sm dark:shadow-lg">
       <div className="flex flex-col sm:flex-row gap-1.5 items-center justify-between">
@@ -79,32 +97,52 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
         {/* Régua de Tempo Dinâmica conforme a duração real do vídeo */}
         <div className="w-full flex justify-between text-[10px] text-neutral-500 dark:text-outline font-mono mb-1.5 px-1">
           {[0, 0.166, 0.333, 0.5, 0.666, 0.833, 1].map((ratio, idx) => (
-            <span key={idx}>{formatTime(totalDuration * ratio)}</span>
+            <span key={idx}>
+              {totalDuration > 0 ? formatTime(totalDuration * ratio) : "--:--"}
+            </span>
           ))}
         </div>
 
         {/* Pista da Onda Sonora Real do Vídeo e Região de Corte */}
         <div
           ref={timelineRef}
-          onClick={totalDuration > 0 ? handleTimelineClick : undefined}
+          onClick={!isTimelineDisabled ? handleTimelineClick : undefined}
           className={cn(
             "relative w-full h-20 rounded-xl bg-neutral-100 dark:bg-surface-container-lowest border border-neutral-200 dark:border-surface-container-highest/80 overflow-hidden flex items-center px-1",
-            totalDuration > 0 ? "cursor-pointer" : "cursor-default",
+            !isTimelineDisabled ? "cursor-pointer" : "cursor-default",
           )}
         >
           {waveformPeaks.length === 0 || totalDuration <= 0 ? (
-            <div className="w-full h-full flex items-center justify-center gap-2 text-label-sm text-neutral-600 dark:text-on-surface-variant">
-              {isPreparingPreview ? (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-label-sm text-neutral-600 dark:text-on-surface-variant relative overflow-hidden">
+              {(isPreparingPreview || previewStatus === 'PROCESSING' || previewStatus === 'PENDING') ? (
                 <>
-                  <span className="material-symbols-outlined text-[18px] text-primary animate-spin">
-                    progress_activity
-                  </span>
-                  <span>
-                    Extraindo onda sonora real (Audio Waveform) do vídeo...
-                  </span>
+                  {/* Waveform Skeleton Pulse */}
+                  <div className="absolute inset-0 flex items-center justify-between gap-1 px-3 opacity-20 pointer-events-none">
+                    {Array.from({ length: 48 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="flex-1 bg-primary rounded-full animate-pulse"
+                        style={{
+                          height: `${20 + Math.sin(i * 0.4) * 60}%`,
+                          animationDelay: `${(i % 12) * 80}ms`,
+                          animationDuration: '1.2s',
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 z-10 bg-white/80 dark:bg-surface-container-lowest/80 px-3 py-1.5 rounded-lg backdrop-blur-xs">
+                    <span className="material-symbols-outlined text-[18px] text-primary animate-spin">
+                      progress_activity
+                    </span>
+                    <span className="font-medium text-xs">
+                      {previewProgress > 0
+                        ? `Processando forma de onda de áudio (${previewProgress}%)...`
+                        : "Extraindo onda sonora real (Audio Waveform)..."}
+                    </span>
+                  </div>
                 </>
               ) : (
-                <>
+                <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px] text-neutral-500 dark:text-outline">
                     graphic_eq
                   </span>
@@ -113,7 +151,7 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
                       ? "Não foi possível extrair o áudio do vídeo."
                       : "Aguardando carregamento do vídeo para exibir a onda sonora real."}
                   </span>
-                </>
+                </div>
               )}
             </div>
           ) : (
@@ -164,8 +202,14 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
 
               {/* Marcador Início (In) - Arrastável */}
               <div
-                onMouseDown={(e) => handleTimelineMouseDown(e, "in")}
-                className="absolute top-0 bottom-0 z-30 flex flex-col items-center cursor-ew-resize group"
+                onMouseDown={(e) => {
+                  if (isTimelineDisabled) return;
+                  handleTimelineMouseDown(e, "in");
+                }}
+                className={cn(
+                  "absolute top-0 bottom-0 z-30 flex flex-col items-center cursor-ew-resize group",
+                  isTimelineDisabled && "cursor-not-allowed pointer-events-none"
+                )}
                 style={{ left: `${(trimIn / totalDuration) * 100}%` }}
               >
                 <div className="w-4 h-full bg-primary/30 flex items-center justify-center relative -translate-x-1/2">
@@ -179,8 +223,14 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
 
               {/* Marcador Fim (Out) - Arrastável */}
               <div
-                onMouseDown={(e) => handleTimelineMouseDown(e, "out")}
-                className="absolute top-0 bottom-0 z-30 flex flex-col items-center cursor-ew-resize group"
+                onMouseDown={(e) => {
+                  if (isTimelineDisabled) return;
+                  handleTimelineMouseDown(e, "out");
+                }}
+                className={cn(
+                  "absolute top-0 bottom-0 z-30 flex flex-col items-center cursor-ew-resize group",
+                  isTimelineDisabled && "cursor-not-allowed pointer-events-none"
+                )}
                 style={{ left: `${(trimOut / totalDuration) * 100}%` }}
               >
                 <div className="w-4 h-full bg-primary/30 flex items-center justify-center relative -translate-x-1/2">
@@ -194,8 +244,14 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
 
               {/* Agulha de Reprodução (Playhead) */}
               <div
-                onMouseDown={(e) => handleTimelineMouseDown(e, "playhead")}
-                className="absolute top-0 bottom-0 z-40 flex flex-col items-center cursor-ew-resize"
+                onMouseDown={(e) => {
+                  if (isTimelineDisabled) return;
+                  handleTimelineMouseDown(e, "playhead");
+                }}
+                className={cn(
+                  "absolute top-0 bottom-0 z-40 flex flex-col items-center cursor-ew-resize",
+                  isTimelineDisabled && "cursor-not-allowed pointer-events-none"
+                )}
                 style={{ left: `${(currentTime / totalDuration) * 100}%` }}
               >
                 <div className="w-0.5 h-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)] relative -translate-x-1/2">
@@ -216,21 +272,31 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
             <div className="flex flex-row items-center justify-center gap-2 w-full">
               <button
                 type="button"
+                disabled={isTimelineDisabled}
                 onClick={() => {
+                  if (isTimelineDisabled) return;
                   const newIn = Math.min(currentTime, trimOut - 0.5);
                   setTrimIn(Math.max(0, newIn));
                 }}
-                className="px-2.5 py-1 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer shrink-0"
+                className={cn(
+                  "px-2.5 py-1 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed",
+                  isTimelineDisabled && "cursor-not-allowed opacity-50 pointer-events-none"
+                )}
               >
                 Definir In Aqui
               </button>
               <button
                 type="button"
+                disabled={isTimelineDisabled}
                 onClick={() => {
+                  if (isTimelineDisabled) return;
                   const newOut = Math.max(currentTime, trimIn + 0.5);
                   setTrimOut(Math.min(totalDuration, newOut));
                 }}
-                className="px-2.5 py-1 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer shrink-0"
+                className={cn(
+                  "px-2.5 py-1 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed",
+                  isTimelineDisabled && "cursor-not-allowed opacity-50 pointer-events-none"
+                )}
               >
                 Definir Out Aqui
               </button>
@@ -240,35 +306,57 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
             <div className="flex flex-row flex-nowrap items-center justify-center gap-1.5 w-full">
               <button
                 type="button"
-                onClick={() => setTrimIn((v) => Math.max(0, v - 0.1))}
-                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer shrink-0 border border-neutral-200 dark:border-transparent"
+                disabled={isTimelineDisabled}
+                onClick={() => {
+                  if (isTimelineDisabled) return;
+                  setTrimIn((v) => Math.max(0, v - 0.1));
+                }}
+                className={cn(
+                  "px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer shrink-0 border border-neutral-200 dark:border-transparent disabled:opacity-50 disabled:cursor-not-allowed",
+                  isTimelineDisabled && "cursor-not-allowed opacity-50 pointer-events-none"
+                )}
               >
                 In -0.1s
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setTrimIn((v) => Math.min(trimOut - 0.5, v + 0.1))
-                }
-                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer shrink-0 border border-neutral-200 dark:border-transparent"
+                disabled={isTimelineDisabled}
+                onClick={() => {
+                  if (isTimelineDisabled) return;
+                  setTrimIn((v) => Math.min(trimOut - 0.5, v + 0.1));
+                }}
+                className={cn(
+                  "px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer shrink-0 border border-neutral-200 dark:border-transparent disabled:opacity-50 disabled:cursor-not-allowed",
+                  isTimelineDisabled && "cursor-not-allowed opacity-50 pointer-events-none"
+                )}
               >
                 In +0.1s
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setTrimOut((v) => Math.max(trimIn + 0.5, v - 0.1))
-                }
-                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer shrink-0 border border-neutral-200 dark:border-transparent"
+                disabled={isTimelineDisabled}
+                onClick={() => {
+                  if (isTimelineDisabled) return;
+                  setTrimOut((v) => Math.max(trimIn + 0.5, v - 0.1));
+                }}
+                className={cn(
+                  "px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer shrink-0 border border-neutral-200 dark:border-transparent disabled:opacity-50 disabled:cursor-not-allowed",
+                  isTimelineDisabled && "cursor-not-allowed opacity-50 pointer-events-none"
+                )}
               >
                 Out -0.1s
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setTrimOut((v) => Math.min(totalDuration, v + 0.1))
-                }
-                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer shrink-0 border border-neutral-200 dark:border-transparent"
+                disabled={isTimelineDisabled}
+                onClick={() => {
+                  if (isTimelineDisabled) return;
+                  setTrimOut((v) => Math.min(totalDuration, v + 0.1));
+                }}
+                className={cn(
+                  "px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer shrink-0 border border-neutral-200 dark:border-transparent disabled:opacity-50 disabled:cursor-not-allowed",
+                  isTimelineDisabled && "cursor-not-allowed opacity-50 pointer-events-none"
+                )}
               >
                 Out +0.1s
               </button>
@@ -283,27 +371,44 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setTrimIn((v) => Math.max(0, v - 0.1))}
-                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer border border-neutral-200 dark:border-transparent"
+                disabled={isTimelineDisabled}
+                onClick={() => {
+                  if (isTimelineDisabled) return;
+                  setTrimIn((v) => Math.max(0, v - 0.1));
+                }}
+                className={cn(
+                  "px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer border border-neutral-200 dark:border-transparent disabled:opacity-50 disabled:cursor-not-allowed",
+                  isTimelineDisabled && "cursor-not-allowed opacity-50 pointer-events-none"
+                )}
               >
                 In -0.1s
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setTrimIn((v) => Math.min(trimOut - 0.5, v + 0.1))
-                }
-                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer border border-neutral-200 dark:border-transparent"
+                disabled={isTimelineDisabled}
+                onClick={() => {
+                  if (isTimelineDisabled) return;
+                  setTrimIn((v) => Math.min(trimOut - 0.5, v + 0.1));
+                }}
+                className={cn(
+                  "px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer border border-neutral-200 dark:border-transparent disabled:opacity-50 disabled:cursor-not-allowed",
+                  isTimelineDisabled && "cursor-not-allowed opacity-50 pointer-events-none"
+                )}
               >
                 In +0.1s
               </button>
               <button
                 type="button"
+                disabled={isTimelineDisabled}
                 onClick={() => {
+                  if (isTimelineDisabled) return;
                   const newIn = Math.min(currentTime, trimOut - 0.5);
                   setTrimIn(Math.max(0, newIn));
                 }}
-                className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer"
+                className={cn(
+                  "px-2 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
+                  isTimelineDisabled && "cursor-not-allowed opacity-50 pointer-events-none"
+                )}
               >
                 Definir In Aqui
               </button>
@@ -313,29 +418,44 @@ export const StudioTimeline: React.FC<StudioTimelineProps> = (props) => {
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
+                disabled={isTimelineDisabled}
                 onClick={() => {
+                  if (isTimelineDisabled) return;
                   const newOut = Math.max(currentTime, trimIn + 0.5);
                   setTrimOut(Math.min(totalDuration, newOut));
                 }}
-                className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer"
+                className={cn(
+                  "px-2 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:bg-primary/20 dark:text-primary font-semibold hover:bg-amber-500/25 dark:hover:bg-primary/30 border border-amber-600/30 dark:border-transparent cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
+                  isTimelineDisabled && "cursor-not-allowed opacity-50 pointer-events-none"
+                )}
               >
                 Definir Out Aqui
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setTrimOut((v) => Math.max(trimIn + 0.5, v - 0.1))
-                }
-                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer border border-neutral-200 dark:border-transparent"
+                disabled={isTimelineDisabled}
+                onClick={() => {
+                  if (isTimelineDisabled) return;
+                  setTrimOut((v) => Math.max(trimIn + 0.5, v - 0.1));
+                }}
+                className={cn(
+                  "px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer border border-neutral-200 dark:border-transparent disabled:opacity-50 disabled:cursor-not-allowed",
+                  isTimelineDisabled && "cursor-not-allowed opacity-50 pointer-events-none"
+                )}
               >
                 Out -0.1s
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setTrimOut((v) => Math.min(totalDuration, v + 0.1))
-                }
-                className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer border border-neutral-200 dark:border-transparent"
+                disabled={isTimelineDisabled}
+                onClick={() => {
+                  if (isTimelineDisabled) return;
+                  setTrimOut((v) => Math.min(totalDuration, v + 0.1));
+                }}
+                className={cn(
+                  "px-2 py-0.5 rounded bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-neutral-800 dark:text-on-surface cursor-pointer border border-neutral-200 dark:border-transparent disabled:opacity-50 disabled:cursor-not-allowed",
+                  isTimelineDisabled && "cursor-not-allowed opacity-50 pointer-events-none"
+                )}
               >
                 Out +0.1s
               </button>

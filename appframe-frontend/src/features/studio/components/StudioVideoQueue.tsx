@@ -28,7 +28,7 @@ export const StudioVideoQueue: React.FC<StudioVideoQueueProps> = (props) => {
 
   return (
     <Card className="mb-space-md p-3.5 bg-white dark:bg-surface-container-low border border-neutral-200 dark:border-surface-container-high/90 shadow-sm dark:shadow-md">
-      <div className="flex items-center justify-between gap-2 mb-2.5">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mb-2.5">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[18px] text-primary">
             queue_play_next
@@ -50,7 +50,7 @@ export const StudioVideoQueue: React.FC<StudioVideoQueueProps> = (props) => {
             <button
               key={item.id}
               type="button"
-              disabled={isGenerating || isPreparingPreview}
+              disabled={isGenerating}
               onClick={() => onSelectVideo(idx)}
               className={cn(
                 'flex items-center gap-2.5 p-2 rounded-xl border text-left min-w-[240px] max-w-[290px] transition-all shrink-0 cursor-pointer',
@@ -82,7 +82,9 @@ export const StudioVideoQueue: React.FC<StudioVideoQueueProps> = (props) => {
                   {isDone ? (
                     <span className="text-emerald-700 dark:text-emerald-400">Concluído e Baixado</span>
                   ) : isCurrent ? (
-                    <span className="text-amber-800 dark:text-primary">Em edição agora</span>
+                    <span className="text-amber-800 dark:text-primary">
+                      {isPreparingPreview ? 'Baixando preview...' : 'Em edição agora'}
+                    </span>
                   ) : (
                     <span className="text-neutral-500 dark:text-outline">Aguardando na lista</span>
                   )}

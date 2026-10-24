@@ -179,11 +179,19 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     []
   );
 
+  const isGeneratingRef = useRef<boolean>(false);
+
   // 4. Gerenciamento do Player e Timeline
   const player = useStudioPlayer({
     currentVideo: queue.currentVideo,
     onRestoreSavedState: handleRestoreSavedState,
+    isGeneratingRef,
   });
+
+  const isPreviewLoading =
+    player.isPreparingPreview ||
+    player.previewStatus === 'PROCESSING' ||
+    player.previewStatus === 'PENDING';
 
   // 5. Hook de Legendas e Transcrição Gemini
   const subtitles = useStudioSubtitles({
@@ -195,6 +203,7 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     totalDuration: player.totalDuration,
     setSubtitleMode,
     setCurrentTime: player.setCurrentTime,
+    isStudioBusy: isPreviewLoading || isGeneratingRef.current,
   });
 
   // 6. Gerenciamento do Canvas
@@ -215,11 +224,57 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     watermarkScale: watermark.watermarkScale,
     currentTime: player.currentTime,
     previewStreamUrl: player.previewStreamUrl,
-    isPreparingPreview: player.isPreparingPreview,
+    isPreparingPreview: isPreviewLoading,
     previewError: player.previewError,
   });
 
-  // 7. Persistência no LocalStorage e Factory Reset
+  // 7. Renderização / Exportação do Vídeo
+  const render = useStudioRender({
+    currentVideo: queue.currentVideo,
+    params,
+    selectedMediaFile: subtitles.selectedMediaFile,
+    aspectRatio: player.aspectRatio,
+    trimIn: player.trimIn,
+    trimOut: player.trimOut,
+    selectedWatermarkId: watermark.selectedWatermarkId,
+    watermarkPosition: watermark.watermarkPosition,
+    watermarkScale: watermark.watermarkScale,
+    watermarkOpacity: watermark.watermarkOpacity,
+    subtitleMode,
+    staticText,
+    geminiPrompt,
+    dynamicSegments: subtitles.dynamicSegments,
+    fontFamily,
+    fontSize,
+    textColor,
+    bgColor,
+    strokeColor,
+    useBackgroundBox,
+    isGeminiConnected,
+    videoQueue: queue.videoQueue,
+    activeQueueIndex: queue.activeQueueIndex,
+    setActiveQueueIndex: queue.setActiveQueueIndex,
+    completedVideoIds: queue.completedVideoIds,
+    setCompletedVideoIds: queue.setCompletedVideoIds,
+    setIsPlaying: player.setIsPlaying,
+    pauseVideo: player.pauseVideo,
+    navigate,
+    isPreparingPreview: player.isPreparingPreview,
+    previewStatus: player.previewStatus,
+  });
+
+  useEffect(() => {
+    isGeneratingRef.current = render.isGenerating;
+  }, [render.isGenerating]);
+
+  // Estado centralizado de bloqueio (Guard) durante download de preview ou renderização
+  const isStudioBusy =
+    player.isPreparingPreview ||
+    player.previewStatus === 'PROCESSING' ||
+    player.previewStatus === 'PENDING' ||
+    render.isGenerating;
+
+  // 8. Persistência no LocalStorage e Factory Reset
   const persistence = useStudioPersistence({
     currentVideo: queue.currentVideo,
     isPreparingPreview: player.isPreparingPreview,
@@ -262,57 +317,43 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     setWatermarkScale: watermark.setWatermarkScale,
     seekVideoTo: player.seekVideoTo,
     onMarkWatermarkAsSelected: watermark.markWatermarkAsSelected,
+    isStudioBusy,
   });
 
-  // 8. Renderização / Exportação do Vídeo
-  const render = useStudioRender({
-    currentVideo: queue.currentVideo,
-    params,
-    selectedMediaFile: subtitles.selectedMediaFile,
-    aspectRatio: player.aspectRatio,
-    trimIn: player.trimIn,
-    trimOut: player.trimOut,
-    selectedWatermarkId: watermark.selectedWatermarkId,
-    watermarkPosition: watermark.watermarkPosition,
-    watermarkScale: watermark.watermarkScale,
-    watermarkOpacity: watermark.watermarkOpacity,
-    subtitleMode,
-    staticText,
-    geminiPrompt,
-    dynamicSegments: subtitles.dynamicSegments,
-    fontFamily,
-    fontSize,
-    textColor,
-    bgColor,
-    strokeColor,
-    useBackgroundBox,
-    isGeminiConnected,
-    videoQueue: queue.videoQueue,
-    activeQueueIndex: queue.activeQueueIndex,
-    setActiveQueueIndex: queue.setActiveQueueIndex,
-    completedVideoIds: queue.completedVideoIds,
-    setCompletedVideoIds: queue.setCompletedVideoIds,
-    setIsPlaying: player.setIsPlaying,
-    pauseVideo: player.pauseVideo,
-    navigate,
-  });
-
-  // Handler para exclusão com limpeza de preview e reset dos estados locais
+  // Handler para exclusão com limpeza de preview e reset dos estados locais e guard de bloqueio
   const handleDeleteFromStudio = async () => {
-    await queue.handleDeleteFromStudio(player.previewStreamUrl, () => {
-      player.setPreviewStreamUrl(null);
-      player.setWaveformPeaks([]);
-      player.setTotalDuration(0.0);
-      player.setTrimIn(0.0);
-      player.setTrimOut(0.0);
-      player.setCurrentTime(0.0);
-      setStaticText('');
-      setGeminiPrompt('');
-      subtitles.setDynamicSegments([]);
-    });
+    if (isStudioBusy) return;
+    await queue.handleDeleteFromStudio(
+      player.previewStreamUrl,
+      () => {
+        player.setPreviewStatus('IDLE');
+        player.setPreviewProgress(0);
+        player.setPreviewStreamUrl(null);
+        player.setWaveformPeaks([]);
+        player.setTotalDuration(0.0);
+        player.setTrimIn(0.0);
+        player.setTrimOut(0.0);
+        player.setCurrentTime(0.0);
+        setStaticText('');
+        setGeminiPrompt('');
+        subtitles.setDynamicSegments([]);
+      },
+      isStudioBusy
+    );
   };
 
+  const setGuardedDeleteModalOpen = useCallback(
+    (open: boolean) => {
+      if (open && isStudioBusy) return;
+      queue.setIsDeleteStudioModalOpen(open);
+    },
+    [isStudioBusy, queue]
+  );
+
   return {
+    // Estado centralizado de bloqueio
+    isStudioBusy,
+
     // Queue
     videoQueue: queue.videoQueue,
     activeQueueIndex: queue.activeQueueIndex,
@@ -321,7 +362,7 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     currentVideo: queue.currentVideo,
     studioProjectTitle: queue.studioProjectTitle,
     isDeleteStudioModalOpen: queue.isDeleteStudioModalOpen,
-    setIsDeleteStudioModalOpen: queue.setIsDeleteStudioModalOpen,
+    setIsDeleteStudioModalOpen: setGuardedDeleteModalOpen,
     isDeletingFromStudio: queue.isDeletingFromStudio,
     setIsDeletingFromStudio: queue.setIsDeletingFromStudio,
     handleDeleteFromStudio,
@@ -343,6 +384,8 @@ export const useStudio = ({ navigate, params }: UseStudioProps) => {
     setTrimOut: player.setTrimOut,
     waveformPeaks: player.waveformPeaks,
     isPreparingPreview: player.isPreparingPreview,
+    previewStatus: player.previewStatus,
+    previewProgress: player.previewProgress,
     previewError: player.previewError,
     previewStreamUrl: player.previewStreamUrl,
     currentPreviewId: player.currentPreviewId,

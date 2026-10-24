@@ -99,7 +99,7 @@ export const useHistoryJobs = () => {
   const [jobToDelete, setJobToDelete] = useState<VideoJobItem | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
 
-  // Consulta real periódica via TanStack Query (pooling a cada 3 segundos)
+  // Consulta real periódica via TanStack Query (polling adaptativo: 2.5s se ativo, 10s se ocioso)
   const {
     data: jobs = [],
     isLoading,
@@ -107,7 +107,15 @@ export const useHistoryJobs = () => {
   } = useQuery({
     queryKey: ['jobs'],
     queryFn: () => mediaService.listJobs(),
-    refetchInterval: 3000,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data || data.length === 0) return 8000;
+      const hasActive = data.some((j: VideoJobItem) => {
+        const s = String(j.status || '').toUpperCase();
+        return s === 'PENDING' || s === 'DOWNLOADING' || s === 'RENDERING';
+      });
+      return hasActive ? 2500 : 10000;
+    },
   });
 
   const filteredJobs = useMemo(() => filterHistoryJobs(jobs, filter), [jobs, filter]);
@@ -167,6 +175,10 @@ export const useHistoryJobs = () => {
   );
 
   const handleDownloadVideo = async (job: VideoJobItem) => {
+    if (String(job.status || '').toUpperCase() === 'EXPIRED') {
+      toast.error('Este vídeo já expirou e foi removido do servidor após 24 horas.');
+      return;
+    }
     try {
       await mediaService.downloadJobFile(job.id, job.original_title);
       toast.success('Vídeo baixado para o seu computador com sucesso!');

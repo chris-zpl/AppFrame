@@ -1,13 +1,21 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { mediaService, type StudioVideoQueueItem } from '../../history';
-import { removeStudioState } from '../utils';
+import { removeStudioState, extractNormalizedVideoId } from '../utils';
 
 export interface UseStudioQueueParams {
   videoUrl?: string;
   sourceUrl?: string;
   selectedVideos?: string;
   videoTitle?: string;
+}
+
+function normalizeQueueItem(item: StudioVideoQueueItem): StudioVideoQueueItem {
+  const normalizedId = extractNormalizedVideoId(item);
+  return {
+    ...item,
+    id: normalizedId || item.id,
+  };
 }
 
 export const useStudioQueue = (params: UseStudioQueueParams) => {
@@ -18,9 +26,9 @@ export const useStudioQueue = (params: UseStudioQueueParams) => {
       if (savedQueue) {
         const parsed = JSON.parse(savedQueue);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const filtered = parsed.filter(
-            (item) => !/\/live(\/|$|\?)|\/streams(\/|$|\?)/i.test(item?.url || ''),
-          );
+          const filtered = parsed
+            .filter((item) => !/\/live(\/|$|\?)|\/streams(\/|$|\?)/i.test(item?.url || ''))
+            .map(normalizeQueueItem);
           if (filtered.length > 0) {
             return filtered;
           }
@@ -45,9 +53,12 @@ export const useStudioQueue = (params: UseStudioQueueParams) => {
     );
 
     if (fallbackUrl && !isLiveUrl && !isMembersOnly) {
+      const normalizedId =
+        extractNormalizedVideoId({ id: params.selectedVideos, url: fallbackUrl }) ||
+        'selected-1';
       return [
         {
-          id: params.selectedVideos || 'selected-1',
+          id: normalizedId,
           url: fallbackUrl,
           title: params.videoTitle || 'Vídeo Selecionado na Varredura',
         },
@@ -69,6 +80,55 @@ export const useStudioQueue = (params: UseStudioQueueParams) => {
     } catch {}
     return 0;
   });
+
+  // Sincroniza fila e vídeo ativo caso o usuário navegue novamente com novos parâmetros de URL / sessionStorage
+  useEffect(() => {
+    const incomingUrl =
+      params.videoUrl ||
+      params.sourceUrl ||
+      (params.selectedVideos
+        ? params.selectedVideos.startsWith('http')
+          ? params.selectedVideos
+          : `https://www.youtube.com/watch?v=${params.selectedVideos}`
+        : '');
+
+    if (!incomingUrl) return;
+
+    try {
+      const savedQueueRaw = sessionStorage.getItem('appframe_studio_queue');
+      if (savedQueueRaw) {
+        const parsed = JSON.parse(savedQueueRaw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const filtered = parsed
+            .filter((item) => !/\/live(\/|$|\?)|\/streams(\/|$|\?)/i.test(item?.url || ''))
+            .map(normalizeQueueItem);
+          if (filtered.length > 0) {
+            setVideoQueue((prev) => {
+              const prevKey = prev.map((v) => `${v.id}:${v.url}`).join('|');
+              const nextKey = filtered.map((v) => `${v.id}:${v.url}`).join('|');
+              return prevKey === nextKey ? prev : filtered;
+            });
+
+            const incomingId = extractNormalizedVideoId({
+              id: params.selectedVideos,
+              url: incomingUrl,
+            });
+            const matchIdx = filtered.findIndex(
+              (item) =>
+                item.url === incomingUrl || (incomingId && item.id === incomingId)
+            );
+            if (matchIdx !== -1) {
+              const savedIdx = sessionStorage.getItem('appframe_studio_active_index');
+              if (savedIdx === '0' && matchIdx === 0) {
+                setActiveQueueIndexState(0);
+              }
+            }
+            return;
+          }
+        }
+      }
+    } catch {}
+  }, [params.videoUrl, params.sourceUrl, params.selectedVideos, params.videoTitle]);
 
   const activeQueueIndex =
     videoQueue.length > 0
@@ -93,9 +153,10 @@ export const useStudioQueue = (params: UseStudioQueueParams) => {
 
   const handleDeleteFromStudio = async (
     previewStreamUrl?: string | null,
-    onResetStates?: () => void
+    onResetStates?: () => void,
+    isStudioBusy?: boolean
   ) => {
-    if (!currentVideo) return;
+    if (isStudioBusy || !currentVideo) return;
 
     removeStudioState(currentVideo);
 

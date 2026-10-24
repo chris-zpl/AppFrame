@@ -208,9 +208,22 @@ export const useAdminMutations = ({ currentUser }: UseAdminMutationsProps) => {
       toast.error('Preencha o Host e o E-mail de remetente.');
       return false;
     }
+
+    const resolvedPort =
+      form.port !== undefined && form.port !== null && String(form.port).trim() !== ''
+        ? Number(form.port)
+        : form.secure
+        ? 465
+        : 587;
+
+    const payload: SmtpConfig = {
+      ...form,
+      port: resolvedPort,
+    };
+
     setIsSavingSmtp(true);
     try {
-      const res = await adminService.saveSmtpConfig(form);
+      const res = await adminService.saveSmtpConfig(payload);
       await queryClient.invalidateQueries({ queryKey: ['admin-smtp-config'] });
       toast.success(res.message || 'Configurações de SMTP salvas com sucesso!');
       return true;

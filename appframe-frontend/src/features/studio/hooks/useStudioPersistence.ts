@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import type { StudioVideoQueueItem, SubtitleSegmentData } from '../../history';
 import type { AspectRatio, FontFamily, SubtitleMode, WatermarkPosition } from '../types';
 import type { WatermarkItem } from '../../watermarks';
-import { saveStudioState, removeStudioState } from '../utils';
+import { saveStudioState, removeStudioState, purgeStaleStudioStates } from '../utils';
 import { DEFAULT_SUBTITLE_COLORS } from '../constants';
 
 export interface UseStudioPersistenceProps {
@@ -48,6 +48,7 @@ export interface UseStudioPersistenceProps {
   setWatermarkScale: (val: number) => void;
   seekVideoTo: (val: number) => void;
   onMarkWatermarkAsSelected?: () => void;
+  isStudioBusy?: boolean;
 }
 
 export const useStudioPersistence = ({
@@ -92,7 +93,13 @@ export const useStudioPersistence = ({
   setWatermarkScale,
   seekVideoTo,
   onMarkWatermarkAsSelected,
+  isStudioBusy = false,
 }: UseStudioPersistenceProps) => {
+  // Higienização automática de rascunhos órfãos (> 7 dias) executada uma única vez na entrada do Studio
+  useEffect(() => {
+    purgeStaleStudioStates();
+  }, []);
+
   // Mantém referência sempre atualizada do estado completo do Studio
   const stateRef = useRef({
     trimIn,
@@ -188,7 +195,7 @@ export const useStudioPersistence = ({
 
   // Restaura todas as configurações do Studio para o padrão de fábrica
   const handleResetStudio = () => {
-    if (!currentVideo) return;
+    if (isStudioBusy || !currentVideo) return;
     removeStudioState(currentVideo);
 
     setTrimIn(0.0);

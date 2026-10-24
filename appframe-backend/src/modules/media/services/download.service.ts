@@ -15,10 +15,41 @@ export class DownloadService {
   private readonly previewDir = path.resolve(process.cwd(), 'storage/temp/previews');
   private readonly ytdlpPath: string;
   private readonly inFlightPreviews = new Map<string, Promise<string>>();
+  private readonly activePreviewControllers = new Map<string, AbortController>();
+  private readonly cancelledPreviews = new Set<string>();
 
   constructor(private readonly configService: ConfigService) {
     this.ytdlpPath = this.configService.get<string>('YTDLP_PATH', 'yt-dlp');
     this.ensureDirs();
+  }
+
+  /**
+   * Cancela ativamente o download de um preview órfão quando o usuário alterna rapidamente para outro vídeo.
+   */
+  cancelPreviewDownload(previewId: string): void {
+    if (!previewId) return;
+    this.cancelledPreviews.add(previewId);
+    const controller = this.activePreviewControllers.get(previewId);
+    if (controller) {
+      controller.abort();
+      this.activePreviewControllers.delete(previewId);
+    }
+    this.inFlightPreviews.delete(previewId);
+  }
+
+  /**
+   * Limpa flag de cancelamento ao iniciar um novo ciclo explícito para o mesmo previewId.
+   */
+  clearCancelledPreview(previewId: string): void {
+    if (!previewId) return;
+    this.cancelledPreviews.delete(previewId);
+  }
+
+  /**
+   * Verifica se o preview foi marcado como cancelado/órfão.
+   */
+  isPreviewCancelled(previewId: string): boolean {
+    return this.cancelledPreviews.has(previewId);
   }
 
   private async ensureDirs(): Promise<void> {
@@ -44,15 +75,45 @@ export class DownloadService {
   /**
    * Resolve e valida o caminho do arquivo de preview baixado.
    */
+  /**
+   * Resolve o caminho do arquivo de preview baixado.
+   */
   getPreviewFilePath(previewId: string): string {
     if (!previewId || !/^[a-f0-9]{24}$/i.test(previewId)) {
       throw new BadRequestException('Identificador de preview inválido.');
     }
-    const filePath = path.join(this.previewDir, `${previewId}.mp4`);
-    if (!fs.existsSync(filePath)) {
-      throw new NotFoundException('Arquivo de preview do vídeo não encontrado.');
+    return path.join(this.previewDir, `${previewId}.mp4`);
+  }
+
+  /**
+   * Verifica existência de arquivo assincronamente com tratamento de ENOENT.
+   */
+  async fileExists(filePath: string): Promise<boolean> {
+    try {
+      await fsPromises.access(filePath, fs.constants.F_OK);
+      return true;
+    } catch (err: any) {
+      if (err?.code === 'ENOENT') {
+        return false;
+      }
+      throw err;
     }
-    return filePath;
+  }
+
+  /**
+   * Remove arquivo do disco assincronamente com tratamento resiliente de ENOENT.
+   */
+  async safeUnlink(filePath: string): Promise<boolean> {
+    try {
+      await fsPromises.unlink(filePath);
+      return true;
+    } catch (err: any) {
+      if (err?.code === 'ENOENT') {
+        return false;
+      }
+      this.logger.warn(`Falha ao remover arquivo ${filePath}: ${err?.message}`);
+      return false;
+    }
   }
 
   /**
@@ -63,17 +124,11 @@ export class DownloadService {
       return false;
     }
     const filePath = path.join(this.previewDir, `${previewId}.mp4`);
-    if (fs.existsSync(filePath)) {
-      try {
-        await fsPromises.unlink(filePath);
-        this.logger.log(`Arquivo temporário de preview ${previewId}.mp4 removido com sucesso.`);
-        return true;
-      } catch (err: any) {
-        this.logger.warn(`Falha ao remover arquivo de preview ${previewId}: ${err?.message}`);
-        return false;
-      }
+    const removed = await this.safeUnlink(filePath);
+    if (removed) {
+      this.logger.log(`Arquivo temporário de preview ${previewId}.mp4 removido com sucesso.`);
     }
-    return false;
+    return removed;
   }
 
   /**
@@ -99,26 +154,25 @@ export class DownloadService {
     }
 
     try {
-      if (fs.existsSync(this.previewDir)) {
+      const exists = await this.fileExists(this.previewDir);
+      if (exists) {
         const files = await fsPromises.readdir(this.previewDir);
         for (const file of files) {
           if (file.endsWith('.mp4') || file.endsWith('.part')) {
             const filePath = path.join(this.previewDir, file);
-            try {
-              await fsPromises.unlink(filePath);
+            const removed = await this.safeUnlink(filePath);
+            if (removed) {
               removedCount++;
-            } catch (err: any) {
-              this.logger.warn(
-                `Falha ao remover arquivo de preview ${file}: ${err?.message}`,
-              );
             }
           }
         }
       }
     } catch (err: any) {
-      this.logger.error(
-        `Erro ao listar diretório de previews para limpeza: ${err?.message}`,
-      );
+      if (err?.code !== 'ENOENT') {
+        this.logger.error(
+          `Erro ao listar diretório de previews para limpeza: ${err?.message}`,
+        );
+      }
     }
 
     return removedCount;
@@ -148,7 +202,7 @@ export class DownloadService {
     const previewId = this.getPreviewId(cleanUrl);
     const finalPreviewPath = path.join(this.previewDir, `${previewId}.mp4`);
 
-    if (fs.existsSync(finalPreviewPath)) {
+    if (await this.fileExists(finalPreviewPath)) {
       try {
         const stat = await fsPromises.stat(finalPreviewPath);
         if (stat.size > 1024) {
@@ -170,20 +224,40 @@ export class DownloadService {
     }
 
     const downloadPromise = (async () => {
+      const abortController = new AbortController();
+      this.activePreviewControllers.set(previewId, abortController);
       const tempPartPath = path.join(
         this.previewDir,
         `${previewId}_${Date.now()}.mp4`,
       );
 
       try {
-        const isYouTube = /youtube\.com|youtu\.be/i.test(cleanUrl);
-        if (isYouTube) {
-          await this.downloadWithYtDlp(cleanUrl, tempPartPath, onProgress);
-        } else {
-          await this.downloadDirectHttp(cleanUrl, tempPartPath, onProgress);
+        if (this.cancelledPreviews.has(previewId) || abortController.signal.aborted) {
+          throw new Error('PREVIEW_CANCELLED');
         }
 
-        if (!fs.existsSync(tempPartPath)) {
+        const isYouTube = /youtube\.com|youtu\.be/i.test(cleanUrl);
+        if (isYouTube) {
+          await this.downloadWithYtDlp(
+            cleanUrl,
+            tempPartPath,
+            onProgress,
+            abortController.signal,
+          );
+        } else {
+          await this.downloadDirectHttp(
+            cleanUrl,
+            tempPartPath,
+            onProgress,
+            abortController.signal,
+          );
+        }
+
+        if (this.cancelledPreviews.has(previewId) || abortController.signal.aborted) {
+          throw new Error('PREVIEW_CANCELLED');
+        }
+
+        if (!(await this.fileExists(tempPartPath))) {
           throw new BadRequestException('O arquivo de vídeo não pôde ser baixado.');
         }
 
@@ -195,8 +269,11 @@ export class DownloadService {
         return finalPreviewPath;
       } catch (err) {
         await this.cleanupFile(tempPartPath);
+        await this.cleanupFile(`${tempPartPath}.part`);
+        await this.cleanupFile(`${tempPartPath}.ytdl`);
         throw err;
       } finally {
+        this.activePreviewControllers.delete(previewId);
         this.inFlightPreviews.delete(previewId);
       }
     })();
@@ -215,6 +292,7 @@ export class DownloadService {
     sourceUrl: string,
     destinationPath: string,
     onProgress?: (progressPercent: number) => Promise<void> | void,
+    signal?: AbortSignal,
   ): Promise<void> {
     this.logger.log(`Baixando vídeo do YouTube via yt-dlp: ${sourceUrl}`);
 
@@ -229,17 +307,31 @@ export class DownloadService {
     let lastError = 'erro no download';
 
     for (const extractorArgs of clientStrategies) {
+      if (signal?.aborted) {
+        await this.cleanupFile(destinationPath);
+        throw new Error('PREVIEW_CANCELLED');
+      }
+
       try {
         await this.runYtDlpProcess(
           sourceUrl,
           destinationPath,
           extractorArgs,
           onProgress,
+          signal,
         );
-        if (fs.existsSync(destinationPath)) {
+        if (signal?.aborted) {
+          await this.cleanupFile(destinationPath);
+          throw new Error('PREVIEW_CANCELLED');
+        }
+        if (await this.fileExists(destinationPath)) {
           return;
         }
       } catch (err: any) {
+        if (err?.message === 'PREVIEW_CANCELLED' || signal?.aborted) {
+          await this.cleanupFile(destinationPath);
+          throw new Error('PREVIEW_CANCELLED');
+        }
         if (err instanceof BadRequestException) {
           await this.cleanupFile(destinationPath);
           throw err;
@@ -396,12 +488,18 @@ export class DownloadService {
 
   deleteCookies(): { success: boolean; message: string } {
     const cookiesPath = this.getCookiesPath();
-    if (cookiesPath && fs.existsSync(cookiesPath)) {
+    if (cookiesPath) {
       try {
-        fs.unlinkSync(cookiesPath);
+        fs.unlink(cookiesPath, (err) => {
+          if (err && err.code !== 'ENOENT') {
+            this.logger.warn(`Erro ao remover cookies: ${err.message}`);
+          }
+        });
         this.logger.log(`Arquivo de cookies removido: ${cookiesPath}`);
       } catch (e: any) {
-        this.logger.warn(`Erro ao remover cookies: ${e.message}`);
+        if (e?.code !== 'ENOENT') {
+          this.logger.warn(`Erro ao remover cookies: ${e.message}`);
+        }
       }
     }
     return {
@@ -431,8 +529,14 @@ export class DownloadService {
     destinationPath: string,
     extractorArgs: string | null,
     onProgress?: (progressPercent: number) => Promise<void> | void,
+    signal?: AbortSignal,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(new Error('PREVIEW_CANCELLED'));
+        return;
+      }
+
       const args: string[] = [];
 
       if (extractorArgs) {
@@ -463,6 +567,14 @@ export class DownloadService {
       let stderrBuffer = '';
       let lastReportedPercent = 0;
 
+      const onAbort = () => {
+        try {
+          proc.kill('SIGTERM');
+        } catch {}
+        reject(new Error('PREVIEW_CANCELLED'));
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+
       proc.stdout.on('data', (chunk: Buffer) => {
         const text = chunk.toString();
         const match = text.match(/\[download\]\s+(\d+(?:\.\d+)?)%/);
@@ -482,8 +594,14 @@ export class DownloadService {
         }
       });
 
-      proc.on('close', (code) => {
-        if (code === 0 && fs.existsSync(destinationPath)) {
+      proc.on('close', async (code) => {
+        signal?.removeEventListener('abort', onAbort);
+        if (signal?.aborted) {
+          reject(new Error('PREVIEW_CANCELLED'));
+          return;
+        }
+        const destExists = await this.fileExists(destinationPath);
+        if (code === 0 && destExists) {
           resolve();
         } else {
           if (
@@ -537,6 +655,7 @@ export class DownloadService {
     sourceUrl: string,
     destinationPath: string,
     onProgress?: (progressPercent: number) => Promise<void> | void,
+    signal?: AbortSignal,
   ): Promise<void> {
     let parsedUrl: URL;
     try {
@@ -557,7 +676,7 @@ export class DownloadService {
       );
     }
 
-    const response = await fetch(sourceUrl);
+    const response = await fetch(sourceUrl, { signal });
     if (!response.ok) {
       throw new BadRequestException(
         `Falha ao acessar vídeo na URL de origem. HTTP Status: ${response.status}`,
@@ -634,11 +753,11 @@ export class DownloadService {
    */
   async cleanupFile(filePath: string): Promise<void> {
     try {
-      if (fs.existsSync(filePath)) {
-        await fsPromises.unlink(filePath);
-      }
+      await fsPromises.unlink(filePath);
     } catch (err: any) {
-      this.logger.warn(`Falha na limpeza do arquivo temporário ${filePath}: ${err.message}`);
+      if (err?.code !== 'ENOENT') {
+        this.logger.warn(`Falha na limpeza do arquivo temporário ${filePath}: ${err.message}`);
+      }
     }
   }
 }

@@ -28,7 +28,7 @@ export interface AdminSession {
 
 export interface SmtpConfig {
   host: string;
-  port: number;
+  port?: number | string;
   user: string;
   password?: string;
   fromName: string;

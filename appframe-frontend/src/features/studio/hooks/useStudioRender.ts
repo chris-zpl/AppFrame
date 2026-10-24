@@ -13,6 +13,7 @@ import {
   getActiveRenderJob,
   saveActiveRenderJob,
   clearActiveRenderJob,
+  removeStudioState,
 } from '../utils';
 
 export interface UseStudioRenderProps {
@@ -50,6 +51,8 @@ export interface UseStudioRenderProps {
   setIsPlaying: (playing: boolean) => void;
   pauseVideo?: () => void;
   navigate?: (path: string, params?: Record<string, string>) => void;
+  isPreparingPreview?: boolean;
+  previewStatus?: 'IDLE' | 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 }
 
 export const useStudioRender = ({
@@ -81,6 +84,8 @@ export const useStudioRender = ({
   setCompletedVideoIds,
   setIsPlaying,
   pauseVideo,
+  isPreparingPreview = false,
+  previewStatus = 'IDLE',
 }: UseStudioRenderProps) => {
   const queryClient = useQueryClient();
   const [isGenerating, setIsGenerating] = useState<boolean>(() => {
@@ -135,7 +140,10 @@ export const useStudioRender = ({
           toast.success('Vídeo gerado com sucesso e download concluído!');
 
           if (activeJob.videoId) {
+            removeStudioState(activeJob.videoId);
             setCompletedVideoIds(Array.from(new Set([...completedVideoIds, activeJob.videoId])));
+          } else if (currentVideo) {
+            removeStudioState(currentVideo);
           }
         } else if (status === 'FAILED') {
           clearActiveRenderJob();
@@ -158,8 +166,14 @@ export const useStudioRender = ({
   }, [queryClient, setCompletedVideoIds]);
 
   const handleGenerateVideo = async () => {
-    if (isGenerating) {
-      toast.info('Um vídeo já está sendo processado. Aguarde a conclusão.');
+    const isStudioBusy =
+      isPreparingPreview ||
+      previewStatus === 'PROCESSING' ||
+      previewStatus === 'PENDING' ||
+      isGenerating;
+
+    if (isStudioBusy) {
+      console.warn('Operação bloqueada: o Studio está ocupado processando.');
       return;
     }
 
@@ -416,6 +430,13 @@ export const useStudioRender = ({
       toast.success(
         'Vídeo gerado com sucesso e download concluído!'
       );
+
+      // Limpeza do estado do vídeo renderizado com sucesso no localStorage
+      if (currentVideo) {
+        removeStudioState(currentVideo);
+      } else if (rawSourceUrl) {
+        removeStudioState(rawSourceUrl);
+      }
 
       // Marca o vídeo atual como concluído na fila de espera
       const finishedId = currentVideo?.id || '';

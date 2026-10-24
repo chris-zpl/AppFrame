@@ -14,6 +14,8 @@ export interface StudioPlayerProps {
   setAspectRatio?: (ratio: AspectRatio) => void;
   previewStreamUrl?: string | null;
   isPreparingPreview?: boolean;
+  previewStatus?: 'IDLE' | 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  previewProgress?: number;
   previewError?: string | null;
   isAuthError?: boolean;
   videoRef?: React.RefObject<HTMLVideoElement | null>;
@@ -48,6 +50,10 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
   const previewStreamUrl = props.previewStreamUrl ?? studio.previewStreamUrl;
   const isPreparingPreview =
     props.isPreparingPreview ?? studio.isPreparingPreview;
+  const previewStatus =
+    props.previewStatus ?? (studio as any).previewStatus ?? 'IDLE';
+  const previewProgress =
+    props.previewProgress ?? (studio as any).previewProgress ?? 0;
   const previewError = props.previewError ?? studio.previewError;
   const isAuthError = props.isAuthError ?? studio.isAuthError;
   const videoRef = props.videoRef ?? studio.videoRef;
@@ -73,15 +79,30 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
   const onNavigateToVarredura =
     props.onNavigateToVarredura ?? (() => studio.navigate("varredura"));
 
+  const isStudioBusy =
+    (studio as any).isStudioBusy ??
+    (isPreparingPreview ||
+      previewStatus === 'PROCESSING' ||
+      previewStatus === 'PENDING' ||
+      isGenerating);
+
+  const isBusy = isStudioBusy || !previewStreamUrl;
+
   const renderPlayerButtons = () => (
     <div className="flex items-center gap-1.5 shrink-0">
       <button
         type="button"
         aria-label={isPlaying ? "Pausar vídeo" : "Reproduzir vídeo"}
         title={isPlaying ? "Pausar" : "Reproduzir"}
-        disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
-        onClick={handleTogglePlay}
-        className="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 cursor-pointer shadow-sm disabled:opacity-40"
+        disabled={isBusy}
+        onClick={() => {
+          if (isBusy) return;
+          handleTogglePlay();
+        }}
+        className={cn(
+          "w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 cursor-pointer shadow-sm disabled:opacity-50",
+          isBusy && "cursor-not-allowed opacity-50 pointer-events-none"
+        )}
       >
         <span className="material-symbols-outlined text-[20px]">
           {isPlaying ? "pause" : "play_arrow"}
@@ -91,10 +112,16 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
       <button
         type="button"
         aria-label="Retroceder 5 segundos"
-        disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
-        onClick={() => seekVideoTo(Math.max(0, currentTime - 5))}
+        disabled={isBusy}
+        onClick={() => {
+          if (isBusy) return;
+          seekVideoTo(Math.max(0, currentTime - 5));
+        }}
         title="Retroceder 5 segundos"
-        className="w-8 h-8 rounded-lg text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+        className={cn(
+          "w-8 h-8 rounded-lg text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50",
+          isBusy && "cursor-not-allowed opacity-50 pointer-events-none"
+        )}
       >
         <span className="material-symbols-outlined text-[18px]">replay_5</span>
       </button>
@@ -102,16 +129,20 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
       <button
         type="button"
         aria-label="Avançar 5 segundos"
-        disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
-        onClick={() =>
+        disabled={isBusy}
+        onClick={() => {
+          if (isBusy) return;
           seekVideoTo(
             totalDuration > 0
               ? Math.min(totalDuration, currentTime + 5)
               : currentTime + 5,
-          )
-        }
+          );
+        }}
         title="Avançar 5 segundos"
-        className="w-8 h-8 rounded-lg text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+        className={cn(
+          "w-8 h-8 rounded-lg text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50",
+          isBusy && "cursor-not-allowed opacity-50 pointer-events-none"
+        )}
       >
         <span className="material-symbols-outlined text-[18px]">forward_5</span>
       </button>
@@ -119,8 +150,9 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
       <button
         type="button"
         aria-label={isMuted ? "Ativar som" : "Silenciar áudio"}
-        disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
+        disabled={isBusy}
         onClick={() => {
+          if (isBusy) return;
           const next = !isMuted;
           setIsMuted(next);
           if (videoRef.current) {
@@ -128,7 +160,10 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
           }
         }}
         title={isMuted ? "Ativar som" : "Silenciar áudio"}
-        className="w-8 h-8 rounded-lg text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+        className={cn(
+          "w-8 h-8 rounded-lg text-neutral-600 dark:text-on-surface-variant hover:text-neutral-900 dark:hover:text-on-surface hover:bg-neutral-100 dark:hover:bg-surface-container-high flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50",
+          isBusy && "cursor-not-allowed opacity-50 pointer-events-none"
+        )}
       >
         <span className="material-symbols-outlined text-[18px]">
           {isMuted ? "volume_off" : "volume_up"}
@@ -140,7 +175,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
   const renderTimerDisplay = (extraClasses?: string) => (
     <div
       className={cn(
-        "flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-outline/10 min-w-0 bg-slate-100 border-slate-200 text-slate-800 dark:bg-surface-container-lowest dark:border-outline/10 dark:text-on-surface",
+        "flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-outline/10 min-w-1 bg-slate-100 border-slate-200 text-slate-800 dark:bg-surface-container-lowest dark:border-outline/10 dark:text-on-surface",
         extraClasses,
       )}
     >
@@ -165,10 +200,16 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
     <button
       type="button"
       aria-label="Ir para Marcador In"
-      disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
-      onClick={() => seekVideoTo(trimIn)}
+      disabled={isBusy}
+      onClick={() => {
+        if (isBusy) return;
+        seekVideoTo(trimIn);
+      }}
       title="Ir para Marcador In"
-      className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-amber-800 dark:text-primary font-bold cursor-pointer disabled:opacity-40 shrink-0 border border-neutral-200 dark:border-transparent"
+      className={cn(
+        "px-1 py-1 text-label-sm font-label-sm rounded-md bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-amber-800 dark:text-primary font-bold cursor-pointer disabled:opacity-50 shrink-0 border border-neutral-200 dark:border-transparent",
+        isBusy && "cursor-not-allowed opacity-50 pointer-events-none"
+      )}
     >
       Ir ao In
     </button>
@@ -178,10 +219,16 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
     <button
       type="button"
       aria-label="Ir para Marcador Out"
-      disabled={!previewStreamUrl || isPreparingPreview || isGenerating}
-      onClick={() => seekVideoTo(trimOut)}
+      disabled={isBusy}
+      onClick={() => {
+        if (isBusy) return;
+        seekVideoTo(trimOut);
+      }}
       title="Ir para Marcador Out"
-      className="px-2 py-1 text-label-sm font-label-sm rounded-md bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-amber-800 dark:text-primary font-bold cursor-pointer disabled:opacity-40 shrink-0 border border-neutral-200 dark:border-transparent"
+      className={cn(
+        "px-1 py-1 text-label-sm font-label-sm rounded-md bg-neutral-100 dark:bg-surface-container hover:bg-neutral-200 dark:hover:bg-surface-container-high text-amber-800 dark:text-primary font-bold cursor-pointer disabled:opacity-50 shrink-0 border border-neutral-200 dark:border-transparent",
+        isBusy && "cursor-not-allowed opacity-50 pointer-events-none"
+      )}
     >
       Ir ao Out
     </button>
@@ -219,11 +266,11 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
       {/* Moldura do Vídeo com Aspect Ratio Dinâmico */}
       <div
         onClick={
-          previewStreamUrl && !isPreparingPreview && !isGenerating ? handleTogglePlay : undefined
+          previewStreamUrl && !isBusy ? handleTogglePlay : undefined
         }
         className={cn(
-          "relative isolate overflow-hidden rounded-2xl bg-black border border-surface-container-highest transition-all duration-300 shadow-[0_12px_40px_rgba(0,0,0,0.8)] flex items-center justify-center",
-          previewStreamUrl && !isPreparingPreview && !isGenerating ? "cursor-pointer" : "",
+          "relative isolate overflow-hidden rounded-2xl bg-black border border-surface-container-highest transition-all duration-300 shadow-sm flex items-center justify-center",
+          previewStreamUrl && !isBusy ? "cursor-pointer" : "",
           aspectRatio === "9:16"
             ? "w-[290px] h-[515px] sm:w-[320px] sm:h-[568px]"
             : "w-full max-w-[620px] aspect-video",
@@ -255,14 +302,24 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
               Ir para Varredura
             </Button>
           </div>
-        ) : isPreparingPreview ? (
+        ) : (isPreparingPreview || previewStatus === 'PROCESSING' || previewStatus === 'PENDING') ? (
           <div className="flex flex-col items-center justify-center text-center p-2.5 sm:p-6 gap-1.5 sm:gap-3 z-30 max-h-full max-w-sm mx-auto overflow-hidden">
             <span className="material-symbols-outlined text-[26px] sm:text-[40px] text-primary animate-spin shrink-0">
               progress_activity
             </span>
             <p className="font-bold text-white text-xs sm:text-title-sm leading-tight">
-              Baixando vídeo para visualização...
+              {previewProgress > 0
+                ? `Processando vídeo (${previewProgress}%)...`
+                : "Baixando vídeo e preparando preview..."}
             </p>
+            {previewProgress > 0 && (
+              <div className="w-48 bg-white/10 rounded-full h-1.5 overflow-hidden mt-1">
+                <div
+                  className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, Math.max(0, previewProgress))}%` }}
+                />
+              </div>
+            )}
             <p className="text-[11px] sm:text-label-sm text-neutral-300 max-w-[250px] sm:max-w-xs line-clamp-1 leading-tight">
               {currentVideo.title}
             </p>
@@ -300,7 +357,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
               </Button>
             </div>
           </div>
-        ) : previewStreamUrl ? (
+        ) : (previewStreamUrl && previewStatus !== 'PROCESSING' && previewStatus !== 'PENDING') ? (
           <video
             ref={videoRef}
             src={previewStreamUrl}
@@ -377,7 +434,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
           className={cn(
             "absolute inset-0 w-full h-full object-contain pointer-events-none z-20",
             (!previewStreamUrl ||
-              isPreparingPreview ||
+              isBusy ||
               Boolean(previewError)) &&
               "hidden",
           )}
@@ -431,7 +488,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
         )}
 
         {/* Botão Central de Play no Hover */}
-        {!isPlaying && Boolean(previewStreamUrl) && !isPreparingPreview && !isGenerating && (
+        {!isPlaying && Boolean(previewStreamUrl) && !isBusy && (
           <button
             type="button"
             aria-label="Reproduzir vídeo"
@@ -449,7 +506,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
       </div>
 
       {/* Barra de Controles do Player com Cronômetro Tabular */}
-      <div className="w-full max-w-xl mt-4 px-3 py-2 rounded-xl bg-white/90 text-slate-800 border border-slate-200/80 shadow-md backdrop-blur-md dark:bg-surface-container/80 dark:text-on-surface dark:border-surface-container-high/80 dark:shadow-none">
+      <div className="w-full max-w-2xl mt-4 px-3 py-2 rounded-xl bg-white/90 text-slate-800 border border-slate-200/80 shadow-md backdrop-blur-md dark:bg-surface-container/80 dark:text-on-surface dark:border-surface-container-high/80 dark:shadow-none">
         {/* Layout para telas pequenas (sm e mobile) */}
         <div className="flex sm:hidden flex-col items-center gap-2.5 w-full">
           <div className="flex items-center justify-between w-full gap-2 min-w-0">
@@ -463,7 +520,7 @@ export const StudioPlayer: React.FC<StudioPlayerProps> = (props) => {
         </div>
 
         {/* Layout para desktop (sm e superior) */}
-        <div className="hidden sm:flex items-center justify-between gap-3 w-full">
+        <div className="hidden sm:flex items-center justify-between gap-1 w-full">
           {renderPlayerButtons()}
           {renderTimerDisplay()}
           <div className="flex items-center gap-1 shrink-0">

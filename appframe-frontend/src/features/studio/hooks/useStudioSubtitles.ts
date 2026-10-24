@@ -12,6 +12,7 @@ interface UseStudioSubtitlesProps {
   totalDuration: number;
   setSubtitleMode: (mode: SubtitleMode) => void;
   setCurrentTime: (time: number) => void;
+  isStudioBusy?: boolean;
 }
 
 export const useStudioSubtitles = ({
@@ -23,12 +24,15 @@ export const useStudioSubtitles = ({
   totalDuration,
   setSubtitleMode,
   setCurrentTime,
+  isStudioBusy = false,
 }: UseStudioSubtitlesProps) => {
   const [isTranscribingAudio, setIsTranscribingAudio] = useState(false);
   const [dynamicSegments, setDynamicSegments] = useState<GeminiSubtitleSegment[]>([]);
   const [selectedMediaFile, setSelectedMediaFile] = useState<File | null>(null);
 
   const handleTranscribeCurrentVideo = async () => {
+    if (isStudioBusy || isTranscribingAudio) return;
+
     if (!isGeminiConnected) {
       toast.error(
         'O assistente de inteligência artificial (Gemini) não está configurado na plataforma. Contate o administrador.'

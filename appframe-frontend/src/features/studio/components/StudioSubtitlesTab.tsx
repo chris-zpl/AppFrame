@@ -16,6 +16,7 @@ export interface StudioSubtitlesTabProps {
   setStaticText?: (val: string) => void;
   isTranscribingAudio?: boolean;
   hasCurrentVideo?: boolean;
+  isStudioBusy?: boolean;
   trimIn?: number;
   trimOut?: number;
   totalDuration?: number;
@@ -48,6 +49,15 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
   const setStaticText = props.setStaticText ?? studio.setStaticText;
   const isTranscribingAudio = props.isTranscribingAudio ?? studio.isTranscribingAudio;
   const hasCurrentVideo = props.hasCurrentVideo ?? Boolean(studio.currentVideo);
+  const isStudioBusy =
+    props.isStudioBusy ??
+    (studio as any).isStudioBusy ??
+    (studio.isPreparingPreview ||
+      studio.previewStatus === 'PROCESSING' ||
+      studio.previewStatus === 'PENDING' ||
+      studio.isGenerating);
+  const isTranscribeBlocked =
+    isStudioBusy || !isGeminiConnected || isTranscribingAudio || !hasCurrentVideo;
   const trimIn = props.trimIn ?? studio.trimIn;
   const trimOut = props.trimOut ?? studio.trimOut;
   const totalDuration = props.totalDuration ?? studio.totalDuration;
@@ -175,19 +185,21 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
             <Button
               variant="primary"
               size="md"
-              disabled={
-                !isGeminiConnected ||
-                isTranscribingAudio ||
-                !hasCurrentVideo
-              }
+              disabled={isTranscribeBlocked}
               isLoading={isTranscribingAudio}
-              onClick={handleTranscribeCurrentVideo}
+              onClick={() => {
+                if (isTranscribeBlocked) return;
+                handleTranscribeCurrentVideo();
+              }}
               leftIcon={
                 <span className="material-symbols-outlined text-[18px]">
                   {isGeminiConnected ? 'mic' : 'lock'}
                 </span>
               }
-              className="w-full font-bold shadow-md"
+              className={cn(
+                'w-full font-bold shadow-md',
+                isTranscribeBlocked && 'cursor-not-allowed opacity-50 pointer-events-none'
+              )}
             >
               {!isGeminiConnected
                 ? 'IA Gemini Indisponível'
@@ -225,7 +237,9 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
               <button
                 key={`${seg.start}-${idx}`}
                 type="button"
+                disabled={isStudioBusy}
                 onClick={() => {
+                  if (isStudioBusy) return;
                   setSubtitleMode('dynamic');
                   setCurrentTime(seg.start);
                 }}
@@ -233,7 +247,8 @@ export const StudioSubtitlesTab: React.FC<StudioSubtitlesTabProps> = (props) => 
                   'flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-left text-body-xs transition-colors cursor-pointer',
                   isActive
                     ? 'bg-amber-500/20 dark:bg-primary/20 text-amber-800 dark:text-primary font-bold border border-amber-600/40 dark:border-primary/40'
-                    : 'hover:bg-neutral-100 dark:hover:bg-surface-container text-neutral-800 dark:text-on-surface'
+                    : 'hover:bg-neutral-100 dark:hover:bg-surface-container text-neutral-800 dark:text-on-surface',
+                  isStudioBusy && 'cursor-not-allowed opacity-50 pointer-events-none'
                 )}
               >
                 <span className="truncate">{seg.text}</span>

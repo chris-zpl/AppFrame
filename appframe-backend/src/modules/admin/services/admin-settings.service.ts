@@ -24,7 +24,7 @@ import { SecurityAuditEvent } from '../../../core/security/entities/security-aud
 
 export interface SmtpConfigDto {
   host: string;
-  port: number;
+  port?: number;
   user: string;
   password?: string;
   fromName: string;
@@ -398,10 +398,11 @@ export class AdminSettingsService {
 
   async saveSmtpConfig(dto: SmtpConfigDto): Promise<{ success: boolean; message: string }> {
     if (!dto.host) throw new BadRequestException('Host SMTP é obrigatório.');
-    if (!dto.port) throw new BadRequestException('Porta SMTP é obrigatória.');
+    
+    const port = dto.port || (dto.secure ? 465 : 587);
 
     await this.saveSetting('SMTP_HOST', dto.host.trim(), false);
-    await this.saveSetting('SMTP_PORT', dto.port.toString(), false);
+    await this.saveSetting('SMTP_PORT', port.toString(), false);
     await this.saveSetting('SMTP_USER', (dto.user || '').trim(), false);
     await this.saveSetting('SMTP_FROM_NAME', (dto.fromName || 'AppFrame').trim(), false);
     await this.saveSetting('SMTP_FROM_EMAIL', (dto.fromEmail || dto.user || '').trim(), false);

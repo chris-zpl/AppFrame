@@ -8,11 +8,13 @@ import { getSavedStudioState } from '../utils';
 export interface UseStudioPlayerProps {
   currentVideo: StudioVideoQueueItem | null;
   onRestoreSavedState?: (saved: any, videoItem: StudioVideoQueueItem) => void;
+  isGeneratingRef?: React.MutableRefObject<boolean>;
 }
 
 export const useStudioPlayer = ({
   currentVideo,
   onRestoreSavedState,
+  isGeneratingRef,
 }: UseStudioPlayerProps) => {
   const initialSaved = getSavedStudioState(currentVideo);
 
@@ -42,8 +44,12 @@ export const useStudioPlayer = ({
   });
   const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
 
-  // Estados do download e stream real do vídeo no Studio
+  // Estados do download e stream real do vídeo no Studio com suporte à fila BullMQ
   const [isPreparingPreview, setIsPreparingPreview] = useState<boolean>(false);
+  const [previewStatus, setPreviewStatus] = useState<
+    'IDLE' | 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+  >('IDLE');
+  const [previewProgress, setPreviewProgress] = useState<number>(0);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewStreamUrl, setPreviewStreamUrl] = useState<string | null>(null);
   const [currentPreviewId, setCurrentPreviewId] = useState<string | null>(null);
@@ -69,13 +75,15 @@ export const useStudioPlayer = ({
   const inFlightVideoUrlRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Cancela qualquer requisição pendente ao desmontar o hook
+  // Cancela qualquer requisição pendente ao desmontar o hook e limpa refs para remount seguro (ex: StrictMode / re-navegação)
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
+      inFlightVideoUrlRef.current = null;
+      lastAttemptedUrlRef.current = null;
     };
   }, []);
 
@@ -92,15 +100,21 @@ export const useStudioPlayer = ({
         previewError.toLowerCase().includes('login'))
   );
 
-  // Sincroniza seek de tempo no estado e no elemento <video> real
+  // Sincroniza seek de tempo no estado e no elemento <video> real prevenindo NaN e bloqueando quando ocupado
   const seekVideoTo = useCallback(
     (targetTime: number) => {
+      const isBusy =
+        isPreparingPreview ||
+        previewStatus === 'PROCESSING' ||
+        previewStatus === 'PENDING' ||
+        Boolean(isGeneratingRef?.current) ||
+        !previewStreamUrl;
+      if (isBusy) return;
+      if (!Number.isFinite(targetTime) || targetTime < 0) return;
       const maxDuration =
         totalDuration > 0 ? totalDuration : videoRef.current?.duration || 0;
-      const clamped =
-        maxDuration > 0
-          ? Math.max(0, Math.min(maxDuration, targetTime))
-          : Math.max(0, targetTime);
+      if (!Number.isFinite(maxDuration) || maxDuration <= 0) return;
+      const clamped = Math.max(0, Math.min(maxDuration, targetTime));
       lastTimeRef.current = clamped;
       setCurrentTime(clamped);
       if (videoRef.current && Number.isFinite(videoRef.current.duration)) {
@@ -111,11 +125,25 @@ export const useStudioPlayer = ({
         }
       }
     },
-    [totalDuration]
+    [
+      totalDuration,
+      isPreparingPreview,
+      previewStatus,
+      previewStreamUrl,
+      isGeneratingRef,
+    ]
   );
 
   // Controle síncrono e direto de Play / Pause a partir do clique do usuário
   const handleTogglePlay = useCallback(async () => {
+    const isBusy =
+      isPreparingPreview ||
+      previewStatus === 'PROCESSING' ||
+      previewStatus === 'PENDING' ||
+      Boolean(isGeneratingRef?.current) ||
+      !previewStreamUrl;
+    if (isBusy) return;
+
     const videoEl = videoRef.current;
     if (!videoEl || !previewStreamUrl) return;
 
@@ -151,7 +179,15 @@ export const useStudioPlayer = ({
       videoEl.pause();
       setIsPlaying(false);
     }
-  }, [previewStreamUrl, trimIn, trimOut, totalDuration]);
+  }, [
+    previewStreamUrl,
+    trimIn,
+    trimOut,
+    totalDuration,
+    isPreparingPreview,
+    previewStatus,
+    isGeneratingRef,
+  ]);
 
   // Pausa o vídeo de forma síncrona e garante que o elemento de vídeo seja interrompido
   const pauseVideo = useCallback(() => {
@@ -185,6 +221,15 @@ export const useStudioPlayer = ({
     e: React.MouseEvent<HTMLDivElement>,
     handle: 'in' | 'out' | 'playhead'
   ) => {
+    const isBusy =
+      isPreparingPreview ||
+      previewStatus === 'PROCESSING' ||
+      previewStatus === 'PENDING' ||
+      Boolean(isGeneratingRef?.current) ||
+      !previewStreamUrl ||
+      totalDuration <= 0;
+    if (isBusy) return;
+
     e.preventDefault();
     e.stopPropagation();
     draggingHandleRef.current = handle;
@@ -224,6 +269,14 @@ export const useStudioPlayer = ({
   };
 
   const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const isBusy =
+      isPreparingPreview ||
+      previewStatus === 'PROCESSING' ||
+      previewStatus === 'PENDING' ||
+      Boolean(isGeneratingRef?.current) ||
+      !previewStreamUrl ||
+      totalDuration <= 0;
+    if (isBusy) return;
     if (!timelineRef.current || draggingHandleRef.current) return;
     const rect = timelineRef.current.getBoundingClientRect();
     const relativeX = e.clientX - rect.left;
@@ -259,7 +312,10 @@ export const useStudioPlayer = ({
       inFlightVideoUrlRef.current = videoUrl;
       setIsPlaying(false);
       setIsPreparingPreview(true);
+      setPreviewStatus('PROCESSING');
+      setPreviewProgress(0);
       setPreviewError(null);
+      setPreviewStreamUrl(null);
       setWaveformPeaks([]);
       setTotalDuration(0.0);
       setTrimIn(0.0);
@@ -275,10 +331,22 @@ export const useStudioPlayer = ({
       try {
         const preview = await mediaService.prepareStudioPreview(
           videoItem.url,
-          abortController.signal
+          abortController.signal,
+          (state) => {
+            if (abortController.signal.aborted) return;
+            if (typeof state.progress === 'number') {
+              setPreviewProgress(state.progress);
+            }
+            if (state.status) {
+              setPreviewStatus(state.status);
+            }
+          }
         );
 
         if (abortController.signal.aborted) {
+          if (lastAttemptedUrlRef.current === videoUrl) {
+            lastAttemptedUrlRef.current = null;
+          }
           return;
         }
 
@@ -288,18 +356,19 @@ export const useStudioPlayer = ({
               : `${API_BASE_URL.replace(/\/api\/v1$/, '')}${preview.streamUrl.startsWith('/') ? '' : '/'}${preview.streamUrl}`)
           : `${API_BASE_URL}/media/preview/${preview.previewId}/stream`;
         const realDuration =
-          preview.durationSeconds && preview.durationSeconds > 0
+          preview.durationSeconds && Number.isFinite(preview.durationSeconds) && preview.durationSeconds > 0
             ? Number(preview.durationSeconds.toFixed(2))
             : 0.0;
 
-        const restoredTrimIn = typeof saved?.trimIn === 'number' ? saved.trimIn : 0.0;
+        const restoredTrimIn = typeof saved?.trimIn === 'number' && Number.isFinite(saved.trimIn) ? saved.trimIn : 0.0;
         const restoredTrimOut =
-          typeof saved?.trimOut === 'number' && saved.trimOut > 0
+          typeof saved?.trimOut === 'number' && Number.isFinite(saved.trimOut) && saved.trimOut > 0
             ? Math.min(saved.trimOut, realDuration > 0 ? realDuration : saved.trimOut)
             : realDuration;
 
         const restoredCurrentTime =
           typeof saved?.currentTime === 'number' &&
+          Number.isFinite(saved.currentTime) &&
           saved.currentTime >= restoredTrimIn &&
           (restoredTrimOut <= 0 || saved.currentTime <= restoredTrimOut)
             ? saved.currentTime
@@ -318,6 +387,8 @@ export const useStudioPlayer = ({
             ? preview.waveformPeaks
             : []
         );
+        setPreviewStatus('COMPLETED');
+        setPreviewProgress(100);
 
         if (saved?.aspectRatio === '9:16' || saved?.aspectRatio === '16:9') {
           setAspectRatio(saved.aspectRatio);
@@ -330,43 +401,57 @@ export const useStudioPlayer = ({
           setAspectRatio('16:9');
         }
       } catch (err: any) {
-        // Ignora erros decorrentes de cancelamento intencional da requisição
+        // Ignora erros decorrentes de cancelamento intencional da requisição, mas libera a URL para nova tentativa
         if (
           err?.name === 'CanceledError' ||
           err?.code === 'ERR_CANCELED' ||
           abortController.signal.aborted
         ) {
+          if (lastAttemptedUrlRef.current === videoUrl) {
+            lastAttemptedUrlRef.current = null;
+          }
           return;
         }
 
         console.error('Erro ao baixar vídeo para preview no Studio:', err);
-        const rawMsg =
-          err?.response?.data?.message ||
-          (err?.code === 'ECONNABORTED'
-            ? 'Tempo limite de download excedido. O vídeo é longo ou a conexão está lenta.'
-            : 'Não foi possível baixar o vídeo selecionado para visualização em tempo real.');
-        const msgStr = Array.isArray(rawMsg) ? rawMsg[0] : String(rawMsg);
-        const isRestricted =
-          msgStr.toLowerCase().includes('sign in') ||
-          msgStr.toLowerCase().includes('confirm your age') ||
-          msgStr.toLowerCase().includes('cookies') ||
-          msgStr.toLowerCase().includes('not a bot') ||
-          msgStr.toLowerCase().includes('restrição de idade') ||
-          msgStr.toLowerCase().includes('conta global') ||
-          msgStr.toLowerCase().includes('authentication') ||
-          msgStr.toLowerCase().includes('login');
+        if (abortControllerRef.current === abortController) {
+          setPreviewStatus('FAILED');
+          setPreviewStreamUrl(null);
+          const rawMsg =
+            err?.response?.data?.message ||
+            (err?.code === 'ECONNABORTED'
+              ? 'Tempo limite de download excedido. O vídeo é longo ou a conexão está lenta.'
+              : 'Não foi possível baixar o vídeo selecionado para visualização em tempo real.');
+          const msgStr = Array.isArray(rawMsg) ? rawMsg[0] : String(rawMsg);
+          const isRestricted =
+            msgStr.toLowerCase().includes('sign in') ||
+            msgStr.toLowerCase().includes('confirm your age') ||
+            msgStr.toLowerCase().includes('cookies') ||
+            msgStr.toLowerCase().includes('not a bot') ||
+            msgStr.toLowerCase().includes('restrição de idade') ||
+            msgStr.toLowerCase().includes('conta global') ||
+            msgStr.toLowerCase().includes('authentication') ||
+            msgStr.toLowerCase().includes('login');
 
-        const friendlyMsg = isRestricted
-          ? 'Este vídeo possui restrição de idade (+18) do YouTube. O download requer autorização da conta global configurada no servidor (storage/cookies.txt).'
-          : msgStr;
+          const friendlyMsg = isRestricted
+            ? 'Este vídeo possui restrição de idade (+18) do YouTube. O download requer autorização da conta global configurada no servidor (storage/cookies.txt).'
+            : msgStr;
 
-        setPreviewError(friendlyMsg);
-        toast.error(friendlyMsg);
+          setPreviewError(friendlyMsg);
+          toast.error(friendlyMsg);
+        }
       } finally {
         if (inFlightVideoUrlRef.current === videoUrl) {
           inFlightVideoUrlRef.current = null;
         }
-        setIsPreparingPreview(false);
+        // Só altera o estado se este ainda for o controller ativo (evita que o abort do Vídeo 1 desligue o loading do Vídeo 2)
+        if (abortControllerRef.current === abortController) {
+          setIsPreparingPreview(false);
+          if (abortController.signal.aborted) {
+            setPreviewStatus('IDLE');
+            setPreviewProgress(0);
+          }
+        }
       }
     },
     []
@@ -386,6 +471,9 @@ export const useStudioPlayer = ({
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
+      setIsPreparingPreview(false);
+      setPreviewStatus('IDLE');
+      setPreviewProgress(0);
       setPreviewStreamUrl(null);
       setCurrentPreviewId(null);
       setPreviewError(null);
@@ -410,6 +498,10 @@ export const useStudioPlayer = ({
     waveformPeaks,
     setWaveformPeaks,
     isPreparingPreview,
+    previewStatus,
+    setPreviewStatus,
+    previewProgress,
+    setPreviewProgress,
     previewError,
     setPreviewError,
     previewStreamUrl,

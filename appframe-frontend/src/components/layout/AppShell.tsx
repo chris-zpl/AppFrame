@@ -97,7 +97,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     <div className="min-h-screen min-w-[375px] bg-[#f8f9fd] dark:bg-surface text-neutral-900 dark:text-on-surface flex flex-col antialiased selection:bg-primary/20 selection:text-primary">
       {/* ================= HEADER FIXO 64px COM ALTO CONTRASTE ================= */}
       <header className="fixed top-0 w-full z-40 bg-white/95 dark:bg-[#10131a]/90 backdrop-blur-xl border-b border-neutral-200 dark:border-surface-container-high/60 shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-colors">
-        <div className="h-16 max-w-7xl mx-auto px-4 md:px-margin flex items-center justify-between gap-space-md">
+        <div className="h-16 max-w-7xl mx-auto px-4 md:px-margin flex items-center justify-between gap-space-sm">
           {/* Logo Oficial */}
           <AppFrameLogo
             size="sm"
@@ -114,7 +114,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                   type="button"
                   onClick={() => handleNavClick(item.key)}
                   className={cn(
-                    'px-space-md py-space-xs font-title-sm text-title-sm rounded-lg transition-colors cursor-pointer relative',
+                    'px-2 py-space-xs font-title-sm text-title-sm rounded-lg transition-colors cursor-pointer relative',
                     isActive
                       ? 'text-amber-800 dark:text-primary font-semibold bg-amber-500/15 dark:bg-primary/20 border border-amber-600/30 dark:border-primary/40 shadow-sm'
                       : 'text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100 dark:text-on-surface-variant dark:hover:text-on-surface dark:hover:bg-surface-container-high border border-transparent',
@@ -130,7 +130,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           </nav>
 
           {/* Ações da Direita: ThemeToggle + Avatar + Logout */}
-          <div className="flex items-center gap-3 md:gap-space-md">
+          <div className="flex items-center gap-2 sm:gap-space-sm">
             <ThemeToggle variant="header" />
 
             <div

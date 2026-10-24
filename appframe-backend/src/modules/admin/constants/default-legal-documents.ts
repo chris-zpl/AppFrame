@@ -293,15 +293,15 @@ export function interpolateLegalDocument(
   rendered = rendered.replace(/\[Nome do Desenvolvedor ou Razão Social\]/g, variables.companyName);
   rendered = rendered.replace(/\[Seu Nome ou Razão Social\]/g, variables.companyName);
   rendered = rendered.replace(/\[Nome\/Razão Social\]/g, variables.companyName);
-  rendered = rendered.replace(/\[e-mail de suporte\/contato, ex: contato@appframe\.com\]/g, variables.contactEmail);
+  rendered = rendered.replace(/\[e-mail de suporte\/contato, ex: contato@appframe\.(?:com|io)\]/g, variables.contactEmail);
   rendered = rendered.replace(/\[e-mail de contato\]/g, variables.contactEmail);
-  rendered = rendered.replace(/\[privacidade@appframe\.com ou seu e-mail de contato\]/g, variables.dpoEmail);
-  rendered = rendered.replace(/\[privacidade@appframe\.com\]/g, variables.dpoEmail);
+  rendered = rendered.replace(/\[privacidade@appframe\.(?:com|io) ou seu e-mail de contato\]/g, variables.dpoEmail);
+  rendered = rendered.replace(/\[privacidade@appframe\.(?:com|io)\]/g, variables.dpoEmail);
   rendered = rendered.replace(/\[e-mail de privacidade\]/g, variables.dpoEmail);
   rendered = rendered.replace(/\[Sua Cidade \/ Estado\]/g, variables.forumCity);
   rendered = rendered.replace(/\[24 horas \/ 48 horas \/ 7 dias\]/g, variables.retentionPeriod);
-  rendered = rendered.replace(/\[\[https:\/\/appframe\.com\]\(https:\/\/appframe\.com\)\]/g, `[${variables.websiteUrl}](${variables.websiteUrl})`);
-  rendered = rendered.replace(/https:\/\/appframe\.com/g, variables.websiteUrl);
+  rendered = rendered.replace(/\[\[https:\/\/appframe\.(?:com|io)\]\(https:\/\/appframe\.(?:com|io)\)\]/g, `[${variables.websiteUrl}](${variables.websiteUrl})`);
+  rendered = rendered.replace(/https:\/\/appframe\.(?:com|io)(?!\.br)\b/g, variables.websiteUrl);
 
   return rendered;
 }

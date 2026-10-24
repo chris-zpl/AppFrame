@@ -19,6 +19,7 @@ export const StudioDeleteModal: React.FC<StudioDeleteModalProps> = (props) => {
   const currentVideo = props.currentVideo ?? studio.currentVideo;
   const onClose = props.onClose ?? (() => studio.setIsDeleteStudioModalOpen(false));
   const onConfirm = props.onConfirm ?? (async () => {
+    if ((studio as any).isStudioBusy) return;
     studio.setIsDeletingFromStudio(true);
     try {
       await studio.handleDeleteFromStudio();

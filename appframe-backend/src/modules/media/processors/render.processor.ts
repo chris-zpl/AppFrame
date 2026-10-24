@@ -12,7 +12,10 @@ import { DownloadService } from '../services/download.service';
 import { WatermarksService } from '../../watermarks/watermarks.service';
 import { VideoJobStatus } from '../enums/video-job-status.enum';
 
-@Processor(MEDIA_RENDER_QUEUE)
+@Processor(MEDIA_RENDER_QUEUE, {
+  concurrency: 1,
+  lockDuration: 900000, // 15 minutos de lock para vídeos médios/longos contra stalled jobs
+})
 export class RenderProcessor extends WorkerHost {
   private readonly logger = new Logger(RenderProcessor.name);
 
@@ -81,8 +84,20 @@ export class RenderProcessor extends WorkerHost {
         watermarkPadding: 60,
         subtitleConfig,
         onProgress: async (progressPercent) => {
-          await job.updateProgress(progressPercent);
-          await this.mediaService.updateJobProgress(jobId, progressPercent);
+          try {
+            await job.updateProgress(progressPercent);
+          } catch (progressErr: any) {
+            this.logger.warn(
+              `[Job ${jobId}] Alerta ao atualizar lock/progresso no BullMQ: ${progressErr.message}`,
+            );
+          }
+          try {
+            await this.mediaService.updateJobProgress(jobId, progressPercent);
+          } catch (dbErr: any) {
+            this.logger.warn(
+              `[Job ${jobId}] Alerta ao persistir progresso no PostgreSQL: ${dbErr.message}`,
+            );
+          }
         },
       });
 

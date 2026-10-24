@@ -34,7 +34,7 @@ export const AppFrameLogo: React.FC<AppFrameLogoProps> = ({
     <div
       onClick={onClick}
       className={cn(
-        'flex items-center gap-2.5 select-none transition-transform',
+        'flex items-center gap-1 select-none transition-transform',
         onClick && 'cursor-pointer hover:opacity-95',
         className,
       )}

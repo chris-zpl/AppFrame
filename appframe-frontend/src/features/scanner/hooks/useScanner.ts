@@ -9,6 +9,7 @@ import type {
   ScannerFilterType,
 } from '../types';
 import { calculatePageNumbers, mapScannedItems } from '../utils';
+import { extractNormalizedVideoId } from '../../studio/utils';
 
 const VALID_SCANNER_FILTERS: Record<string, ScannerFilterType> = {
   all: 'all',
@@ -501,7 +502,7 @@ export const useScanner = () => {
         'appframe_studio_queue',
         JSON.stringify(
           selectedList.map((v) => ({
-            id: v.id,
+            id: extractNormalizedVideoId(v) || v.id,
             url: v.url,
             title: v.title,
             thumbnailUrl: v.thumbnailUrl,
@@ -511,6 +512,7 @@ export const useScanner = () => {
           }))
         )
       );
+      sessionStorage.setItem('appframe_studio_active_index', '0');
     } catch {}
 
     const first = selectedList[0];

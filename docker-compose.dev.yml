@@ -59,7 +59,7 @@ services:
         condition: service_healthy
     env_file:
       - ./.env.development
-      - ./appframe-backend/.env.development
+      - ./appframe-backend/.env
     environment:
       NODE_ENV: development
       PORT: 3000
@@ -114,7 +114,7 @@ services:
         condition: service_started
     env_file:
       - ./.env.development
-      - ./appframe-frontend/.env.development
+      - ./appframe-frontend/.env
     ports:
       - "${FRONTEND_PORT:-5173}:80"
     healthcheck:

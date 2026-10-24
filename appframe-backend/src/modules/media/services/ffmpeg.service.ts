@@ -132,6 +132,8 @@ export class FFmpegService {
         '16000',
         '-b:a',
         '64k',
+        '-threads',
+        '2',
         '-f',
         'mp3',
         'pipe:1',
@@ -175,6 +177,8 @@ export class FFmpegService {
       const proc = spawn(this.ffmpegPath, [
         '-v',
         'error',
+        '-threads',
+        '2',
         '-i',
         filePath,
         '-vn',
@@ -717,11 +721,19 @@ ${events.join('\n')}
     // Input do vídeo original
     args.push('-i', inputPath);
 
-    // Input da marca d'água (se houver)
+    // Input da marca d'água (se houver e arquivo existir em disco de forma assíncrona)
     let hasWatermark = false;
-    if (watermarkPath && fs.existsSync(watermarkPath)) {
-      args.push('-i', watermarkPath);
-      hasWatermark = true;
+    if (watermarkPath) {
+      try {
+        await fsPromises.access(watermarkPath, fs.constants.F_OK);
+        args.push('-i', watermarkPath);
+        hasWatermark = true;
+      } catch (err: any) {
+        if (err.code !== 'ENOENT') {
+          throw err;
+        }
+        this.logger.warn(`Marca d'água não encontrada em ${watermarkPath}, ignorando.`);
+      }
     }
 
     // 3. Determina dimensões da resolução alvo de acordo com o Aspect Ratio escolhido
@@ -866,7 +878,7 @@ ${events.join('\n')}
       args.push('-map', '0:a?'); // Preserva fluxo de áudio se presente
     }
 
-    // Configurações de encoding sem drift e alta compatibilidade
+    // Configurações de encoding sem drift, alta compatibilidade e limite de CPU para VPS
     args.push(
       '-c:v', 'libx264',
       '-preset', 'veryfast',
@@ -875,6 +887,7 @@ ${events.join('\n')}
       '-c:a', 'aac',
       '-b:a', '192k',
       '-avoid_negative_ts', 'make_zero',
+      '-threads', '2',
       '-progress', 'pipe:1',
       '-y',
       outputPath,
@@ -897,7 +910,7 @@ ${events.join('\n')}
             99,
             Math.max(1, Math.floor((currentTimeSeconds / effectiveDuration) * 100)),
           );
-          if (percent > lastReportedPercent + 2) {
+          if (percent > lastReportedPercent + 1) {
             lastReportedPercent = percent;
             Promise.resolve(onProgress(percent)).catch(() => {});
           }
@@ -913,20 +926,12 @@ ${events.join('\n')}
       });
 
       ffmpegProcess.on('close', async (code) => {
-        // Limpeza de arquivo temporário .ass
-        if (tempAssFile && fs.existsSync(tempAssFile)) {
-          try {
-            await fsPromises.unlink(tempAssFile);
-          } catch {}
-        }
+        // Limpeza assíncrona segura de arquivo temporário .ass
+        await this.safeUnlink(tempAssFile);
 
-        // Limpeza de arquivos temporários de overlay de imagem
+        // Limpeza assíncrona segura de arquivos temporários de overlay de imagem
         for (const f of tempOverlayFiles) {
-          if (fs.existsSync(f)) {
-            try {
-              await fsPromises.unlink(f);
-            } catch {}
-          }
+          await this.safeUnlink(f);
         }
 
         if (code === 0) {
@@ -943,13 +948,26 @@ ${events.join('\n')}
       });
 
       ffmpegProcess.on('error', async (err) => {
-        if (tempAssFile && fs.existsSync(tempAssFile)) {
-          try {
-            await fsPromises.unlink(tempAssFile);
-          } catch {}
+        await this.safeUnlink(tempAssFile);
+        for (const f of tempOverlayFiles) {
+          await this.safeUnlink(f);
         }
         reject(new Error(`Erro ao invocar binário do FFmpeg: ${err.message}`));
       });
     });
+  }
+
+  /**
+   * Remove arquivo do disco assincronamente com tratamento resiliente de ENOENT.
+   */
+  private async safeUnlink(filePath: string | null | undefined): Promise<void> {
+    if (!filePath) return;
+    try {
+      await fsPromises.unlink(filePath);
+    } catch (err: any) {
+      if (err?.code !== 'ENOENT') {
+        this.logger.warn(`Falha ao remover arquivo temporário ${filePath}: ${err?.message}`);
+      }
+    }
   }
 }

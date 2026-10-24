@@ -5,6 +5,7 @@ import {
   MEDIA_DOWNLOAD_QUEUE,
   MEDIA_RENDER_QUEUE,
   STORAGE_CLEANUP_QUEUE,
+  STUDIO_PREVIEW_QUEUE,
 } from './queue.constants';
 
 @Global()
@@ -48,6 +49,9 @@ import {
       },
       {
         name: STORAGE_CLEANUP_QUEUE,
+      },
+      {
+        name: STUDIO_PREVIEW_QUEUE,
       },
     ),
   ],

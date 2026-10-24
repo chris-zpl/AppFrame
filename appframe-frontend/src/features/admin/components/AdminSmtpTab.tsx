@@ -69,11 +69,50 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const resolvedPort =
+      smtpForm.port !== undefined && smtpForm.port !== null && String(smtpForm.port).trim() !== ''
+        ? Number(smtpForm.port)
+        : smtpForm.secure
+        ? 465
+        : 587;
+
+    const finalForm: SmtpConfig = {
+      ...smtpForm,
+      port: resolvedPort,
+    };
+
     if (controlledForm !== undefined) {
       (onSaveSmtp as (e: React.FormEvent) => void)(e);
     } else {
-      (onSaveSmtp as (cfg: SmtpConfig) => void | Promise<any>)(smtpForm);
+      (onSaveSmtp as (cfg: SmtpConfig) => void | Promise<any>)(finalForm);
     }
+  };
+
+  const handleSecureChange = (isSecure: boolean) => {
+    setSmtpForm((prev) => {
+      const currentPortStr = String(prev.port ?? '').trim();
+      let nextPort = prev.port;
+
+      if (isSecure) {
+        // Ao ativar a conexão direta SSL/TLS:
+        // Atualiza para 465 se estiver vazio, 587 ou 25
+        if (!currentPortStr || currentPortStr === '587' || currentPortStr === '25') {
+          nextPort = 465;
+        }
+      } else {
+        // Ao desativar:
+        // Se a porta for 465, volta automaticamente para 587
+        if (currentPortStr === '465') {
+          nextPort = 587;
+        }
+      }
+
+      return {
+        ...prev,
+        secure: isSecure,
+        port: nextPort,
+      };
+    });
   };
 
   const handleTest = () => {
@@ -121,10 +160,17 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
             label="Porta"
             labelClassName="font-bold text-neutral-500 dark:text-outline text-label-sm"
             type="number"
-            value={smtpForm.port}
-            onChange={(e) => setSmtpForm({ ...smtpForm, port: Number(e.target.value) })}
-            placeholder="587 ou 465"
-            required
+            value={smtpForm.port ?? ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSmtpForm({ ...smtpForm, port: val === '' ? ('' as any) : Number(val) });
+            }}
+            placeholder={smtpForm.secure ? '465' : '587'}
+            helperText={
+              smtpForm.secure
+                ? 'Conexão SSL direta geralmente utiliza a porta 465.'
+                : 'Conexão STARTTLS geralmente utiliza a porta 587 (ou 25).'
+            }
           />
 
           <Input
@@ -178,7 +224,7 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
             type="email"
             value={smtpForm.fromEmail}
             onChange={(e) => setSmtpForm({ ...smtpForm, fromEmail: e.target.value })}
-            placeholder="no-reply@appframe.io"
+            placeholder="no-reply@appframe.com.br"
             required
           />
 
@@ -188,7 +234,7 @@ export const AdminSmtpTab: React.FC<AdminSmtpTabProps> = ({
               name="secure"
               label="Usar conexão SSL/TLS direta (Porta 465)"
               checked={smtpForm.secure}
-              onChange={(e) => setSmtpForm({ ...smtpForm, secure: e.target.checked })}
+              onChange={(e) => handleSecureChange(e.target.checked)}
             />
           </div>
 

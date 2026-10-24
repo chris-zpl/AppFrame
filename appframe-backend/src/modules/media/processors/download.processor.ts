@@ -11,7 +11,9 @@ import { DownloadService } from '../services/download.service';
 import { MediaService } from '../media.service';
 import { VideoJobStatus } from '../enums/video-job-status.enum';
 
-@Processor(MEDIA_DOWNLOAD_QUEUE)
+@Processor(MEDIA_DOWNLOAD_QUEUE, {
+  concurrency: 1,
+})
 export class DownloadProcessor extends WorkerHost {
   private readonly logger = new Logger(DownloadProcessor.name);
 
@@ -73,6 +75,7 @@ export class DownloadProcessor extends WorkerHost {
           subtitleConfig: currentJob?.subtitle_config || null,
         },
         {
+          jobId: `render-${jobId}`,
           priority: 1,
         },
       );

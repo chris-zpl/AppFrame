@@ -10,6 +10,7 @@ import {
   ClassSerializerInterceptor,
   UploadedFile,
   BadRequestException,
+  ForbiddenException,
   Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -79,6 +80,45 @@ export class WatermarksController {
     res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     return res.sendFile(filePath);
+  }
+
+  @Get('user/:userId')
+  @UseGuards(JwtAuthGuard)
+  async listByUser(
+    @Param('userId', new ParseUUIDPipe()) targetUserId: string,
+    @CurrentUser('userId') currentUserId: string,
+  ): Promise<WatermarkResponseDto[]> {
+    if (targetUserId !== currentUserId) {
+      throw new ForbiddenException('Acesso negado: você não pode acessar recursos de outro usuário.');
+    }
+    return this.watermarksService.findByUser(currentUserId);
+  }
+
+  @Get(':id/user/:userId')
+  @UseGuards(JwtAuthGuard)
+  async getByIdAndUser(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('userId', new ParseUUIDPipe()) targetUserId: string,
+    @CurrentUser('userId') currentUserId: string,
+  ): Promise<WatermarkResponseDto> {
+    if (targetUserId !== currentUserId) {
+      throw new ForbiddenException('Acesso negado: você não pode acessar recursos de outro usuário.');
+    }
+    return this.watermarksService.findById(id, currentUserId);
+  }
+
+  @Delete(':id/user/:userId')
+  @UseGuards(JwtAuthGuard)
+  async deleteByIdAndUser(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('userId', new ParseUUIDPipe()) targetUserId: string,
+    @CurrentUser('userId') currentUserId: string,
+  ): Promise<{ deleted: boolean }> {
+    if (targetUserId !== currentUserId) {
+      throw new ForbiddenException('Acesso negado: você não pode excluir recursos de outro usuário.');
+    }
+    const deleted = await this.watermarksService.delete(id, currentUserId);
+    return { deleted };
   }
 
   @Get(':id')

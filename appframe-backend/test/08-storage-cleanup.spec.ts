@@ -79,7 +79,7 @@ describe('StorageCleanupService & Expiration (Option A)', () => {
 
     expect(mockQueue.upsertJobScheduler).toHaveBeenCalledWith(
       'storage-cleanup-periodic',
-      { every: 15 * 60 * 1000 },
+      { pattern: '*/15 * * * *' },
       expect.objectContaining({ name: 'storage-cleanup-job' }),
     );
 
